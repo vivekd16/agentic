@@ -1,24 +1,34 @@
-from thespian.actors import Actor, ActorSystem
+from thespian.actors import Actor, ActorSystem, ActorAddress
 from typing import Any, Optional
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
 import json
 from pprint import pprint
-import secrets
 from datetime import datetime
+import secrets
 
-from tools import LinkedinDataTool
-import asyncio
-from typing import Callable, Any, Annotated, List
+from typing import Callable, Any, List
 from pydantic import Field
 from swarm import Swarm
-from swarm.types import AgentFunction, Function, ChatCompletionMessageToolCall, Result, Response
+from swarm.types import AgentFunction, Function, ChatCompletionMessageToolCall, Response
 from swarm.util import merge_chunk, debug_print
 
 from .events import (
-    Prompt, Output, ChatOutput, ToolCall, ChatStart, ChatEnd, TurnEnd, SetState, AddChild
+    Prompt, 
+    Output, 
+    ChatOutput, 
+    ToolCall, 
+    ChatStart, 
+    ChatEnd, 
+    TurnEnd, 
+    SetState, 
+    AddChild, 
+    PauseToolResult,
+    PAUSE_SENTINEL,
 )
+
+from thespian.actors import Actor, ActorSystem
 
 @dataclass
 class AgentPauseContext:
@@ -234,99 +244,37 @@ class Logger(Actor):
         print(f"[{time} {message}]")
 
 
-from tools import GoogleNewsTool
 
-def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
-    return asyncio.run(async_func(*args, **kwargs))
-
-linkedin = LinkedinDataTool()
-def search_profiles(name: str, company: str = ""):
-    """ Searches for linkedin profiles. """
-    return invoke_async(linkedin.linkedin_people_search, name=name, company=company)
-
-def get_profile(url: str = Field(description="URL")):
-    return invoke_async(linkedin.get_linkedin_profile_info, url)
-
-gnt = GoogleNewsTool()
-
-def query_news(topic: str):
-    return gnt.query_news(topic)
-
-
-
-if __name__ == "__main__":
+def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
     asys = ActorSystem()
     logger = asys.createActor(Logger)
+    return asys, logger
 
-    def MakeAgent(name: str, instructions: str|None=None, functions: list = [], model: str=None):
-        instructions = instructions or "You are a helpful assistant."
-        agent = asys.createActor(Agent, globalName = f"{name}-" + secrets.token_hex(4))
-        model = model or "gpt-4o-mini"
-        asys.ask(agent, SetState(name, {
-            'name': name, 
-            'logger': logger, 
-            'instructions': instructions,
-            'functions': functions,
-            'model': model,
-        }))
-        return agent
+def MakeAgent(name: str, instructions: str|None=None, functions: list = [], model: str=None):
+    asys, logger = create_actor_system()
+    instructions = instructions or "You are a helpful assistant."
+    agent = asys.createActor(Agent, globalName = f"{name}-" + secrets.token_hex(4))
+    model = model or "gpt-4o-mini"
+    asys.ask(agent, SetState(name, {
+        'name': name, 
+        'logger': logger, 
+        'instructions': instructions,
+        'functions': functions,
+        'model': model,
+    }))
+    return agent
 
-    def add_child(parent, name: str, instructions: str, functions: list = []):
-        asys.ask(parent, AddChild(name, {
-            'name': name, 
-            'logger': logger, 
-            'instructions': instructions,
-            'functions': functions
-        }))
+def add_child(parent, name: str, instructions: str, functions: list = []):
+    asys, logger = create_actor_system()
+    asys.ask(parent, AddChild(name, {
+        'name': name, 
+        'logger': logger, 
+        'instructions': instructions,
+        'functions': functions
+    }))
 
-    orchestrator = MakeAgent(
-        name="Person Researcher",
-    #     instructions="""
-    # You do research on people. Given a name and a company:
-    # 1. Search for matching profiles on linkedin.
-    # 2. If you find a single strong match, then prepare a background report on that person.
-    # 3. If you find multiple matches, then print the matches and NEED INPUT and stop. If the response
-    # identifies a profile then go back to step 2.
-    # If you are missing info, then seek clarification from the user.
-    # """,
-        functions=[search_profiles],
-    )
-    add_child(
-        orchestrator, 
-        name="Person Report Writer",
-        instructions="""
-You will receive the URL to a linkedin profile. Retreive the profile and
-write a background report on the person, focusing on their career progression
-and current role.
-""",
-        functions=[get_profile],
-    )
-
-
-    producer = MakeAgent(
-        name="Producer",
-        instructions="You are a news producer. Call the reporter with the indicated topic.",
-        model="gpt-4o-mini",
-    )
-    add_child(
-        producer, 
-        name="News Reporter",
-        instructions=f"""
-    Call Google News to get headlines on the indicated news topic.
-    """,
-        functions=[query_news],
-    )
-
-    root_reporter = MakeAgent(
-        name="News Reporter",
-        instructions="""
-    Call Google News to get headlines on the indicated news topic.
-    """,
-        functions=[query_news],
-    )
-
-
-    active = producer
+def repl_loop(agent, agent_name):
+    asys, logger = create_actor_system()
 
     while True:
         prompt = input("> ").strip()
@@ -334,7 +282,7 @@ and current role.
            break
 
         # Send the prompt to the agent fire and forget
-        asys.tell(active, Prompt("Producer", prompt))
+        asys.tell(agent, Prompt(agent_name, prompt))
         linestart = True
 
         # And now read events waiting for the end
@@ -356,4 +304,4 @@ and current role.
                 # using the logger for now, but could show in UI
                 #print(f"\n[tool - {event.agent}] ", event.payload, end="")
                 pass
-                
+                    

@@ -22,10 +22,14 @@ from .events import (
     ChatStart, 
     ChatEnd, 
     TurnEnd, 
+    AgentResume,
     SetState, 
     AddChild, 
     PauseToolResult,
-    PAUSE_SENTINEL,
+    PauseAgent,
+    PauseAgentResult,
+    PAUSE_AGENT_SENTINEL,
+    PAUSE_FOR_CHILD_SENTINEL
 )
 
 from thespian.actors import Actor, ActorSystem
@@ -36,7 +40,7 @@ class AgentPauseContext:
     tool_partial_response: Response
     sender: Optional[Actor] = None
 
-class Agent(Actor):
+class ActorBaseAgent(Actor):
     name: str = "Agent"
     model: str = "gpt-4o"
     instructions: str = "You are a helpful agent."
@@ -113,20 +117,20 @@ class Agent(Actor):
         #print(f"[RECEIVE: {self.myAddress}/{self.name}: {actor_message} from {sender}")
 
         match actor_message:
-            case Prompt() | TurnEnd():
+            case Prompt() | TurnEnd() | AgentResume():
                 if isinstance(actor_message, Prompt):
                     self.log(f"Prompt: {actor_message}")
                     self.depth = actor_message.depth
                     init_len = len(self.history)
                     context_variables = {}
                     self.history.append({"role": "user", "content": actor_message.payload})
-                elif isinstance(actor_message, TurnEnd):
-                    assert self.paused_context, "TurnEnd received but no paused context is set"
+                elif isinstance(actor_message, (TurnEnd, AgentResume)):
+                    assert self.paused_context, "TurnEnd/Resume received but no paused context is set"
                     init_len = self.paused_context.orig_history_length
                     # This little tricky bit grabs the full child output from the TurnEnd event
                     # and appends it to our history as the tool call result
                     tool_msgs = self.paused_context.tool_partial_response.messages
-                    tool_msgs[-1]['content'] = actor_message.messages[-1]['content']
+                    tool_msgs[-1]['content'] = actor_message.result
                     self.history.extend(tool_msgs)
                     context_variables = actor_message.context_variables.copy()
                     # Child calls BACK to parent, so we need to restore our original 'sender'
@@ -180,13 +184,22 @@ class Agent(Actor):
                     )
                     self.log(f"Tool result: {partial_response.messages}")
                     # Fixme: handle this better
-                    if partial_response.messages[-1]['content'] == PAUSE_SENTINEL:
-                        # agent needs to pause
+                    if partial_response.messages[-1]['content'] == PAUSE_FOR_CHILD_SENTINEL:
+                        # agent needs to pause to wait for a child. Should have notified the child already
                         self.paused_context = AgentPauseContext(
                             orig_history_length=init_len,
                             tool_partial_response=partial_response,
                             sender=sender,
                         )
+                        return
+                    elif request_msg := PauseAgentResult.deserialize(partial_response.messages[-1]['content']):
+                        # agent needs to pause, notify the Root
+                        self.paused_context = AgentPauseContext(
+                            orig_history_length=init_len,
+                            tool_partial_response=partial_response,
+                            sender=sender,
+                        )
+                        self.send(sender, PauseAgent(self.name, request_msg))
                         return
                     
                     self.history.extend(partial_response.messages)
@@ -210,7 +223,7 @@ class Agent(Actor):
                 self.send(sender, Output(self.name, f"State updated: {actor_message.payload}", self.depth))
 
             case AddChild():
-                child = self.createActor(Agent)
+                child = self.createActor(ActorBaseAgent)
                 self.send(child, SetState(self.name, actor_message.payload | {'logger': self.logger}))
                 name = actor_message.payload['name']
                 self.children[name] = child
@@ -244,16 +257,20 @@ class Logger(Actor):
         print(f"[{time} {message}]")
 
 
+logger = None
 
 def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
+    global logger
+
     asys = ActorSystem()
-    logger = asys.createActor(Logger)
+    if logger is None:
+        logger = asys.createActor(Logger)
     return asys, logger
 
-def MakeAgent(name: str, instructions: str|None=None, functions: list = [], model: str=None):
+def MakeAgent(name: str, instructions: str|None=None, functions: list = [], model: str|None=None):
     asys, logger = create_actor_system()
     instructions = instructions or "You are a helpful assistant."
-    agent = asys.createActor(Agent, globalName = f"{name}-" + secrets.token_hex(4))
+    agent = asys.createActor(ActorBaseAgent, globalName = f"{name}-" + secrets.token_hex(4))
     model = model or "gpt-4o-mini"
     asys.ask(agent, SetState(name, {
         'name': name, 
@@ -264,44 +281,66 @@ def MakeAgent(name: str, instructions: str|None=None, functions: list = [], mode
     }))
     return agent
 
-def add_child(parent, name: str, instructions: str, functions: list = []):
-    asys, logger = create_actor_system()
-    asys.ask(parent, AddChild(name, {
-        'name': name, 
-        'logger': logger, 
-        'instructions': instructions,
-        'functions': functions
-    }))
 
-def repl_loop(agent, agent_name):
+class ActorAgent:   
+    def __init__(
+            self, 
+            name, 
+            instructions, 
+            welcome: str|None=None,
+            functions: list = [], 
+            model: str|None=None,
+        ):
+        self._agent = MakeAgent(name, instructions, functions, model)
+        self.actor = self._agent
+        self.name = name
+        self.welcome = welcome or f"Hello, I am {name}."
+
+    def add_child(self, name: str, instructions: str, functions: list = [], model: str|None=None):
+        asys, logger = create_actor_system()
+        model = model or "gpt-4o-mini"
+        asys.ask(self._agent, AddChild(name, {
+            'name': name, 
+            'logger': logger, 
+            'instructions': instructions,
+            'functions': functions,
+            'model': model,
+        }))
+
+def repl_loop(agent):
     asys, logger = create_actor_system()
 
+    print(agent.welcome)
     while True:
         prompt = input("> ").strip()
         if prompt == 'quit':
            break
 
         # Send the prompt to the agent fire and forget
-        asys.tell(agent, Prompt(agent_name, prompt))
+        asys.tell(agent.actor, Prompt(agent.name, prompt))
         linestart = True
 
         # And now read events waiting for the end
         while True:
             event = asys.listen(10)
-            if isinstance(event, TurnEnd):
-                print()
-                linestart = True
-                break
-            if isinstance(event, (Output, ChatOutput)):
-                if linestart:
-                    print("."*(event.depth*4), end="")
-                    linestart = False
-                print(event, end="")
-                if str(event).endswith('\n'):
+            match event:
+                case TurnEnd():
+                    print()
                     linestart = True
-
-            elif isinstance(event, ToolCall):
-                # using the logger for now, but could show in UI
-                #print(f"\n[tool - {event.agent}] ", event.payload, end="")
-                pass
+                    break
+                case Output() | ChatOutput():
+                    if linestart:
+                        print("."*(event.depth*4), end="")
+                        linestart = False
+                    print(event, end="")
+                    if str(event).endswith('\n'):
+                        linestart = True
+                case ToolCall():
+                    # using the logger for now, but could show in UI
+                    #print(f"\n[tool - {event.agent}] ", event.payload, end="")
+                    pass
+                case PauseAgent():
+                    response = input(f"\n{event.request_message} > ")
+                    asys.tell(agent.actor, TurnEnd(agent.name, [{"role": "user", "content": response}]))
+                    print(f"\n[Agent {event.agent} paused]")
                     

@@ -1,12 +1,12 @@
-from .events import SetState, AddChild
+from .events import SetState, AddChild, PauseToolResult, PauseAgentResult
 from .actor_agents import (
-    Actor, 
+    ActorAgent,
     Logger, 
     create_actor_system,
-    MakeAgent,
-    add_child,
     repl_loop,
 )
+
+Agent = ActorAgent
 
 
 

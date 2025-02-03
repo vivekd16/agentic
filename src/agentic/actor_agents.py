@@ -308,8 +308,9 @@ class ActorAgent:
         self.actor = self._agent
         self.name = name
         self.welcome = welcome or f"Hello, I am {name}."
-
-    def add_child(self, name: str, instructions: str, functions: list = [], model: str|None=None):
+        
+    def add_child(self, name: str, instructions: str, functions: list = [], model: str|None=None,
+                  memories: list = []):
         asys, logger = create_actor_system()
         model = model or "gpt-4o-mini"
         asys.ask(self._agent, AddChild(name, {

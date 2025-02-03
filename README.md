@@ -75,7 +75,7 @@ researcher.add_child(
     )
 )
 
-runner = ActorAgentRunner(agent)
+runner = AgentRunner(agent)
 
 print(agent.welcome)
 print("press <enter> to quit")

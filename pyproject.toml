@@ -3,8 +3,15 @@ name = "agentic"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
+    "google-news-feed>=1.1.0",
+    "googlenewsdecoder>=0.1.7",
+    "html2text>=2024.2.26",
     "streamlit>=1.41.1",
+    "swarm",
     "thespian>=3.10.7",
 ]
+
+[tool.uv.sources]
+swarm = { git = "https://github.com/openai/swarm.git" }

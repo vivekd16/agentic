@@ -1,0 +1,10 @@
+[project]
+name = "agentic"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "streamlit>=1.41.1",
+    "thespian>=3.10.7",
+]

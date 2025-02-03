@@ -216,6 +216,6 @@ Not sure if PYTHONPATH needs to be set, or local install needs to happen...
 
 Run in streamlit:
 
-    streamlit run src/agentic/ui/chat.py
-    
+    PYTHONPATH=. streamlit run src/agentic/ui/chat.py
+
 

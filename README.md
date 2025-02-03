@@ -1,18 +1,56 @@
 # Agentic
 
-A new, easy to use AI Agents framework.
+A new, easy to use AI Agents framework. Agentic offers these features:
+
+- Approachable and simple to use
+- Supports agents swarms
+- Support Human-in-the-loop
+- Easy definition and use of tools
+
+## The problem with function calling
+
+Since the introduction of "function calling" by OpenAI, most frameworks have built around
+the idea of agent "tools" as functions. Many have extended this idea to include calling
+agents calling other _agents as tools_. 
+
+The problem is that function calling generally assumes synchronous semantics and strictly 
+typed parameters and return values. Both of these make poor assumptions when dealing with
+AI agents. Since agents can easily be long-running, it is much better assume an event-driven
+model (sending messages, and waiting for events) than a synchronous one. Strict typing
+is useful in compiled code, but LLMs are really best with text and language, not strict
+compiler types.
+
+As you start building more complex agents, you want them to run longer, be decomposable
+into multiple units, and have flexible behavior like stopping for human input. Agentic
+is designed to make these more complex use cases easy.
+
+## Tools as Agents
+
+Agentic assumes an event driven model for agents. We send events to agents when we want
+them to do something, and the agent publishes events back to us with the results. Because
+event driven is so key, _tool calling_ is also event driven. Although the framework
+hides most of the details, every tool (function) call happens asynchronously. One of
+the implications of this design is that tools can "interrupt" the agent, and wait for
+human input. When your agent is waiting for input it is effectively paused, consuming
+no resources. This means that complex patterns like "send an email for clarification,
+and wait for the reply" are easy and low-cost to build.
+
+
 
 ## Basic example
 
 ```python
-import Agent, LinkedinTool, HumanInterruptTool, PromptEvent
+from agentic import Agent, AgentRunner
+from agentic.tools import LinkedinTool, HumanInterruptTool
 
 researcher = Agent(
     name="Person Researcher",
-    system_prompt="""
+    welcome="I am your People Researcher. Who would you like to know more about?",
+    instructions="""
 You do research on people. Given a name and a company:
 1. Search for matching profiles on linkedin.
-2. If you find a single strong match, then prepare a background report on that person.
+2. If you find a single strong match, then prepare a background report on that person. Make sure
+to print the full report.
 3. If you find multiple matches, then ask stop and ask the user for clarification. Then go back to step 1.
 If you are missing info, then seek clarification from the user.
 """,
@@ -23,34 +61,35 @@ If you are missing info, then seek clarification from the user.
 researcher.add_child(
     Agent(
         name = "Person Report Writer",
-        system_prompt="""
+        instructions="""
     You will receive the URL to a linkedin profile. Retrive the profile and
     write a background report on the person, focusing on their career progression
     and current role.
         """,
-        tools=[LinkedinTool(['get_profile'])],
-        operations="prepare_person_report(linkedin_url)",
+        tools=[LinkedinTool()],
         model="anthropic://claude-sonnet-3.5",
     )
 )
 
-runner = AgentRunner(researcher, memory=True)
+runner = ActorAgentRunner(agent)
 
-print("People researcher is ready! Tell me who you want to research.")
-print("Use 'quit' to stop.")
+print(agent.welcome)
+print("press <enter> to quit")
 while True:
-    query = input("> ").strip()
-    if query == 'quit':
+    prompt = input("> ").strip()
+    if prompt == 'quit' or prompt == '':
         break
-    event = runner.next(PromptEvent(query))
-    while event.is_finish_event:
-        if event.request_human:
-            print(event)
-            response = input(":> ")
-            event.set_response(response)
+    runner.start(prompt)
+
+    for event in runner.next():
+        if event is None:
+            break
+        elif event.requests_input():
+            response = input(f"\n{event.request_message} > ")
+            runner.continue_with(response)
         else:
-            print(event)
-        event = runner.next(event)
+            event.print()
+    print()
 ```
 
 **Breaking down our example**
@@ -58,83 +97,87 @@ while True:
 First we define our top-level agent, the "Person Researcher", give it a goal
 and a task list, an LLM model, and some tools:
 
-- A linkedin tool for search for linkedin profiles
+- A linkedin tool for searching for linkedin profiles
 - A "Human interrupt" tool which the agent can call to ask for human help
 
 Now, we define a "sub agent" for this agent to use as another tool. This
 is the "Person Report Writer" agent, with its own instruction and a 
 different LLM model. We connect this agent to the top level via:
 
-    operations="prepare_person_report(linkedin_url)",
+    researcher.add_child(
+        Agent(... define our sub-agent...)
+    )
 
-This essentially creates a tool function in the parent with the given name
-and params. We could omit this parameter and we would get a general function
-like:
-    
-    call_person_report_writer(input)
-
-taken from the agent name.
+This creates a tool function in the parent taken from the name of the child
+agent.
 
 **Running our agent**
 
 To run our agent, we construct an `AgentRunner`. This object manages
-a single multi-turn single session interacting with our agent.
+a single multi-turn session interacting with our agent.
 
-Suppose our user input is:
+Here is the complete (condensed) run output:
 
-    Sam Altman
+```markdown
+(agentic) scottp@MacBook-Air agentic % python examples/people_researcher.py 
+I am the People Researcher. Tell me who you want to know about.
+> marc benioff
+--> search_profiles({"name":"marc benioff"})
+--> get_human_input({"request_message":"I found multiple profiles for Marc..."})
+I found multiple LinkedIn profiles for Marc Benioff. Here are the details:
 
-We call `start` to start our agent, and it returns an initial event.
-Now we enter a loop until we receive a `finish` event from the agent.
+1. **Marc Benioff**  
+   - **Headline:** Chair & CEO at Salesforce  
+   ...
+
+2. **Marc Benioff**  
+   - **Headline:** Bachelor's degree at Brunel University London  
+   ...
+...
+Please let me know which profile you would like to know more about. 
+> 1
+call_person_report_writer({"message":"Please prepare a background report on Marc Benioff..."})
+--> get_profile({"url":"https://www.linkedin.com/in/marcbenioff"})
+### Background Report on Marc Benioff
+**Current Role:**
+Marc Benioff is the Chair and CEO of Salesforce, a leading cloud-based software company headquartered in San Francisco, California. Under his leadership, Salesforce has become a pioneer in customer relationship management (CRM) software and has significantly influenced the tech industry with its innovative solutions and commitment to social responsibility.
+
+**Career Progression:**
+- **Early Career:** Marc Benioff began his career at Oracle Corporation, where he worked for 13 years. During his time at Oracle, he held various positions, gaining valuable experience in software development and sales.
+...
+```
+
+We call `start` to start our agent.
+Now we iteratively grab events from the agent until the turn is finished.
 
 - The initial user prompt is passed to our Researcher agent. It considers
-its system instruction and the user input. Based on this it generates 
+its instructions and the user input. Based on this it generates 
 a tool call to `LinkedinTool.search_profiles`. 
-- The `search_profiles` function is called, and the result is return
+- The `search_profiles` function is called, and the result is returned
 to the agent, which "observes" this result and generates the next
 event (the "observation" event.)
 - The agent "loops" and determines that multiple profiles were returned,
-so it creates a tool call to `human_interrupt` passing that function
-the list of profiles.
-- The runner returns the human interrupt event setting `event.request_human`
-to be the agent request. We print that event, collect input from the user,
-and then set their input as the `response` on the event. This will automatically
-get appened to the agent context on the next loop.
-- On `runner.next` the agent considers its next action. Assuming that the user
-specific a particular profile to research, it generates
-a tool call to `prepare_person_report` to create the report. If the user had
+so it prints the list (emits output events with the text), and then
+creates a tool call to `get_human_input`.
+- The runner returns the interrupt event, return True from `event.requests_input()`
+to be the agent request. We print that request message, collect input from the user,
+and then call `continue_with` on the runner with the response. The human response
+will be returned as the value of the `get_human_input` tool call.
+- On `runner.next` the agent considers that we specified to check the first
+returned profile, so it generates
+a tool call to `call_person_report_writer` to create the report. If the user had
 responded "I don't know", then the agent could decide it can't go any further
-and just return the `finish` event.
-- The `prepare_person_report` function now activates our "Person Report Writer"
-agent, with the profile URL as input, but a new LLM context.
-
-So our full chat looks like:
-
-```
-People researcher is ready! Tell me who you want to research.
-Use 'quit' to stop.
-> Sam Altman
-[...event: processing input: Sam Altman]
-[...event: tool call: search_profiles]
-Ok, I found these 5 matching profiles...
-[...event: tool observation]
-[...event: tool call: human_interrupt]
-I have found multiple profiles for Sam Altman: ..... which one should I research?
-:> use the first one
-[...event observation] 
-Ok, let me prepare the research report.
-[...event tool call: prepare_person_report]
-[...sub event: processing input: https://linkedin.com/r/samaltman]
-[...sub event: <output>...]
-[...event: observation]     (back in Person Researcher)
-Here is the professional background for Sam Altman...
-....
-And now humanity is doomed.
-[...event: finish]
-> quit
-```
+and just finish the turn.
+- The `call_person_report_writer` function now activates our "Person Report Writer"
+agent, with the profile URL as input, but in a new LLM context. This agent calls
+`get_profile` to get the full Linkedin profile, then writes the research report.
+- Finally the report is returned to the parent agent, which prints the results.
 
 ### Things to note
+
+Events have a `depth` attribute which indicates how deep is the agent that is
+generating the event. So the top agent generates `depth=0`, the first level 
+sub-agent generates at `depth=1` and so forth. 
 
 The list of tools on an agent should be modifiable at any time:
 
@@ -163,6 +206,16 @@ A good example of this is if agent B needs to return a large chunk of info to ag
 (like the contents of a file), then it could put the file to a memory block and 
 return a reference to that block in its call response to agent A. 
 
+# Running
 
+Not sure if PYTHONPATH needs to be set, or local install needs to happen...
 
+### Examples
+
+    python examples/basic_agent.py
+
+Run in streamlit:
+
+    streamlit run src/agentic/ui/chat.py
+    
 

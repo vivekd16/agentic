@@ -10,28 +10,60 @@ class Event:
     payload: Any
     depth: int = 0
 
+    def print(self):
+        print(self)
+
+    def requests_input(self):
+        return isinstance(self, PauseAgent)
+
+    def __str__(self) -> str:
+        return str(self.payload or '')
+        
+    def _safe(self, d, keys: list[str], default_val=None):
+        for k in keys:
+            if k in d:
+                d = d[k]
+            else:
+                return default_val
+        return d or default_val
+    
 class Prompt(Event):
-    def __init__(self, agent: str, message: str, depth: int = 0):
+    debug: bool = False
+
+    def __init__(self, agent: str, message: str, depth: int = 0, debug: bool = False):
         super().__init__(agent, 'prompt', message, depth)
+        self.debug = debug
 
 class Output(Event):
     def __init__(self, agent: str, message: str, depth: int = 0):
         super().__init__(agent, 'output', message, depth=depth)
 
+    def __str__(self) -> str:
+        return str(self.payload or '')
+
     def __repr__(self) -> str:
-        return str(self.payload) if self.payload else ""
+        return repr(self.__dict__)
     
-class ChatOutput(Event):
+class ChatOutput(Output):
     def __init__(self, agent: str, payload: dict, depth: int = 0):
-        super().__init__(agent, 'chat_output', payload, depth=depth)
+        Event.__init__(self, agent, 'chat_output', payload, depth)
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return str(self.payload.get('content') or '')
-
+    
+    def __repr__(self) -> str:
+        return repr(self.__dict__)
+    
 class ToolCall(Event):
-    def __init__(self, agent: str, details: Any):
-        super().__init__(agent, 'tool_call', details)
+    def __init__(self, agent: str, details: Any, depth: int = 0):
+        super().__init__(agent, 'tool_call', details, depth=depth)
 
+    def __str__(self):
+        d = self.payload
+        name = self._safe(d, ['function','name'])
+        args = self._safe(d, ['function', 'arguments'], '{}')
+        return "--"*(self.depth+1) + f"> {name}({args})"
+    
 class ChatStart(Event):
     def __init__(self, agent: str):
         super().__init__(agent, 'chat_start', {})

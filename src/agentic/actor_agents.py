@@ -1,5 +1,5 @@
 from thespian.actors import Actor, ActorSystem, ActorAddress
-from typing import Any, Optional
+from typing import Any, Optional, Generator
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
@@ -15,6 +15,7 @@ from swarm.types import AgentFunction, Function, ChatCompletionMessageToolCall, 
 from swarm.util import merge_chunk, debug_print
 
 from .events import (
+    Event,
     Prompt, 
     Output, 
     ChatOutput, 
@@ -119,6 +120,7 @@ class ActorBaseAgent(Actor):
         match actor_message:
             case Prompt() | TurnEnd() | AgentResume():
                 if isinstance(actor_message, Prompt):
+                    self.debug = actor_message.debug
                     self.log(f"Prompt: {actor_message}")
                     self.depth = actor_message.depth
                     init_len = len(self.history)
@@ -167,7 +169,7 @@ class ActorBaseAgent(Actor):
                     # convert tool_calls to objects
                     tool_calls = []
                     for tool_call in llm_message["tool_calls"]:
-                        self.send(sender, ToolCall(self.name, tool_call))
+                        self.send(sender, ToolCall(self.name, tool_call, self.depth))
                         self.log(f"Calling tool: {tool_call}")
                         function = Function(
                             arguments=tool_call["function"]["arguments"],
@@ -243,11 +245,12 @@ class ActorBaseAgent(Actor):
             child_ref, 
             message,
         ):
-        self.send(child_ref, Prompt(self.name, message, depth=self.depth+1))
+        self.send(child_ref, Prompt(self.name, message, depth=self.depth+1, debug=self.debug))
         return PauseToolResult()
 
     def log(self, message):
-        self.send(self.logger, f"({self.name}) {message}")
+        if self.debug:
+            self.send(self.logger, f"({self.name}) {message}")
 
 class Logger(Actor):
     def receiveMessage(self, message, sender):
@@ -267,16 +270,26 @@ def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
         logger = asys.createActor(Logger)
     return asys, logger
 
+def get_funcs(thefuncs: list):
+    useable = []
+    for func in thefuncs:
+        if callable(func):
+            useable.append(func)
+        else:
+            useable.extend(func.get_tools())
+    return useable 
+
 def MakeAgent(name: str, instructions: str|None=None, functions: list = [], model: str|None=None):
     asys, logger = create_actor_system()
     instructions = instructions or "You are a helpful assistant."
     agent = asys.createActor(ActorBaseAgent, globalName = f"{name}-" + secrets.token_hex(4))
     model = model or "gpt-4o-mini"
+
     asys.ask(agent, SetState(name, {
         'name': name, 
         'logger': logger, 
         'instructions': instructions,
-        'functions': functions,
+        'functions': get_funcs(functions),
         'model': model,
     }))
     return agent
@@ -303,9 +316,56 @@ class ActorAgent:
             'name': name, 
             'logger': logger, 
             'instructions': instructions,
-            'functions': functions,
+            'functions': get_funcs(functions),
             'model': model,
         }))
+
+    def __repr__(self) -> str:
+        return f"<ActorAgent: {self.name}>"
+class ActorAgentRunner:
+    def __init__(self, agent: ActorAgent, debug: bool = False) -> None:
+        self.agent = agent
+        self.asys, _ = create_actor_system()
+        self.debug = debug
+
+    def start(self, request: str):
+        self.asys.tell(self.agent.actor, Prompt(self.agent.name, request, depth=0, debug=self.debug))
+
+    def next(self, include_children: bool=True, timeout: int=10) -> Generator[Event, Any, Any]:
+        while True:
+            event: Event = self.asys.listen(timeout)
+            if isinstance(event, (ChatStart, ChatEnd)):
+                continue
+            if isinstance(event, TurnEnd):
+                break
+            yield event
+
+    def continue_with(self, response: str):
+        self.asys.tell(self.agent.actor, TurnEnd(self.agent.name, [{"role": "user", "content": response}]))
+
+def demo_loop(agent):
+    runner = ActorAgentRunner(agent)
+
+    print(agent.welcome)
+    print("press <enter> to quit")
+    while True:
+        prompt = input("> ").strip()
+        if prompt == 'quit' or prompt == '':
+           break
+        runner.start(prompt)
+
+        for event in runner.next():
+            #print("[event] " ,event.__dict__)
+            if event is None:
+                break
+            elif event.requests_input():
+                response = input(f"\n{event.request_message}\n>> ")
+                runner.continue_with(response)
+            else:
+                if event.depth == 0:
+                    print(event, end='')
+        print()
+
 
 def repl_loop(agent):
     asys, logger = create_actor_system()

@@ -7,6 +7,10 @@ A new, easy to use AI Agents framework. Agentic offers these features:
 - Support Human-in-the-loop
 - Easy definition and use of tools
 
+## Install
+
+    uv pip install -e . 
+
 ## The problem with function calling
 
 Since the introduction of "function calling" by OpenAI, most frameworks have built around

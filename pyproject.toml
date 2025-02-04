@@ -3,8 +3,16 @@ name = "agentic"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "streamlit>=1.41.1",
     "thespian>=3.10.7",
+    "litellm",
+    "googlenewsdecoder",
+    "google_news_feed",
+    "html2text",
+    "typer",
 ]
+
+[project.scripts]
+agentic = "agentic.cli:app"

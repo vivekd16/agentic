@@ -11,7 +11,7 @@ agent = Agent(
     name="Basic Agent",
     welcome="I am a simple agent here to help. I have a single weather function.",
     instructions="You are a helpful assistant.",
-    model="gpt-4o-mini",
+    model="openai/gpt-4o", #anthropic/claude-3-5-haiku-20241022", #claude-3-5-sonnet-20240620",
     functions=[WeatherTool()],
 )
 

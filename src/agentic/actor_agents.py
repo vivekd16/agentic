@@ -4,8 +4,10 @@ from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
 import json
+import os
 from pprint import pprint
 from datetime import datetime
+from agentic.secrets import agentic_secrets
 import secrets
 
 from typing import Callable, Any, List
@@ -308,6 +310,8 @@ class ActorAgent:
         self.actor = self._agent
         self.name = name
         self.welcome = welcome or f"Hello, I am {name}."
+        self.model = model
+        self.ensure_api_key_for_model(self.model)
         
     def add_child(self, name: str, instructions: str, functions: list = [], model: str|None=None,
                   memories: list = []):
@@ -323,6 +327,21 @@ class ActorAgent:
 
     def __repr__(self) -> str:
         return f"<ActorAgent: {self.name}>"
+
+    def ensure_api_key_for_model(self, model):
+        if "/" in model:
+            key = None
+            provider, model = model.split("/")
+            if provider == "anthropic":
+                key = "ANTHROPIC_API_KEY"
+            elif provider == "openai":
+                key = "OPENAI_API_KEY"
+            value = agentic_secrets.get_secret(key)
+            if value is not None:
+                os.environ[key] = value
+            else:
+                raise RuntimeError(f"API key for {provider} not found in secrets. Use agentic set {key} <value> to set it.")
+
 class ActorAgentRunner:
     def __init__(self, agent: ActorAgent, debug: bool = False) -> None:
         self.agent = agent

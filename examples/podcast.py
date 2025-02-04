@@ -11,7 +11,7 @@ producer = Agent(
 )
 producer.add_child(
     name="AI News Reporter",
-    instructions=f"{{REPORTER}}",
+    instructions="{{REPORTER}}",
     model="openai/gpt-4o",    
 )
 producer.add_child(

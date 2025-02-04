@@ -1,35 +1,10 @@
 from typing import Callable, Optional
 
-from ..tool_factory import ToolFactory, ToolCategory
 from .rest_tool_v2 import RESTAPIToolV2
 
 class AuthorizedRESTAPITool(RESTAPIToolV2):
-    def __init__(self):
-        super().__init__(
-            id="auth_rest_api_tool",
-            system_name="REST API (Authorized)",
-            logo_url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHWEG81eOfB0EdeEeaDC9R-cn7BRpc3ctI9g&s",
-            category=ToolCategory.CATEGORY_DEVTOOLS,
-            tool_uses_env_vars=False, # auth is configured via Connection
-            auth_config={
-                "strategy_token": {
-                    "bearer_token": "Bearer token (or env var) for auth",
-                    "bearer_token_name": "Name of the token (default is 'Bearer')",
-                    "basic_username": "For Basic auth, the username (or env var)",
-                    "basic_password": "For Basic auth, the password (or env var)",
-                    "request_arg_name": "Name of the auth request parameter",
-                    "request_arg_value": "Value or env var for the arg value",
-                    "header_name": "Name of the auth header",
-                    "header_value": "Value or env var for the header value",
-                }
-            },
-            help="""
-Call REST API endpoints with authorization. Specify values according to the type of auth required and leave the rest blank.
-"""
-        )
-
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions([
+        return [
             self.add_request_header,
             self.get_resource,
             self.post_resource,
@@ -37,7 +12,7 @@ Call REST API endpoints with authorization. Specify values according to the type
             self.patch_resource,
             self.delete_resource,
             self.debug_request,
-        ])
+        ]
 
     def test_credential(self, cred, secrets: dict) -> str|None:
         """ Test that the given credential secrets are valid. Return None if OK, otherwise

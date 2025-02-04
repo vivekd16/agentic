@@ -16,13 +16,8 @@ from pydantic import BaseModel
 
 from urllib.parse import parse_qsl, urlencode
 
-from supercog.engine.tool_factory import (
-    ToolFactory, 
-    ToolCategory, 
-    LangChainCallback,
-)
-from supercog.shared.utils import upload_file_to_s3
-from supercog.engine.tools.s3_utils import public_image_bucket
+#from supercog.shared.utils import upload_file_to_s3
+#from supercog.engine.tools.s3_utils import public_image_bucket
 
 import os
 from urllib.parse import urlparse
@@ -196,28 +191,12 @@ class AsyncRequestBuilder:
     async def delete(self, path: str, **kwargs):
         return await self._request("DELETE", path, **kwargs)
 
-class RESTAPIToolV2(ToolFactory):
+class RESTAPIToolV2():
     request_map: dict[str, AsyncRequestBuilder] = {}
     return_dataframe: bool = False
 
-    def __init__(self, **kwargs):
-        if kwargs:
-            super().__init__(**kwargs) # let people inherit from us to define new tools
-        else:
-            super().__init__(
-                id="rest_api_tool_v2",
-                system_name="REST API",
-                auth_config={},
-                logo_url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHWEG81eOfB0EdeEeaDC9R-cn7BRpc3ctI9g&s",
-                category=ToolCategory.CATEGORY_DEVTOOLS,
-                tool_uses_env_vars=True,
-                help="""
-    Call arbitrary REST API endpoints.
-    """
-            )
-
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions([
+        return [
             self.prepare_auth_config,
             self.add_request_header,
             self.get_resource,
@@ -226,7 +205,7 @@ class RESTAPIToolV2(ToolFactory):
             self.patch_resource,
             self.delete_resource,
             self.debug_request,
-        ])
+        ]
 
     def debug_request(self, request_name: str):
         """ Returns debug information about the indicated request object. """

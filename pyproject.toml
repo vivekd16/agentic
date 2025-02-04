@@ -8,6 +8,8 @@ dependencies = [
     "google-news-feed>=1.1.0",
     "googlenewsdecoder>=0.1.7",
     "html2text>=2024.2.26",
+    "jinja2>=3.1.5",
+    "pyyaml>=6.0.2",
     "streamlit>=1.41.1",
     "swarm",
     "thespian>=3.10.7",

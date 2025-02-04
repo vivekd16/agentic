@@ -35,7 +35,7 @@ def generate_fernet_key():
     return fernet_key
 
 class SecretManager:
-    def __init__(self, db_path=str(Path.home() / '.agentsrc'), key=None):
+    def __init__(self, db_path=str(Path.home() / '.agentsdb'), key=None):
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
         self.cursor.execute("CREATE TABLE IF NOT EXISTS secrets (name TEXT PRIMARY KEY, value TEXT)")

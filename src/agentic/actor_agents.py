@@ -378,8 +378,6 @@ class ActorAgent:
         else:
             self.instructions = instructions
 
-        print(self.instructions)
-
     @property
     def prompt_variables(self) -> dict:
         """Dictionary of variables to make available to prompt templates."""

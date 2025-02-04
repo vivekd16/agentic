@@ -3,16 +3,20 @@ from typing import Any, Optional, Generator
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
+from pathlib import Path
 import json
 from pprint import pprint
 from datetime import datetime
 import secrets
 
+import yaml
 from typing import Callable, Any, List
 from pydantic import Field
 from swarm import Swarm
 from swarm.types import AgentFunction, Function, ChatCompletionMessageToolCall, Response
 from swarm.util import merge_chunk, debug_print
+from jinja2 import Template
+
 
 from .events import (
     Event,
@@ -356,11 +360,53 @@ class ActorAgent:
         welcome: str | None = None,
         functions: list = [],
         model: str | None = None,
+        template_dir: str | Path = None
     ):
+
         self._agent = MakeAgent(name, instructions, functions, model)
         self.actor = self._agent
         self.name = name
-        self.welcome = welcome or f"Hello, I am {name}."
+        self.welcome = welcome or f"Hello, I am {self.name}."
+
+        # TODO: some validation on template_dir.
+        self.template_dir = template_dir
+
+        # Use jinja2 to expand the instructions.
+        if instructions:
+            template = Template(instructions)
+            self.instructions = template.render(**self.prompt_variables)
+        else:
+            self.instructions = instructions
+
+        print(self.instructions)
+
+    @property
+    def prompt_variables(self) -> dict:
+        """Dictionary of variables to make available to prompt templates."""
+
+        # Find {self.safe_name}.prompts.yaml
+        prompts_filename = f"{self.safe_name}.prompts.yaml"
+        paths_to_search = [
+            self.template_dir if self.template_dir else Path.cwd(),
+        ]
+
+        for path in paths_to_search:
+            prompts_file = Path(path) / prompts_filename
+            print(prompts_file)
+
+            if prompts_file.exists():
+                with open(prompts_file, "r") as f:
+                    prompts = yaml.safe_load(f)
+                return prompts
+
+        # Dummy placeholder.
+        return {"name": "John Doe"}
+
+    @property
+    def safe_name(self):
+        """Renders the ActorAgent's name, but filesystem safe."""
+        # Replace any non-alphanumeric chars with underscores
+        return "".join(c if c.isalnum() else "_" for c in self.name).lower()
 
     def add_child(
         self,

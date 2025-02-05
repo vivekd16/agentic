@@ -2,7 +2,7 @@ from typing import Callable, Any
 import asyncio
 from agentic.tools import LinkedinDataTool
 
-from agentic import Agent, demo_loop, PauseAgentResult
+from agentic import Agent, AgentRunner, PauseAgentResult
 
 def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
     return asyncio.run(async_func(*args, **kwargs))
@@ -18,7 +18,7 @@ def get_profile(url: str):
 def get_human_input(request_message: str):
     return PauseAgentResult(request_message)
 
-from agentic import Agent, repl_loop, PauseToolResult
+from agentic import Agent, PauseToolResult
 
 people_researcher = Agent(
     name="Person Researcher",
@@ -31,17 +31,18 @@ You do research on people. Given a name and a company:
 identifies a profile then go back to step 2.
 If you are missing info, then seek clarification from the user.
 """,
-    functions=[search_profiles, get_human_input],
-)
-people_researcher.add_child(
-    name="Person Report Writer",
-    instructions="""
-You will receive the URL to a linkedin profile. Retreive the profile and
-write a background report on the person, focusing on their career progression
-and current role.
-""",
-    functions=[get_profile],
+    tools=[search_profiles, get_human_input, 
+            Agent(
+               name="Person Report Writer",
+               instructions="""
+        You will receive the URL to a linkedin profile. Retreive the profile and
+        write a background report on the person, focusing on their career progression
+        and current role.
+        """,
+                tools=[get_profile],
+            )
+    ]
 )
 
 if __name__ == "__main__":
-    demo_loop(people_researcher)
+    AgentRunner(people_researcher).repl_loop()

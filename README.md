@@ -11,6 +11,136 @@ A new, easy to use AI Agents framework. Agentic offers these features:
 
     uv pip install -e . 
 
+## Try it!
+
+```python
+% agentic set OPENAI_API_KEY <value>
+
+% python examples/basic_agent.py
+I am a simple agent here to help. I have a single weather function.
+press <enter> to quit
+> hi there
+Hello! How can I assist you today?
+> get the weather in toronto
+
+It's really cold today!
+```
+
+**Start the streamlit UI**
+
+    agentic ui
+
+# Building Agents
+
+Agentic agents by default use the LLM **ReAct** pattern. This means:
+
+- The LLM controls the execution flow of your agent
+- You specify the tasks and flow of your agent via the LLM system prompt
+- The agents gets one or more **tools** that it can use to accomplish its task
+- The agent runs in this loop until it decides that it can't go further:
+    - plan next step
+    - generate text completion or tool call
+        (platform executes tool call)
+    - observe tool call results
+
+Here is the "Hello World" example of ReAct agents:
+
+```
+def weather_tool():
+    return "The weather is nice today."
+
+agent = Agent(
+    name="Basic Agent",
+    welcome="I am a simple agent here to help. I have a single weather function.",
+    instructions="You are a helpful assistant.",
+    model="openai/gpt-4o-mini",
+    functions=[WeatherTool()],
+)
+
+AgentRunner(agent).repl_loop()
+```
+This will start a command prompt where you can interact with your agent. Each time you
+send a request the agent will run and process your request in a single **turn** and
+print the result:
+
+```
+    python examples/basic_agent.py
+    I am a simple agent here to help. I have a single weather function.
+    > hi there
+    Hello! How can I assist you today?
+    > what is the weather in SF?
+    ...
+```
+
+## Components of an agent
+
+An agent is _defined_ by its behavior - what is does as perceived from the outside. But
+inside each agent has these properties:
+
+- name
+- instructions
+- list of tools
+- list of children agents
+- chosen LLM model
+- a 'welcome' message explaining the purpose of the agent
+
+Notice that agents can call both `tools`, which are regular code functions, or
+other agents, in the same way. 
+
+Calling "sub agents" allows us to organize a set of multiple agents to solve
+a single problem. The simplest example looks like this:
+
+```python
+from agentic.tools import GoogleNewsTool
+
+producer = Agent(
+    name="Producer",
+    welcome="I am the news producer. Tell me the topic, and I'll get the news from my reporter.",
+    instructions="You are a news producer. Call the reporter with the indicated topic.",
+    model="gpt-4o-mini",
+    tools=[
+        Agent(
+            name="News Reporter",
+            instructions=f"""
+        Call Google News to get headlines on the indicated news topic.
+        """,
+            tools=[GoogleNewsTool()],
+        )
+    ],
+)
+```
+### Calling agents in sequence
+
+Treating agents as a `subroutine` is useful, but sometimes we want `pipeline` semantics
+where we want to invoke the next agent by "handing off" execution to that agent and
+not waiting for it to return. We can just use the `handoff` property to do so:
+
+
+```python
+from agentic import handoff
+
+agentA = Agent(
+    name="Producer",
+    welcome="This is the handoff demo.",
+    instructions="Print the message 'I am A', then call agent B. Afterwards print 'WARNING!'",
+    tools=[
+        handoff(Agent(
+            name="Agent B",
+            instructions="Print the msssage 'and I am B'",
+        ))
+    ],
+)
+
+python examples/handoff_demo.py
+This is the handoff demo.
+> run
+I am A
+and I am B
+> 
+```
+Without using `handoff` we would have seen the WARNING message printed from the root agent.
+
+
 ## The problem with function calling
 
 Since the introduction of "function calling" by OpenAI, most frameworks have built around
@@ -62,7 +192,7 @@ If you are missing info, then seek clarification from the user.
     model="openai://gpt-4o-mini",
 )
 
-researcher.add_child(
+researcher.add_tool(
     Agent(
         name = "Person Report Writer",
         instructions="""
@@ -108,7 +238,7 @@ Now, we define a "sub agent" for this agent to use as another tool. This
 is the "Person Report Writer" agent, with its own instruction and a 
 different LLM model. We connect this agent to the top level via:
 
-    researcher.add_child(
+    researcher.add_tool(
         Agent(... define our sub-agent...)
     )
 

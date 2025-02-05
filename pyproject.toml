@@ -13,11 +13,10 @@ dependencies = [
     "streamlit>=1.41.1",
     "swarm",
     "thespian>=3.10.7",
-    "litellm",
-    "googlenewsdecoder",
-    "google_news_feed",
-    "html2text",
-    "typer",
+    "litellm>=1.60.2",
+    "html2text>=2024.2.26",
+    "typer>=0.15.1",
+    "cryptography>=44.0.0",
 ]
 
 [project.scripts]

@@ -1,7 +1,13 @@
+# Shutup stupid pydantic warnings
+import warnings
+warnings.filterwarnings("ignore", message="Valid config keys have changed in V2:*")
+
 from dataclasses import dataclass
 from typing import Any
-from swarm.types import Result
+from .swarm.types import Result
 import json
+
+from litellm.types.utils import ModelResponse, Message
 
 @dataclass
 class Event:
@@ -27,6 +33,12 @@ class Event:
                 return default_val
         return d or default_val
     
+    def debug(self, indent: bool = False):
+        prefix = ""
+        if indent:
+            prefix = ".."*(self.depth+1)    
+        return(f"{prefix}{self.type.upper()}: {self.payload}")
+
 class Prompt(Event):
     debug: bool = False
 
@@ -64,14 +76,44 @@ class ToolCall(Event):
         args = self._safe(d, ['function', 'arguments'], '{}')
         return "--"*(self.depth+1) + f"> {name}({args})"
     
-class ChatStart(Event):
+class StartCompletion(Event):
     def __init__(self, agent: str):
-        super().__init__(agent, 'chat_start', {})
+        super().__init__(agent, 'completion_start', {})
 
-class ChatEnd(Event):
-    def __init__(self, agent: str, llm_message: str):
-        super().__init__(agent, 'chat_end', llm_message)
+class FinishCompletion(Event):
+    MODEL_KEY = 'model'
+    COST_KEY = 'cost'
+    INPUT_TOKENS_KEY = 'input_tokens'
+    OUTPUT_TOKENS_KEY = 'output_tokens'
+    ELAPSED_TIME_KEY = 'elapsed_time'
 
+    def __init__(self, agent: str, llm_message: Message, metadata: dict = {}):
+        super().__init__(agent, 'completion_end', llm_message)
+        self.metadata = metadata
+
+    @classmethod
+    def create(cls, 
+               agent: str, 
+               llm_message: Message,
+               model: str,
+               cost: float,
+               input_tokens: int|None,
+               output_tokens: int|None,
+               elapsed_time: float|None,
+    ):
+        meta =  {
+            cls.MODEL_KEY: model,
+            cls.COST_KEY: cost or 0,
+            cls.INPUT_TOKENS_KEY: input_tokens or 0,
+            cls.OUTPUT_TOKENS_KEY: output_tokens or 0,
+            cls.ELAPSED_TIME_KEY: elapsed_time or 0,
+        }
+
+        return cls(agent, llm_message, meta)    
+
+    @property
+    def response(self) -> Message:
+        return self.payload
 class TurnEnd(Event):
     def __init__(self, agent: str, messages: list, context_variables: dict = {}):
         super().__init__(agent, 'turn_end', {"messages": messages, "vars": context_variables})
@@ -105,8 +147,12 @@ class SetState(Event):
         super().__init__(agent, 'set_state', state)
 
 class AddChild(Event):
-    def __init__(self, agent, state: dict):
-        super().__init__(agent, 'add_child', state)
+    def __init__(self, agent, actor_ref):
+        super().__init__(agent, 'add_child', actor_ref)
+
+    @property
+    def actor_ref(self):
+        return self.payload
 
 PAUSE_AGENT_SENTINEL = "__PAUSE__"
 PAUSE_FOR_CHILD_SENTINEL = "__PAUSE__CHILD"

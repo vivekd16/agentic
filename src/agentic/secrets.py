@@ -56,4 +56,8 @@ class SecretManager:
         self.cursor.execute("SELECT name FROM secrets")
         return [row[0] for row in self.cursor.fetchall()]
 
+    def delete_secret(self, name):
+        self.cursor.execute("DELETE FROM secrets WHERE name=?", (name,))
+        self.conn.commit()
+        
 agentic_secrets = SecretManager(key=generate_fernet_key())

@@ -7,14 +7,14 @@ producer = Agent(
     welcome="I am a podcast producer. I can produce a daily news podcast.",
     instructions="{{PRODUCER}}",
     model="gpt-4o-mini",
-    functions=[TextToSpeechTool()],
+    tools=[TextToSpeechTool()],
 )
-producer.add_child(
+producer.add_tool(
     name="AI News Reporter",
     instructions="{{REPORTER}}",
     model="openai/gpt-4o",    
 )
-producer.add_child(
+producer.add_tool(
     name="Transistor",
     instructions="{{TRANSITOR}}",
     functions=[AuthorizedRESTAPITool()],

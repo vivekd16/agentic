@@ -15,7 +15,7 @@ newsAgent = Agent(
 You do news research. If you dont know the topic, then
 stop for human input on the topic. Then query the news for that topic. 
 """,
-    functions=[query_news, get_human_input],
+    tools=[query_news, get_human_input],
 )
 
 if __name__ == "__main__":

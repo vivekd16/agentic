@@ -182,7 +182,7 @@ class LinkedinDataTool():
             start: start index (0, 10, 20, etc.)
         """
         if self.get_api_key() is None:
-            return "Error: no API key available for the RapidAPI LinkedIn Data API"
+            return "Error: no API key RAPIDAPI_KEY available for the RapidAPI LinkedIn Data API"
 
         # Build search parameters
         params = {"start": start}

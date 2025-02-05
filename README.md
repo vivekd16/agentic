@@ -14,16 +14,24 @@ A new, easy to use AI Agents framework. Agentic offers these features:
 ## Try it!
 
 ```python
-% agentic set OPENAI_API_KEY <value>
+% agentic set OPENAI_API_KEY $OPENAI_API_KEY # or wherever you have this key
 
 % python examples/basic_agent.py
 I am a simple agent here to help. I have a single weather function.
 press <enter> to quit
+
 > hi there
 Hello! How can I assist you today?
-> get the weather in toronto
 
-It's really cold today!
+> get the weather in toronto
+The current weather in Toronto is as follows:
+
+- **Temperature**: -9.9°C
+- **Feels Like**: -5.6°C
+...
+If you need more information or a forecast, just let me know!
+
+[openai/gpt-4o-mini: 3 calls, tokens: 168 -> 143, 0.02 cents, time: 15.92s]
 ```
 
 **Start the streamlit UI**
@@ -70,7 +78,10 @@ print the result:
     Hello! How can I assist you today?
     > what is the weather in SF?
     ...
+    [openai/gpt-4o-mini: 3 calls, tokens: 168 -> 143, 0.02 cents, time: 15.92s]
 ```
+We can see at the end that our converstation made 3 calls to the OpenAI API, those
+calls took 15.92secs, and cost us 0.02 cents (2 hundredths of a penny).
 
 ## Components of an agent
 
@@ -139,6 +150,9 @@ and I am B
 > 
 ```
 Without using `handoff` we would have seen the WARNING message printed from the root agent.
+Handoff can be useful if your sub-agent generates a lot of output, because normally that
+output when be fed back into AgentA as the `observation` step, which means both another
+inference call to pay for, and means that AgentA may summarize or alter the results.
 
 
 ## The problem with function calling
@@ -169,9 +183,7 @@ human input. When your agent is waiting for input it is effectively paused, cons
 no resources. This means that complex patterns like "send an email for clarification,
 and wait for the reply" are easy and low-cost to build.
 
-
-
-## Basic example
+## Complete example
 
 ```python
 from agentic import Agent, AgentRunner
@@ -188,42 +200,25 @@ to print the full report.
 3. If you find multiple matches, then ask stop and ask the user for clarification. Then go back to step 1.
 If you are missing info, then seek clarification from the user.
 """,
-    tools=[LinkedinTool(), HumanInterruptTool()],
     model="openai://gpt-4o-mini",
-)
-
-researcher.add_tool(
-    Agent(
-        name = "Person Report Writer",
-        instructions="""
-    You will receive the URL to a linkedin profile. Retrive the profile and
-    write a background report on the person, focusing on their career progression
-    and current role.
-        """,
-        tools=[LinkedinTool()],
-        model="anthropic://claude-sonnet-3.5",
-    )
+    tools=[
+        LinkedinTool(), 
+        HumanInterruptTool(),
+        Agent(
+            name = "Person Report Writer",
+            instructions="""
+        You will receive the URL to a linkedin profile. Retrieve the profile and
+        write a background report on the person, focusing on their career progression
+        and current role.
+            """,
+            tools=[LinkedinTool()],
+            model="anthropic://claude-sonnet-3.5",
+        )
+    ]
 )
 
 runner = AgentRunner(agent)
-
-print(agent.welcome)
-print("press <enter> to quit")
-while True:
-    prompt = input("> ").strip()
-    if prompt == 'quit' or prompt == '':
-        break
-    runner.start(prompt)
-
-    for event in runner.next():
-        if event is None:
-            break
-        elif event.requests_input():
-            response = input(f"\n{event.request_message} > ")
-            runner.continue_with(response)
-        else:
-            event.print()
-    print()
+runner.repl_loop()
 ```
 
 **Breaking down our example**
@@ -236,14 +231,7 @@ and a task list, an LLM model, and some tools:
 
 Now, we define a "sub agent" for this agent to use as another tool. This
 is the "Person Report Writer" agent, with its own instruction and a 
-different LLM model. We connect this agent to the top level via:
-
-    researcher.add_tool(
-        Agent(... define our sub-agent...)
-    )
-
-This creates a tool function in the parent taken from the name of the child
-agent.
+different LLM model. We include this agent in the list of tools for the Researcher.
 
 **Running our agent**
 
@@ -309,6 +297,23 @@ agent, with the profile URL as input, but in a new LLM context. This agent calls
 
 ### Things to note
 
+We have used the convenience `repl_loop` in `AgentRunner` to interface to our agent.
+But we can write our own loop (or API or whatever) to run our agent:
+
+```python
+
+runner.start(command)
+for event in self.next():
+    print("Agent event: ", event)
+```
+
+The `next` function will keep emitting events until the current turn of the agent is
+complete. Because you are getting fine-grained events as the agent runs, you can
+choose to do other things in the middle, including things like modifying the agent
+by giving it more tools. Even though this interface looks like the agent is
+"running" some thread (like in Langchain), in fact the agent runs step by step, generating
+events along the way, but it can stop at any time.
+
 Events have a `depth` attribute which indicates how deep is the agent that is
 generating the event. So the top agent generates `depth=0`, the first level 
 sub-agent generates at `depth=1` and so forth. 
@@ -340,16 +345,9 @@ A good example of this is if agent B needs to return a large chunk of info to ag
 (like the contents of a file), then it could put the file to a memory block and 
 return a reference to that block in its call response to agent A. 
 
-# Running
-
-Not sure if PYTHONPATH needs to be set, or local install needs to happen...
-
 ### Examples
 
-    python examples/basic_agent.py
+Look in the [examples](./examples/) folder.
 
-Run in streamlit:
-
-    PYTHONPATH=. streamlit run src/agentic/ui/chat.py
 
 

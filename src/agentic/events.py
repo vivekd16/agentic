@@ -147,8 +147,9 @@ class SetState(Event):
         super().__init__(agent, 'set_state', state)
 
 class AddChild(Event):
-    def __init__(self, agent, actor_ref):
+    def __init__(self, agent, actor_ref, handoff: bool=False):
         super().__init__(agent, 'add_child', actor_ref)
+        self.handoff = handoff
 
     @property
     def actor_ref(self):
@@ -167,10 +168,18 @@ class PauseAgent(Event):
     def request_message(self):
         return self.payload
 
+    @staticmethod
+    def matches_sentinel(value) -> bool:
+        return value == PAUSE_AGENT_SENTINEL
+
 # Gonna snuggle this through the Swarm tool call
 class PauseToolResult(Result):
     def __init__(self):
         super().__init__(value=PAUSE_FOR_CHILD_SENTINEL)
+
+    @staticmethod
+    def matches_sentinel(value) -> bool:
+        return value == PAUSE_FOR_CHILD_SENTINEL
 
 class PauseAgentResult(Result):
     def __init__(self, request_message: str):

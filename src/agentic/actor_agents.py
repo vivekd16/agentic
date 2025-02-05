@@ -6,13 +6,21 @@ from collections import defaultdict
 from pathlib import Path
 import json
 import os
+import sys
 from pprint import pprint
 from datetime import datetime
 from agentic.secrets import agentic_secrets
-import secrets
 import readline
-from copy import deepcopy
-from collections import namedtuple
+from pathlib import Path
+import secrets
+import os
+import yaml
+from jinja2 import Template
+from rich.markdown import Markdown
+from .fix_console import ConsoleWithInputBackspaceFixed
+from rich.live import Live
+from rich.progress import Progress
+import rich.spinner
 
 import yaml
 from typing import Callable, Any, List
@@ -41,36 +49,13 @@ from .events import (
     PauseToolResult,
     PauseAgent,
     PauseAgentResult,
-    PAUSE_AGENT_SENTINEL,
-    PAUSE_FOR_CHILD_SENTINEL,
 )
 
 from thespian.actors import Actor, ActorSystem
+from .colors import Colors
 
-class Colors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'  # This resets the color
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    ITALICS = '\033[3m'
-    NORMAL = '\033[23m'
-    # Foreground colors
-    BLACK = '\033[30m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
-    LIGHT_GRAY = '\033[37m'
-    DARK_GRAY = '\033[90m'
-
+# Global console for Rich
+console = ConsoleWithInputBackspaceFixed()
 
 @dataclass
 class AgentPauseContext:
@@ -266,8 +251,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     self.log(f"Tool result: {partial_response.messages}")
                     # Fixme: handle this better
                     if (
-                        partial_response.messages[-1]["content"]
-                        == PAUSE_FOR_CHILD_SENTINEL
+                        PauseToolResult.matches_sentinel(partial_response.messages[-1]["content"])
                     ):
                         # agent needs to pause to wait for a child. Should have notified the child already
                         self.paused_context = AgentPauseContext(
@@ -329,7 +313,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
         name = event.agent
         self.children[name] = child
 
-        f = partial(self.call_child, child)
+        f = partial(self.call_child, child, event.handoff)
 
         llm_name = f"call_{name.lower().replace(' ', '_')}"
         setattr(f, "__name__", llm_name)
@@ -342,6 +326,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
     def call_child(
         self,
         child_ref,
+        handoff: bool,
         message,
     ):
         self.send(
@@ -374,12 +359,17 @@ def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
         logger = asys.createActor(Logger)
     return asys, logger
 
+class HandoffAgentWrapper:
+    def __init__(self, agent):
+        self.agent = agent
 
-from pathlib import Path
-import secrets
-import os
-import yaml
-from jinja2 import Template
+    def get_agent(self):
+        return self.agent
+
+def handoff(agent, **kwargs):
+    """ Signal that a child agent should take over the execution context instead of being
+        called as a subroutine. """
+    return HandoffAgentWrapper(agent)    
 
 class AgentBase:
     pass
@@ -420,6 +410,8 @@ class ActorAgent(AgentBase):
         # Create the base actor
         self._actor = asys.createActor(
             ActorBaseAgent, 
+            # We don't stricly need names, and Im not sure if it changes behavior in case you
+            # tried to use the same name, like for a test.
             #globalName=f"{self.name}-{secrets.token_hex(4)}"
         )
         
@@ -507,6 +499,14 @@ class ActorAgent(AgentBase):
 
     def __repr__(self) -> str:
         return f"<ActorAgent: {self.name}>"
+
+
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.columns import Columns
+from rich.spinner import Spinner
+from rich.console import Console
+from rich.layout import Layout
 class ActorAgentRunner:
     def __init__(self, agent: ActorAgent, debug: bool = False) -> None:
         self.agent = agent
@@ -587,33 +587,43 @@ class ActorAgentRunner:
                 if 'elapsed_time' in comp.metadata:
                     mc.time += comp.metadata['elapsed_time'].total_seconds()
             for mc in costs.values():
-                print(Colors.DARK_GRAY + 
-                    f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s]" + 
-                    Colors.ENDC
+                yield ( 
+                    f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s]"
                 )
                 
         saved_completions = []
+
         while True:
             try:
-                line = input("> ").strip()
-                readline.write_history_file(hist)
+                # Get input directly from sys.stdin
+                line = console.input("> ")
+
                 if line == "quit" or line == "":
                     break
-                self.start(line)
 
-                for event in self.next(include_completions=True):
-                    if event is None:
-                        break
-                    elif event.requests_input():
-                        response = input(f"\n{event.request_message}\n>> ")
-                        self.continue_with(response)
-                    elif isinstance(event, FinishCompletion):
-                        saved_completions.append(event)
-                    else:
-                        if event.depth == 0:
-                            print(event, end="")
-                print("\n")
-                print_stats_report(saved_completions)
+                output = ""
+                with console.status("[bold blue]thinking...", spinner="dots") as status:
+                    with Live(Markdown(output), refresh_per_second=1, auto_refresh=True) as live:
+                        spinner = rich.spinner.Spinner("dots")
+                        self.start(line)
+
+                        for event in self.next(include_completions=True):
+                            if event is None:
+                                break
+                            elif event.requests_input():
+                                response = input(f"\n{event.request_message}\n>>>> ")
+                                self.continue_with(response)
+                            elif isinstance(event, FinishCompletion):
+                                saved_completions.append(event)
+                            else:
+                                if event.depth == 0:
+                                    output += str(event)
+                                    live.update(Markdown(output))
+                        output += "\n\n"
+                        live.update(Markdown(output))
+                for row in print_stats_report(saved_completions):
+                    console.out(row)
+                readline.write_history_file(hist)
             except EOFError:
                 print("\nExiting REPL.")
                 break

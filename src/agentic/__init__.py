@@ -4,6 +4,7 @@ from .actor_agents import (
     ActorAgentRunner,
     Logger, 
     create_actor_system,
+    handoff,
 )
 
 Agent = ActorAgent

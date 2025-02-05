@@ -1,4 +1,4 @@
-from agentic import Agent, demo_loop, PauseAgentResult
+from agentic import Agent, AgentRunner, PauseAgentResult
 from agentic.tools import GoogleNewsTool
 
 gnt = GoogleNewsTool()
@@ -19,4 +19,4 @@ stop for human input on the topic. Then query the news for that topic.
 )
 
 if __name__ == "__main__":
-    demo_loop(newsAgent)
+    AgentRunner(newsAgent).repl_loop()

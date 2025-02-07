@@ -10,31 +10,34 @@ import os
 from datetime import datetime
 from pydub import AudioSegment
 
-class TextToSpeechTool():
+from .base import BaseAgenticTool
+
+
+class TextToSpeechTool(BaseAgenticTool):
     openai_api_key: str = ""
 
     def get_tools(self) -> List[Callable]:
-        self.openai_api_key=os.environ['OPENAI_API_KEY']
+        self.openai_api_key = os.environ["OPENAI_API_KEY"]
         return [
             self.generate_speech_file_from_text,
         ]
-    
+
     def _save_audio_to_s3(self, voice: str, audio_data) -> str:
-         """
-         Save audio data to a local file and then upload it to an S3 bucket.
+        """
+        Save audio data to a local file and then upload it to an S3 bucket.
 
-         Args:
-             voice (str): The voice identifier used to generate the filename.
-             audio_data: The raw audio data to be saved and uploaded.
+        Args:
+            voice (str): The voice identifier used to generate the filename.
+            audio_data: The raw audio data to be saved and uploaded.
 
-         Returns:
-             str: A JSON string containing either the audio URL or an error message.
+        Returns:
+            str: A JSON string containing either the audio URL or an error message.
 
-         Raises:
-             ValueError: If the created file is empty.
-             FileNotFoundError: If the file does not exist after an attempted write.
-         """
-         try:
+        Raises:
+            ValueError: If the created file is empty.
+            FileNotFoundError: If the file does not exist after an attempted write.
+        """
+        try:
             # Generate a unique filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"speech_{voice}_{timestamp}.mp3"
@@ -46,7 +49,7 @@ class TextToSpeechTool():
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
             # Write the raw audio data directly to file
-            with open(save_path, 'wb') as f:
+            with open(save_path, "wb") as f:
                 f.write(audio_data)
 
             # Verify file existence and size
@@ -59,31 +62,34 @@ class TextToSpeechTool():
 
                 # Upload to S3
                 raw_url = self.run_context.upload_user_file_to_s3(
-                    file_name=filename,
-                    original_folder="audio",
-                    mime_type="audio/mpeg"
+                    file_name=filename, original_folder="audio", mime_type="audio/mpeg"
                 )
-                print(f"generate_speech_file_from_text:Speech saved successfully:Raw_url -> {raw_url}")
+                print(
+                    f"generate_speech_file_from_text:Speech saved successfully:Raw_url -> {raw_url}"
+                )
                 # Get the correct URL
                 audio_url = self.run_context.get_file_url(filename, "audio")
                 print(f"generate_speech_file_from_text: correct URL -> {audio_url}")
 
                 # Clean up the local file after successful upload
                 os.remove(save_path)
-                print(f"generate_speech_file_from_text:Local file removed -> {save_path}")
+                print(
+                    f"generate_speech_file_from_text:Local file removed -> {save_path}"
+                )
 
                 # Return the URL as a JSON string
-                return json.dumps({
-                    "content_type": "audio/mpeg",
-                    "audio_url": audio_url.get("url")
-                })
+                return json.dumps(
+                    {"content_type": "audio/mpeg", "audio_url": audio_url.get("url")}
+                )
             else:
-                raise FileNotFoundError(f"File does not exist after attempted write: {save_path}")
-         except Exception as e:
+                raise FileNotFoundError(
+                    f"File does not exist after attempted write: {save_path}"
+                )
+        except Exception as e:
             error_message = f"Error saving audio file to s3: {str(e)}"
             print(error_message)
             return json.dumps({"error": error_message})
-        
+
     def split_text(self, text, max_length):
         chunks = []
         while len(text) > max_length:
@@ -94,27 +100,23 @@ class TextToSpeechTool():
         return chunks
 
     def text_to_speech(
-            self, 
-            text, 
-            filepath, 
-            voice: Literal['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']="nova"
-        ):
+        self,
+        text,
+        filepath,
+        voice: Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"] = "nova",
+    ):
         client = OpenAI(api_key=self.openai_api_key)
-        response = client.audio.speech.create(
-            model="tts-1",
-            voice=voice,
-            input=text
-        )
-        with open(filepath, 'wb') as f:
+        response = client.audio.speech.create(model="tts-1", voice=voice, input=text)
+        with open(filepath, "wb") as f:
             for chunk in response.iter_bytes():
                 f.write(chunk)
 
     def generate_speech_file_from_text(
-            self, 
-            voice: str, 
-            text: Optional[str] = None, 
-            input_file_name: Optional[str]=None
-        ) -> str:
+        self,
+        voice: str,
+        text: Optional[str] = None,
+        input_file_name: Optional[str] = None,
+    ) -> str:
         """
         Generate speech from the given text or input file using OpenAI's Text-to-Speech API and save it to a file.
 
@@ -149,11 +151,11 @@ class TextToSpeechTool():
             combined.export(save_path, format="mp3")
 
             raw_url = self.run_context.upload_user_file_to_s3(
-                file_name=filename,
-                original_folder="audio",
-                mime_type="audio/mpeg"
+                file_name=filename, original_folder="audio", mime_type="audio/mpeg"
             )
-            print(f"generate_speech_file_from_text:Speech saved successfully:Raw_url -> {raw_url}")
+            print(
+                f"generate_speech_file_from_text:Speech saved successfully:Raw_url -> {raw_url}"
+            )
             # Get the correct URL
             audio_url = self.run_context.get_file_url(filename, "audio")
             print(f"generate_speech_file_from_text: correct URL -> {audio_url}")
@@ -163,14 +165,12 @@ class TextToSpeechTool():
             print(f"generate_speech_file_from_text:Local file removed -> {save_path}")
 
             # Return the URL as a JSON string
-            return json.dumps({
-                "content_type": "audio/mpeg",
-                "audio_url": audio_url.get("url")
-            })
+            return json.dumps(
+                {"content_type": "audio/mpeg", "audio_url": audio_url.get("url")}
+            )
         except Exception as e:
             traceback.print_exc()
             error_message = f"Error generating speech: {str(e)}"
             print(error_message)
             return json.dumps({"error": error_message})
         return return_str
-

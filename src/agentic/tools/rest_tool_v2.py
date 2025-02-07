@@ -16,8 +16,8 @@ from pydantic import BaseModel
 
 from urllib.parse import parse_qsl, urlencode
 
-#from supercog.shared.utils import upload_file_to_s3
-#from supercog.engine.tools.s3_utils import public_image_bucket
+# from supercog.shared.utils import upload_file_to_s3
+# from supercog.engine.tools.s3_utils import public_image_bucket
 
 import os
 from urllib.parse import urlparse
@@ -25,6 +25,8 @@ from typing import Dict, Optional, Any
 
 from httpx import BasicAuth
 import httpx
+
+from .base import BaseAgenticTool
 
 # Converted from requests lib to async httpx
 # class RequestBuilder:
@@ -132,7 +134,7 @@ class AsyncRequestBuilder:
     def with_auth_param(self, param_name: str, param_value: str):
         self.auth_params[param_name] = param_value
         return self
-    
+
     async def create_client(self):
         if self.client is None:
             self.client = httpx.AsyncClient(headers=self.headers, auth=self.auth)
@@ -150,7 +152,11 @@ class AsyncRequestBuilder:
         await self._ensure_client()
         if self.base_url:
             parsed = urlparse(path)
-            url = path if parsed.netloc else self.base_url + os.path.join(self.base_path, path).rstrip("/")
+            url = (
+                path
+                if parsed.netloc
+                else self.base_url + os.path.join(self.base_path, path).rstrip("/")
+            )
         else:
             url = path
         await self.logger_func(f"{method.upper()} {url}")
@@ -162,10 +168,10 @@ class AsyncRequestBuilder:
                 await self.logger_func(f"  {k}: {v}")
         print(f"Requesting {method} {url}")
         if self.auth_params:
-            if 'params' in kwargs:
-                kwargs['params'].update(self.auth_params)
+            if "params" in kwargs:
+                kwargs["params"].update(self.auth_params)
             else:
-                kwargs['params'] = self.auth_params
+                kwargs["params"] = self.auth_params
         return await self.client.request(method, url, timeout=60.0, **kwargs)
 
     async def get(self, path: str, **kwargs):
@@ -178,8 +184,10 @@ class AsyncRequestBuilder:
         return await self._request("PUT", path, json=json, **kwargs)
 
     async def post_form(self, path: str, form_data: Any = None, **kwargs):
-        kwargs['data'] = form_data
-        kwargs.setdefault('headers', {})['Content-Type'] = 'application/x-www-form-urlencoded'
+        kwargs["data"] = form_data
+        kwargs.setdefault("headers", {})[
+            "Content-Type"
+        ] = "application/x-www-form-urlencoded"
         return await self._request("POST", path, **kwargs)
 
     async def put(self, path: str, data: Any = None, json: Any = None, **kwargs):
@@ -191,7 +199,8 @@ class AsyncRequestBuilder:
     async def delete(self, path: str, **kwargs):
         return await self._request("DELETE", path, **kwargs)
 
-class RESTAPIToolV2():
+
+class RESTAPIToolV2(BaseAgenticTool):
     request_map: dict[str, AsyncRequestBuilder] = {}
     return_dataframe: bool = False
 
@@ -208,11 +217,11 @@ class RESTAPIToolV2():
         ]
 
     def debug_request(self, request_name: str):
-        """ Returns debug information about the indicated request object. """
+        """Returns debug information about the indicated request object."""
         request = self.request_map.get(request_name)
         if request is None:
             raise ValueError(f"Request '{request_name}' not found.")
-        
+
         auth = ""
         if request.auth:
             auth = f"Auth: {request.auth}\n"
@@ -225,20 +234,21 @@ class RESTAPIToolV2():
         return res
 
     async def prepare_auth_config(
-            self, 
-            auth_type: str, 
-            username:str|None=None, 
-            password:str|None=None, 
-            token:str|None=None,
-            token_name: str="Bearer"):
-        """ Constructs an auth_config object to use with later requests. 
-            auth_type is one of: basic, bearer, token, or parameter
-            For "basic" provide the username and password.
-            For "bearer" provide the token.
-            You can override the default "Bearer" token name.
-            For "parameter" provide the parameter value and name in token and token_name.
-            Any value can refer to ENV VARS using ${KEY} syntax.
-            Returns the variable name of the auth config for use in request calls.
+        self,
+        auth_type: str,
+        username: str | None = None,
+        password: str | None = None,
+        token: str | None = None,
+        token_name: str = "Bearer",
+    ):
+        """Constructs an auth_config object to use with later requests.
+        auth_type is one of: basic, bearer, token, or parameter
+        For "basic" provide the username and password.
+        For "bearer" provide the token.
+        You can override the default "Bearer" token name.
+        For "parameter" provide the parameter value and name in token and token_name.
+        Any value can refer to ENV VARS using ${KEY} syntax.
+        Returns the variable name of the auth config for use in request calls.
         """
         request = AsyncRequestBuilder("", logger_func=self.log)
 
@@ -264,47 +274,49 @@ class RESTAPIToolV2():
             pass
         else:
             raise ValueError(f"Unsupported auth type: {auth_type}")
-        
+
         name = f"auth_{random.randint(1000,9999)}"
         self.request_map[name] = request
         return name
 
     def add_request_header(self, auth_config_var: str, name: str, value: str) -> str:
-        """ Add a header to the auth config which was created already. """
+        """Add a header to the auth config which was created already."""
         request = self.request_map.get(auth_config_var)
         if request is None:
             raise ValueError(f"Request '{auth_config_var}' not found.")
-        
+
         request.headers[name] = value
         return "OK"
-    
+
     async def get_resource(
-            self, 
-            url: str, 
-            params: dict = {},
-            auth_config_var: Optional[str]="", 
-        ):
-        """ Invoke the GET REST endpoint on the indicate URL. If the endpoints requires
-            authentication then call 'prepare_auth_config' first and pass the config name to this function.
-            returns: the JSON response, or the response text and status code.
+        self,
+        url: str,
+        params: dict = {},
+        auth_config_var: Optional[str] = "",
+    ):
+        """Invoke the GET REST endpoint on the indicate URL. If the endpoints requires
+        authentication then call 'prepare_auth_config' first and pass the config name to this function.
+        returns: the JSON response, or the response text and status code.
         """
         if auth_config_var:
             request = self.request_map.get(auth_config_var)
             if request is None:
-                raise ValueError(f"Auth config '{auth_config_var}' not found. Must call prepare_auth_config first.")
+                raise ValueError(
+                    f"Auth config '{auth_config_var}' not found. Must call prepare_auth_config first."
+                )
         else:
             request = AsyncRequestBuilder("", logger_func=self.log)
 
         response = await request.get(url, params=params)
-        
+
         return await self.process_response(response)
 
     async def _post_json(
-            self,
-            auth_config_var: str|None,
-            url: str, 
-            params: dict|str,
-            method="POST",
+        self,
+        auth_config_var: str | None,
+        url: str,
+        params: dict | str,
+        method="POST",
     ):
         if isinstance(params, str):
             params = json.loads(params)
@@ -318,20 +330,18 @@ class RESTAPIToolV2():
 
         response = await request._request(method, url, json=params)
         return response
-        
-
 
     async def post_resource(
-        self, 
-        path: str, 
+        self,
+        path: str,
         content_type: str = "application/json",
         data: Union[str, dict] = "{}",
         auth_config_var: Optional[str] = "",
     ):
-        """ Invoke the POST REST endpoint. Pass an auth config name if the request needs authentication. 
-            Supply data as a string or dictionary. For JSON, use a JSON-formatted string or a dictionary.
-            For form data, use a dictionary or URL-encoded string.
-            Returns the response and status code. 
+        """Invoke the POST REST endpoint. Pass an auth config name if the request needs authentication.
+        Supply data as a string or dictionary. For JSON, use a JSON-formatted string or a dictionary.
+        For form data, use a dictionary or URL-encoded string.
+        Returns the response and status code.
         """
         # Convert data to a dictionary if it's a string
         if isinstance(data, str):
@@ -344,7 +354,9 @@ class RESTAPIToolV2():
             params = data
 
         if content_type == "application/json":
-            response = await self._post_json(auth_config_var or "", path, params, "POST")
+            response = await self._post_json(
+                auth_config_var or "", path, params, "POST"
+            )
         else:
             if auth_config_var:
                 request = self.request_map.get(auth_config_var)
@@ -364,38 +376,37 @@ class RESTAPIToolV2():
         return await self.process_response(response)
 
     async def put_resource(
-            self, 
-            url: str, 
-            data: str = "{}",
-            auth_config_var: Optional[str]="",
-        ):
-        """ Invoke the PUT REST endpoint using the prepared request object. 
-            Supply a data dictionary of params (as json data). 
+        self,
+        url: str,
+        data: str = "{}",
+        auth_config_var: Optional[str] = "",
+    ):
+        """Invoke the PUT REST endpoint using the prepared request object.
+        Supply a data dictionary of params (as json data).
         """
         response = await self._post_json(auth_config_var, url, data, method="PUT")
 
         return await self.process_response(response)
 
     async def patch_resource(
-            self, 
-            url: str, 
-            data: str = "{}",
-            auth_config_var: Optional[str]="",
-        ):
-        """ Invoke the PATCH REST endpoint using the prepared request object. 
-            Supply a data dictionary of params (as json data). 
+        self,
+        url: str,
+        data: str = "{}",
+        auth_config_var: Optional[str] = "",
+    ):
+        """Invoke the PATCH REST endpoint using the prepared request object.
+        Supply a data dictionary of params (as json data).
         """
         response = await self._post_json(auth_config_var, url, data, method="PATCH")
 
         return await self.process_response(response)
 
-
     async def delete_resource(
-            self, 
-            url: str,
-            auth_config_var: Optional[str]="",
+        self,
+        url: str,
+        auth_config_var: Optional[str] = "",
     ):
-        """ Invoke the DELETE REST endpoint using the prepared request object. """
+        """Invoke the DELETE REST endpoint using the prepared request object."""
         if auth_config_var:
             request = self.request_map.get(auth_config_var)
             if request is None:
@@ -405,41 +416,44 @@ class RESTAPIToolV2():
 
         response = await request.delete(url)
         return await self.process_response(response)
-    
-###################
+
+    ###################
 
     async def process_response(self, response: httpx.Response):
         if response.status_code >= 400:
-            return {"status": response.status_code, "response": str(response), "text": response.text}
-        
-        content_type = response.headers.get('Content-Type', '')
-        if 'application/json' in content_type:
-            return await     self.process_json(response)
-        elif 'image'                in content_type:
-            return await     self.process_image(response)
-        elif 'text/html'            in content_type:
+            return {
+                "status": response.status_code,
+                "response": str(response),
+                "text": response.text,
+            }
+
+        content_type = response.headers.get("Content-Type", "")
+        if "application/json" in content_type:
+            return await self.process_json(response)
+        elif "image" in content_type:
+            return await self.process_image(response)
+        elif "text/html" in content_type:
             return {"html": response.text}
-        elif 'text/plain'           in content_type:
+        elif "text/plain" in content_type:
             return {"text": response.text}
-        elif 'text/csv'             in content_type:
-            return {"csv":  response.text}
-        elif 'application/atom+xml' in content_type:
-            return {"xml":  response.text}
+        elif "text/csv" in content_type:
+            return {"csv": response.text}
+        elif "application/atom+xml" in content_type:
+            return {"xml": response.text}
         else:
             return "Error: Unsupported response content type '{}'".format(content_type)
 
-
     async def process_json(self, response: httpx.Response):
         json = response.json()
-        #json = self.clean_json_data(json)
+        # json = self.clean_json_data(json)
         if not self.return_dataframe:
             return json
         else:
             df = pd.json_normalize(json)
-            df.replace({np.nan: ''}, inplace=True)
+            df.replace({np.nan: ""}, inplace=True)
             return self.get_dataframe_preview(df)
-        
-    def clean_json_data(self,data):
+
+    def clean_json_data(self, data):
         if isinstance(data, dict):
             return {k: self.clean_json_data(v) for k, v in data.items()}
         elif isinstance(data, list):
@@ -448,9 +462,11 @@ class RESTAPIToolV2():
             return None  # or a default value like 0
         else:
             return data
-        
+
     async def process_image(self, response: httpx.Response):
-        return await RESTAPIToolV2._process_image(response.content)  # Read the image data as bytes
+        return await RESTAPIToolV2._process_image(
+            response.content
+        )  # Read the image data as bytes
 
     @staticmethod
     async def _process_image(image_data: bytes):
@@ -475,9 +491,9 @@ class RESTAPIToolV2():
         XBM
         XV
         """
-        format= "PNG"
+        format = "PNG"
         extension = "png"
-        
+
         print(f"***************> Got an image to return:")
         # Read the image data as bytes
         image = Image.open(BytesIO(image_data))
@@ -486,7 +502,7 @@ class RESTAPIToolV2():
         if format == "JPEG":
             if image.mode == "RGBA":
                 image = image.convert("RGB")
-            
+
         # Create an in-memory bytes buffer to save the image
         image_buffer = BytesIO()
         image.save(image_buffer, format=format)
@@ -497,12 +513,11 @@ class RESTAPIToolV2():
 
         # Upload the image file to S3 and get the public URL
         public_url = upload_file_to_s3(
-            image_buffer, 
-            public_image_bucket(), 
-            object_name, 
-            mime_type=f"image/{extension}"
+            image_buffer,
+            public_image_bucket(),
+            object_name,
+            mime_type=f"image/{extension}",
         )
 
         # Return markdown formatted image link
         return {"thumb": f"![Generated Image]({public_url})"}
-        

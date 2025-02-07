@@ -4,21 +4,23 @@ from typing import Dict, Callable, ClassVar, Optional
 import httpx
 import pandas as pd
 
+from .base import BaseAgenticTool
 
-class LinkedinDataTool():
+
+class LinkedinDataTool(BaseAgenticTool):
     BASE_URL: ClassVar[str] = "https://linkedin-data-api.p.rapidapi.com"
 
-#     def __init__(self):
-#         super().__init__(
-#             id="linkedin_data_tool",
-#             system_name="LinkedIn Data Tool",
-#             logo_url=super().logo_from_domain("linkedin.com"),
-#             auth_config={},
-#             category=ToolCategory.CATEGORY_INTERNET,
-#             help="""
-# Get real-time LinkedIn data
-# """,
-#         )
+    #     def __init__(self):
+    #         super().__init__(
+    #             id="linkedin_data_tool",
+    #             system_name="LinkedIn Data Tool",
+    #             logo_url=super().logo_from_domain("linkedin.com"),
+    #             auth_config={},
+    #             category=ToolCategory.CATEGORY_INTERNET,
+    #             help="""
+    # Get real-time LinkedIn data
+    # """,
+    #         )
 
     def get_api_key(self) -> str | None:
         """Retrieve RAPIDAPI_KEY."""
@@ -28,15 +30,17 @@ class LinkedinDataTool():
         """Generate the headers required for the API request."""
         return {
             "x-rapidapi-host": "linkedin-data-api.p.rapidapi.com",
-            "x-rapidapi-key": self.get_api_key()
+            "x-rapidapi-key": self.get_api_key(),
         }
 
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions([
-            self.get_linkedin_profile_info,
-            self.get_company_linkedin_info,
-            self.linkedin_people_search
-        ])
+        return self.wrap_tool_functions(
+            [
+                self.get_linkedin_profile_info,
+                self.get_company_linkedin_info,
+                self.linkedin_people_search,
+            ]
+        )
 
     async def search_location(self, keyword: str) -> str:
         """Search for LinkedIn location ID by keyword.
@@ -72,8 +76,7 @@ class LinkedinDataTool():
         location_id = location_urn.split(":")[-1]  # e.g., "102095887"
         return location_id
 
-    async def get_linkedin_profile_info(self,
-                                  profile_url: str) -> str:
+    async def get_linkedin_profile_info(self, profile_url: str) -> str:
         """Tool that queries the LinkedIn Data API and gets back profile information.
         Args:
             profile_url: Full LinkedIn profile URL (e.g., https://www.linkedin.com/in/username/)
@@ -81,9 +84,7 @@ class LinkedinDataTool():
         if self.get_api_key() is None:
             return "Error: no API key available for the RapidAPI LinkedIn Data API"
 
-        params = {
-            "url": profile_url
-        }
+        params = {"url": profile_url}
 
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -107,7 +108,7 @@ class LinkedinDataTool():
             return "Error: no API key available for the RapidAPI LinkedIn Data API"
 
         # Determine if input is a domain by checking for '.'
-        is_domain = '.' in company_username_or_domain
+        is_domain = "." in company_username_or_domain
 
         # Set up the appropriate endpoint and parameters
         if is_domain:
@@ -143,9 +144,9 @@ class LinkedinDataTool():
                 if isinstance(data, dict):
                     items = [data]  # Single company result
                 elif isinstance(data, list):
-                    items = data    # Multiple company results
+                    items = data  # Multiple company results
                 else:
-                    items = []      # No results
+                    items = []  # No results
 
                 if not items:
                     return "No company information found"
@@ -171,7 +172,7 @@ class LinkedinDataTool():
         location: Optional[str] = None,
         job_title: Optional[str] = None,
         company: Optional[str] = None,
-        start: str = "0"
+        start: str = "0",
     ) -> list[dict]:
         """searches for LinkedIn profiles based on various criteria.
         Args:
@@ -202,7 +203,9 @@ class LinkedinDataTool():
                 params["geo"] = location
             else:
                 location_id = await self.search_location(location)
-                if not location_id.startswith("Error") and not location_id.startswith("No matching"):
+                if not location_id.startswith("Error") and not location_id.startswith(
+                    "No matching"
+                ):
                     params["geo"] = location_id
 
         # Add other search parameters
@@ -236,7 +239,7 @@ class LinkedinDataTool():
         # ToolFactory will automatically convert this list to a DataFrame
         return items
 
-    def linkedin_people_search_tst(self, name: str, company: Optional[str] = "") -> str:            
+    def linkedin_people_search_tst(self, name: str, company: Optional[str] = "") -> str:
         return """
 1. **Scott Persinger**
    - **Title:** Assistant Vice President, Information Technology

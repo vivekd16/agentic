@@ -19,8 +19,17 @@ dependencies = [
     "cryptography>=44.0.0",
 ]
 
-[project.scripts]
-agentic = "agentic.cli:app"
+
+[project.optional-dependencies]
+
+dev = [
+    "pytest",
+    "black",
+]
 
 [tool.uv.sources]
 swarm = { git = "https://github.com/scottpersinger/swarm.git" }
+
+
+[project.scripts]
+agentic = "agentic.cli:app"

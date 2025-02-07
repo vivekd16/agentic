@@ -16,6 +16,7 @@ DEFAULT_MODEL = settings.get("DEFAULT_CODE_LLM", "openai/gpt-4o-mini")
 CLAUDE_DEFAULT_MODEL = "anthropic/claude-3-5-sonnet-20240620"
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
+
 @dataclass
 class LLMUsage:
     input_tokens: int = 0
@@ -24,11 +25,12 @@ class LLMUsage:
 
     def __str__(self) -> str:
         return f"[{self.model}: {self.input_tokens} --> {self.output_tokens}]"
-    
+
+
 def setup_model_key(model: str):
-    """ Loads the model key from secrets and ensures its in the environment, or checks
-        that is there already. """
-    
+    """Loads the model key from secrets and ensures its in the environment, or checks
+    that is there already."""
+
     # Write a match statement that matches by regular expressions
     key_name = None
     if re.match(r"^gpt-\d+", model) or model.startswith("openai/"):
@@ -51,26 +53,24 @@ def setup_model_key(model: str):
     else:
         raise RuntimeError(f"Missing API key {key_name} to use {model}")
 
+
 def llm_generate(prompt: str, **kwargs) -> str:
-    """ Core LLM call utility. Takes a prompt, potential
-        Jinja template variables to substitute, and calls the
-        default LLM to generate a completion. Pass a 'usage' object (LLMUsage) as an argument to get usage info back. 
-        It will be populated with 'model', 'input_tokens' and 'output_tokens' keys. """
-    
-    model = kwargs.get('model') or DEFAULT_MODEL
+    """Core LLM call utility. Takes a prompt, potential
+    Jinja template variables to substitute, and calls the
+    default LLM to generate a completion. Pass a 'usage' object (LLMUsage) as an argument to get usage info back.
+    It will be populated with 'model', 'input_tokens' and 'output_tokens' keys."""
+
+    model = kwargs.get("model") or DEFAULT_MODEL
     setup_model_key(model)
     template = Template(prompt)
     prompt = template.render(**kwargs)
 
-    msg = { "content": prompt,"role": "user"}
-    response = completion(
-        model=model,
-        messages=[msg]
-    )
+    msg = {"content": prompt, "role": "user"}
+    response = completion(model=model, messages=[msg])
     response_text = response.choices[0].message.content or ""
 
-    if 'usage' in kwargs:
-        usage: LLMUsage = kwargs['usage']
+    if "usage" in kwargs:
+        usage: LLMUsage = kwargs["usage"]
         if not isinstance(usage, LLMUsage):
             print(f"Error! Bad usage object pass to llm_generate: {usage}")
         else:
@@ -82,5 +82,6 @@ def llm_generate(prompt: str, **kwargs) -> str:
             usage.model = model
 
     return response_text
+
 
 # set callback

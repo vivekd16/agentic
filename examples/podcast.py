@@ -12,7 +12,7 @@ producer = Agent(
 producer.add_tool(
     name="AI News Reporter",
     instructions="{{REPORTER}}",
-    model="openai/gpt-4o",    
+    model="openai/gpt-4o",
 )
 producer.add_tool(
     name="Transistor",

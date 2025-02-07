@@ -3,6 +3,7 @@ from rich.text import TextType
 from typing import Optional, TextIO
 from getpass import getpass
 
+
 class ConsoleWithInputBackspaceFixed(Console):
 
     def input(
@@ -31,4 +32,3 @@ class ConsoleWithInputBackspaceFixed(Console):
             else:
                 result = input(prompt_str)
         return result
-    

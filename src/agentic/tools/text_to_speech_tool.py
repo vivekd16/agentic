@@ -3,12 +3,12 @@ import traceback
 import json
 import os
 from datetime import datetime
+from typing import List, Callable, Optional, Literal
 
 from supercog.shared.services import config
 from openai import OpenAI
 from pydub import AudioSegment
 from pydub.playback import play
-from typing import List, Callable, Optional, Literal
 from pydub import AudioSegment
 
 from .base import BaseAgenticTool

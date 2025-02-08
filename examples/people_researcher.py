@@ -1,6 +1,6 @@
 from typing import Callable, Any
 import asyncio
-from agentic.tools import LinkedinDataTool
+from agentic.tools.linkedin_tool import LinkedinDataTool
 
 from agentic import Agent, AgentRunner, handoff, PauseForInputResult
 

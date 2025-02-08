@@ -1,6 +1,6 @@
 import atexit
 import asyncio
-from thespian.actors import Actor, ActorSystem, ActorAddress
+from thespian.actors import Actor, ActorSystem, PoisonMessage, ActorAddress, ActorExitRequest
 from typing import Any, Optional, Generator
 from dataclasses import dataclass
 from functools import partial
@@ -67,7 +67,6 @@ from .events import (
 )
 from agentic.tools.registry import tool_registry
 
-from thespian.actors import Actor, ActorSystem, PoisonMessage
 
 # Global console for Rich
 console = ConsoleWithInputBackspaceFixed()
@@ -506,10 +505,12 @@ class Logger(Actor):
 logger = None
 
 
+running_agents: list = []
+
 def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
     global logger
 
-    if os.environ.get("AGENTIC_SIMPLE_ACTORS"):
+    if True: #os.environ.get("AGENTIC_SIMPLE_ACTORS"):
         asys = ActorSystem()
     else:
         asys = ActorSystem("multiprocTCPBase")
@@ -518,12 +519,14 @@ def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
     return asys, logger
 
 
-def shutdown_actor_system():
-    asys = ActorSystem("multiprocTCPBase")
-    asys.shutdown()
+def register_agent(agent):
+    running_agents.append(agent)
 
+def shutdown_agents():
+    for agent in running_agents:
+        agent.shutdown()
 
-atexit.register(shutdown_actor_system)
+atexit.register(shutdown_agents)
 
 
 class HandoffAgentWrapper:
@@ -599,6 +602,7 @@ class ActorAgent(AgentBase):
             # tried to use the same name, like for a test.
             # globalName=f"{self.name}-{secrets.token_hex(4)}"
         )
+        register_agent(self)
 
         # Set initial state. Small challenge is that a child agent might have been
         # provided in tools. But we need to initialize ourselve
@@ -617,6 +621,10 @@ class ActorAgent(AgentBase):
                 },
             ),
         )
+
+    def shutdown(self):
+        asys, logger = create_actor_system()
+        asys.tell(self._actor, ActorExitRequest())
 
     def add_tool(self, tool: Any):
         self._tools.append(tool)

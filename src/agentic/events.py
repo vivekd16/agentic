@@ -19,11 +19,8 @@ class Event:
     def print(self):
         print(self)
 
-    def requests_input(self):
-        return isinstance(self, PauseAgent)
-
     def __str__(self) -> str:
-        return str(self.payload or '')
+        return str(f"[{self.agent}: {self.type}] {self.payload}\n")
         
     def _safe(self, d, keys: list[str], default_val=None):
         for k in keys:
@@ -39,13 +36,38 @@ class Event:
             prefix = ".."*(self.depth+1)    
         return(f"{prefix}{self.type.upper()}: {self.payload}")
 
+    @property
+    def is_output(self):
+        return False
 class Prompt(Event):
+    # The 'originator' is meant to be the address of the top-level caller (the user's loop) into the
+    # agent. This gets passed around into the agent call chain in case sub-agents need to communicate
+    # back to the top. Note that in Thespian, we don't have this address until the first receiveMessage
+    # is called, so we set it then.
     debug: bool = False
 
-    def __init__(self, agent: str, message: str, depth: int = 0, debug: bool = False):
+    def __init__(
+            self, 
+            agent: str, 
+            message: str, 
+            depth: int = 0, 
+            debug: bool = False, 
+            originator=None, 
+            ignore_result: bool=False
+        ):
         super().__init__(agent, 'prompt', message, depth)
         self.debug = debug
+        self.originator = originator
+        self.ignore_result = ignore_result
 
+class PromptStarted(Event):
+    def __init__(self, agent: str, message: str, depth: int = 0):
+        super().__init__(agent, 'prompt_stated', message, depth)
+
+class ResetHistory(Event):
+    def __init__(self, agent: str):
+        super().__init__(agent, 'reset_history', {})
+        
 class Output(Event):
     def __init__(self, agent: str, message: str, depth: int = 0):
         super().__init__(agent, 'output', message, depth=depth)
@@ -55,7 +77,11 @@ class Output(Event):
 
     def __repr__(self) -> str:
         return repr(self.__dict__)
-    
+
+    @property
+    def is_output(self):
+        return True
+
 class ChatOutput(Output):
     def __init__(self, agent: str, payload: dict, depth: int = 0):
         Event.__init__(self, agent, 'chat_output', payload, depth)
@@ -67,15 +93,23 @@ class ChatOutput(Output):
         return repr(self.__dict__)
     
 class ToolCall(Event):
-    def __init__(self, agent: str, details: Any, depth: int = 0):
-        super().__init__(agent, 'tool_call', details, depth=depth)
+    def __init__(self, agent: str, name: str, args: dict, depth: int = 0):
+        super().__init__(agent, 'tool_call', name, depth=depth)
+        self.args = args
 
     def __str__(self):
-        d = self.payload
-        name = self._safe(d, ['function','name'])
-        args = self._safe(d, ['function', 'arguments'], '{}')
-        return "--"*(self.depth+1) + f"> {name}({args})"
-    
+        name = self.payload
+        return "--"*(self.depth+1) + f"> {name}({self.args})\n"
+
+class ToolResult(Event):
+    def __init__(self, agent: str, name: str, result: Any, depth: int = 0):
+        super().__init__(agent, 'tool_result', name, depth=depth)
+        self.result = result
+
+    def __str__(self):
+        name = self.payload
+        return "<" + "--"*(self.depth+1) + f"{name}: {self.result}\n"
+
 class StartCompletion(Event):
     def __init__(self, agent: str):
         super().__init__(agent, 'completion_start', {})
@@ -129,19 +163,7 @@ class TurnEnd(Event):
     @property
     def context_variables(self):
         return self.payload['vars']    
-
-class AgentResume(Event):
-    def __init__(self, agent: str, response: str):
-        super().__init__(agent, 'resume', response)
-
-    @property
-    def result(self):
-        return self.payload
     
-    @property
-    def context_variables(self):
-        return {}
-
 class SetState(Event):
     def __init__(self, agent, state: dict):
         super().__init__(agent, 'set_state', state)
@@ -155,44 +177,52 @@ class AddChild(Event):
     def actor_ref(self):
         return self.payload
 
-PAUSE_AGENT_SENTINEL = "__PAUSE__"
+PAUSE_FOR_INPUT_SENTINEL = "__PAUSE4INPUT__"
 PAUSE_FOR_CHILD_SENTINEL = "__PAUSE__CHILD"
-
-class PauseAgent(Event):
+FINISH_AGENT_SENTINEL = "__FINISH__"
+class WaitForInput(Event):
     # Whenenever the agent needs to pause, either to wait for human input or a response from
     # another agent, we emit this event.
-    def __init__(self, agent, request_message: str):
-        super().__init__(agent, PAUSE_AGENT_SENTINEL, request_message)
+    def __init__(self, agent, request_keys: dict):
+        super().__init__(agent, 'wait_for_input', request_keys)
 
     @property
-    def request_message(self):
+    def request_keys(self) -> dict:
         return self.payload
 
+# Sent by the caller with human input
+class ResumeWithInput(Event):
+    def __init__(self, agent, request_keys: dict):
+        super().__init__(agent, 'resume_with_input', request_keys)
+
+    @property
+    def request_keys(self):
+        return self.payload
+
+
+class PauseForInputResult(Result):
+    def __init__(self, request_keys: dict):
+        super().__init__(value=PAUSE_FOR_INPUT_SENTINEL, context_variables=request_keys)
+    
     @staticmethod
     def matches_sentinel(value) -> bool:
-        return value == PAUSE_AGENT_SENTINEL
+        return value == PAUSE_FOR_INPUT_SENTINEL
+
 
 # Gonna snuggle this through the Swarm tool call
-class PauseToolResult(Result):
-    def __init__(self):
-        super().__init__(value=PAUSE_FOR_CHILD_SENTINEL)
+class PauseForChildResult(Result):
+    def __init__(self, values: dict):
+        super().__init__(value=PAUSE_FOR_CHILD_SENTINEL, context_variables=values)
 
     @staticmethod
     def matches_sentinel(value) -> bool:
         return value == PAUSE_FOR_CHILD_SENTINEL
 
-class PauseAgentResult(Result):
-    def __init__(self, request_message: str):
-        super().__init__(value=json.dumps(
-            {"_key": PAUSE_AGENT_SENTINEL, 
-             "request_message": request_message
-            }))
-    
+# Special result which aborts any further processing by the agent.
+class FinishAgentResult(Result):
+    def __init__(self):
+        super().__init__(value=FINISH_AGENT_SENTINEL)
+
     @staticmethod
-    def deserialize(value):
-        try:
-            d = json.loads(value)
-            if d.get('_key') == PAUSE_AGENT_SENTINEL:
-                return d.get('request_message')
-        except:
-            return None
+    def matches_sentinel(value) -> bool:
+        return value == FINISH_AGENT_SENTINEL

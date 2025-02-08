@@ -10,7 +10,7 @@ from .llm import llm_generate, LLMUsage , CLAUDE_DEFAULT_MODEL, GPT_DEFAULT_MODE
 from .file_cache import file_cache
 from .colors import Colors
 
-from agentic.secrets import agentic_secrets as secrets
+from agentic.agentic_secrets import agentic_secrets as secrets
 from agentic.settings import settings
 
 # Create a state class to hold global options
@@ -144,6 +144,12 @@ Popular models:
     anthropic/claude-3-5-sonnet-20240620
      """
 )
+    
+@app.command()
+def repl():
+    """ Runs the agentic REPL """
+    os.execvp("python", ["python", "src/agentic/repl.py"])
+
     
 if __name__ == "__main__":
     app()

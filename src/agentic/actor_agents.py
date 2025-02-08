@@ -1,3 +1,4 @@
+import atexit
 from thespian.actors import Actor, ActorSystem, ActorAddress
 from typing import Any, Optional, Generator
 from dataclasses import dataclass
@@ -6,10 +7,12 @@ from collections import defaultdict
 from pathlib import Path
 import json
 import os
-import sys
+import time
+import traceback
+from copy import deepcopy
 from pprint import pprint
 from datetime import datetime
-from agentic.secrets import agentic_secrets
+from agentic.agentic_secrets import agentic_secrets
 import readline
 from pathlib import Path
 import secrets
@@ -26,7 +29,7 @@ import yaml
 from typing import Callable, Any, List
 from pydantic import Field
 from .swarm import Swarm
-from .swarm.types import AgentFunction, Response, SwarmAgent
+from .swarm.types import AgentFunction, Response, SwarmAgent, Result, ChatCompletionMessageToolCall, Function
 from .swarm.util import merge_chunk, debug_print
 from jinja2 import Template
 import litellm
@@ -37,21 +40,25 @@ from litellm import token_counter
 from .events import (
     Event,
     Prompt,
+    PromptStarted,
+    ResetHistory,
     Output,
     ChatOutput,
     ToolCall,
+    ToolResult,
     StartCompletion,
     FinishCompletion,
+    FinishAgentResult,
     TurnEnd,
-    AgentResume,
     SetState,
     AddChild,
-    PauseToolResult,
-    PauseAgent,
-    PauseAgentResult,
+    WaitForInput,
+    PauseForInputResult,
+    PauseForChildResult,
+    ResumeWithInput,
 )
 
-from thespian.actors import Actor, ActorSystem
+from thespian.actors import Actor, ActorSystem, PoisonMessage
 from .colors import Colors
 
 # Global console for Rich
@@ -62,6 +69,7 @@ class AgentPauseContext:
     orig_history_length: int
     tool_partial_response: Response
     sender: Optional[Actor] = None
+    tool_function: Optional[Function] = None
 
 
 class ActorBaseAgent(SwarmAgent, Actor):
@@ -77,6 +85,9 @@ class ActorBaseAgent(SwarmAgent, Actor):
     children: dict = {}
     history: list = []
     _logger: Actor = None
+    # The Actor who sent us our Prompt
+    _prompter: Actor = None
+    max_tokens: int = None
 
     class Config:
         arbitrary_types_allowed=True
@@ -90,6 +101,12 @@ class ActorBaseAgent(SwarmAgent, Actor):
     @property
     def myid(self):
         return self.myAddress
+
+    def inject_secrets_into_env(self):
+        """Ensure the appropriate API key is set for the given model."""
+        for key in agentic_secrets.list_secrets():
+            if key not in os.environ:
+                os.environ[key] = agentic_secrets.get_secret(key)
 
     def _yield_completion_steps(self, context_variables: dict = {}):
         llm_message = {
@@ -158,7 +175,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
         if output.content:
             self._callback_params['output_tokens'] = token_counter(self.model, text=llm_message.choices[0].message.content)
         # Have to calc cost after we have seen all the chunks
-        debug_print(self.debug, "That completion cost you: ", self._callback_params)
+        debug_print(self._swarm.llm_debug, "That completion cost you: ", self._callback_params)
 
         yield FinishCompletion.create(
             self.name, 
@@ -171,52 +188,83 @@ class ActorBaseAgent(SwarmAgent, Actor):
         )
 
     def relay_message(self, actor_message, sender):
-        # When paused waiting on a child, forward messages from the child to the original caller
-        # This is what allows child events to bubble up to root
-        if (
-            self.paused_context  # when paused we might get child events
-            and sender
-            != self.paused_context.sender  # make sure its not another Root command
-            and not isinstance(
-                actor_message, TurnEnd
-            )  # child TurnEnd events need to be processed as 'resume'
-        ):
-            # If we are paused, we will only respond to a prompt
-            self.send(self.paused_context.sender, actor_message)
-            return True
-
-        return False
+        if self._prompter and sender != self._prompter:
+            # Relay sub-agent messages to our prompter so they "bubble up"
+            self.send(self._prompter, actor_message)
 
     def receiveMessage(self, actor_message, sender):
-        if self.relay_message(actor_message, sender):
-            return
-        # print(f"[RECEIVE: {self.myAddress}/{self.name}: {actor_message} from {sender}")
+        self.relay_message(actor_message, sender)
+        #print(f"[RECEIVE: {self.myAddress}/{self.name}: {actor_message} from {sender}")
+
+        def report_calling_tool(name: str, args: dict):
+            self.send(sender, ToolCall(self.name, name, args))
+
+        def report_tool_result(name: str, result):
+            self.send(sender, ToolResult(self.name, name, result))
+
 
         match actor_message:
-            case Prompt() | TurnEnd() | AgentResume():
+            case Prompt() | TurnEnd() | ResumeWithInput():
                 if isinstance(actor_message, Prompt):
                     self.debug = actor_message.debug
-                    self.log(f"Prompt: {actor_message}")
+                    self._prompter = sender
+                    #self.log(f"Prompt: {actor_message}")
                     self.depth = actor_message.depth
                     init_len = len(self.history)
                     context_variables = {}
                     self.history.append(
                         {"role": "user", "content": actor_message.payload}
                     )
-                elif isinstance(actor_message, (TurnEnd, AgentResume)):
-                    assert (
-                        self.paused_context
-                    ), f"TurnEnd/Resume received but no paused context is set in {self.name}"
+                    self.send(sender, PromptStarted(self.name, actor_message.payload, self.depth))
+                elif isinstance(actor_message, TurnEnd):
+                    # Sub-agent call "as tool" has completed. So finish our tool call with the agent result as the tool result
+                    if not self.paused_context:
+                        self.log("Ignoring TurnEnd/ResumeWithInput event, parent not paused: ", actor_message)
+                        return
                     init_len = self.paused_context.orig_history_length
                     # This little tricky bit grabs the full child output from the TurnEnd event
                     # and appends it to our history as the tool call result
                     tool_msgs = self.paused_context.tool_partial_response.messages
                     tool_msgs[-1]["content"] = actor_message.result
                     self.history.extend(tool_msgs)
+
+                    # Copy human input into our context
                     context_variables = actor_message.context_variables.copy()
                     # Child calls BACK to parent, so we need to restore our original 'sender'
                     sender = self.paused_context.sender
                     self.paused_context = None
+
+                elif isinstance(actor_message, ResumeWithInput):
+                    # Call resuming us with user input after wait. We re-call our tool function after merging the human results
+                    if not self.paused_context:
+                        self.log("Ignoring ResumeWithInput event, parent not paused: ", actor_message)
+                        return
+                    init_len = self.paused_context.orig_history_length
+                    # Copy human input into our context
+                    context_variables = actor_message.request_keys.copy()
+                    # Re-call our tool function
+                    tool_function = self.paused_context.tool_function
+                    if tool_function is None:
+                        raise RuntimeError("Tool function not found on AgentResume event")
+                    # FIXME: Would be nice to DRY up the tool call handling
+                    partial_response = self._swarm.handle_tool_calls(
+                        self,
+                        [
+                            ChatCompletionMessageToolCall(
+                                id=(tool_function._request_id or ""), 
+                                function=tool_function,
+                                type="function"
+                            )
+                        ],
+                        self.functions,
+                        context_variables,
+                        self.debug,
+                        report_calling_tool,
+                        report_tool_result,
+                    )
+                    self.history.extend(partial_response.messages)
+                    context_variables.update(partial_response.context_variables)
+
 
                 # This is the agent "turn" loop. We keep running as long as the agent
                 # requests more tool calls.
@@ -226,7 +274,9 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
                 while len(self.history) - init_len < 10:
                     for event in self._yield_completion_steps():
-                        #print("[eeeevent] ", event.__dict__)
+                        #event] ", event.__dict__)
+                        if event is None:
+                            breakpoint()
                         self.send(sender, event)
 
                     assert isinstance(event, FinishCompletion)
@@ -234,7 +284,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     response: Message = event.response
                     # these lines from Swarm.. not sure what they do
 
-                    debug_print(self.debug, "Received completion:", response)
+                    debug_print(self._swarm.llm_debug, "Received completion:", response)
                     
                     self.history.append(response)
                     if not response.tool_calls:
@@ -243,47 +293,65 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
                     # handle function calls, updating context_variables, and switching agents
                     partial_response = self._swarm.handle_tool_calls(
+                        self,
                         response.tool_calls,
                         self.functions,
                         context_variables,
-                        debug=self.debug,
+                        self.debug,
+                        report_calling_tool,
+                        report_tool_result,
                     )
-                    self.log(f"Tool result: {partial_response.messages}")
-                    # Fixme: handle this better
-                    if (
-                        PauseToolResult.matches_sentinel(partial_response.messages[-1]["content"])
-                    ):
-                        # agent needs to pause to wait for a child. Should have notified the child already
-                        self.paused_context = AgentPauseContext(
-                            orig_history_length=init_len,
-                            tool_partial_response=partial_response,
-                            sender=sender,
-                        )
-                        return
-                    elif request_msg := PauseAgentResult.deserialize(
-                        partial_response.messages[-1]["content"]
-                    ):
-                        # agent needs to pause, notify the Root
-                        self.paused_context = AgentPauseContext(
-                            orig_history_length=init_len,
-                            tool_partial_response=partial_response,
-                            sender=sender,
-                        )
-                        self.send(sender, PauseAgent(self.name, request_msg))
-                        return
+
+                    # FIXME: handle this better, and handle the case of multiple tool calls
+
+                    last_tool_result: Result|None = partial_response.last_tool_result
+                    if last_tool_result:
+                        if (
+                            PauseForChildResult.matches_sentinel(last_tool_result.value)
+                        ):
+                            # agent needs to pause to wait for a child. Should have notified the child already
+                            # child will call us back with TurnEnd
+                            self.paused_context = AgentPauseContext(
+                                orig_history_length=init_len,
+                                tool_partial_response=partial_response,
+                                sender=sender,
+                            )
+                            return
+                        elif PauseForInputResult.matches_sentinel(last_tool_result.value):
+                            # tool function has request user input. We save the tool function so we can re-call it when
+                            # we get the response back
+                            self.paused_context = AgentPauseContext(
+                                orig_history_length=init_len,
+                                tool_partial_response=partial_response,
+                                sender=sender,
+                                tool_function=last_tool_result.tool_function,
+                            )
+                            self.send(sender, WaitForInput(self.name, last_tool_result.context_variables))
+                            return
+                        elif FinishAgentResult.matches_sentinel(
+                            partial_response.messages[-1]["content"]
+                        ):
+                            # short-circuit any further agent execution. But for chat history we need to
+                            # record a result from the tool call
+                            msg = deepcopy(partial_response.messages[-1])
+                            msg['content'] = ''
+                            self.history.extend(partial_response.messages)
+                            break
 
                     self.history.extend(partial_response.messages)
                     context_variables.update(partial_response.context_variables)
 
                 # Altough we emit interim events, we also publish all the messages from this 'turn'
                 # in the final event. This lets a caller process our "function result" with a single event
-                self.send(
-                    sender,
-                    TurnEnd(self.name, self.history[init_len:], context_variables),
-                )
+                if isinstance(actor_message, Prompt):
+                    self.send(
+                        sender,
+                        TurnEnd(self.name, self.history[init_len:], context_variables),
+                    )
                 self.paused_context = None
 
             case SetState():
+                self.inject_secrets_into_env()
                 state = actor_message.payload
                 self.name = state.get("name")
                 self._logger = state.get("logger")
@@ -295,6 +363,8 @@ class ActorBaseAgent(SwarmAgent, Actor):
                 self.instructions = state.get("instructions")
                 if "model" in state:
                     self.model = state["model"]
+                if 'max_tokens' in state:
+                    self.max_tokens = state['max_tokens']
 
                 self.send(
                     sender,
@@ -308,6 +378,9 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     self._build_child_func(actor_message)
                 )
 
+            case ResetHistory():
+                self.history = []
+
     def _build_child_func(self, event: AddChild) -> Callable:
         child = event.actor_ref
         name = event.agent
@@ -317,7 +390,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
         llm_name = f"call_{name.lower().replace(' ', '_')}"
         setattr(f, "__name__", llm_name)
-        f.__doc__ = self.call_child.__doc__
+        f.__doc__ = f"Send a message to sub-agent {name}"
         setattr(f, "__code__", self.call_child.__code__)
         # Keep the original arg list
         f.__annotations__ = self.call_child.__annotations__
@@ -329,13 +402,23 @@ class ActorBaseAgent(SwarmAgent, Actor):
         handoff: bool,
         message,
     ):
+        depth = self.depth if handoff else self.depth + 1
         self.send(
             child_ref,
-            Prompt(self.name, message, depth=self.depth + 1, debug=self.debug),
+            Prompt(
+                self.name, 
+                message, 
+                depth=depth, 
+                debug=self.debug, 
+            ),
         )
-        return PauseToolResult()
+        if handoff:
+            return FinishAgentResult()
+        else:
+            return PauseForChildResult(values={})
 
-    def log(self, message):
+    def log(self, *args):
+        message = " ".join([str(a) for a in args])
         if self.debug:
             self.send(self._logger, f"({self.name}) {message}")
 
@@ -354,10 +437,15 @@ logger = None
 def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
     global logger
 
-    asys = ActorSystem()
+    asys = ActorSystem('multiprocTCPBase')
     if logger is None:
         logger = asys.createActor(Logger)
     return asys, logger
+
+def shutdown_actor_system():
+    asys = ActorSystem('multiprocTCPBase')
+    asys.shutdown()
+atexit.register(shutdown_actor_system)
 
 class HandoffAgentWrapper:
     def __init__(self, agent):
@@ -378,17 +466,19 @@ class ActorAgent(AgentBase):
     def __init__(
         self,
         name: str,
-        instructions: str | None = None,
+        instructions: str | None = "You are a helpful assistant.",
         welcome: str | None = None,
         tools: list = [],
         model: str | None = None,
-        template_dir: str | Path = None
+        template_dir: str | Path = None,
+        max_tokens: int = None,
     ):
         self.name = name
         self.welcome = welcome or f"Hello, I am {name}."
         self.model = model or "gpt-4o-mini"
         self.template_dir = template_dir
         self._tools = tools
+        self.max_tokens = max_tokens
         
         # Initialize the base actor
         self._init_base_actor(instructions)
@@ -427,6 +517,7 @@ class ActorAgent(AgentBase):
                     "instructions": self.instructions,
                     "functions": self._get_funcs(self._tools),
                     "model": self.model,
+                    "max_tokens": self.max_tokens,
                 },
             ),
         )
@@ -443,10 +534,17 @@ class ActorAgent(AgentBase):
                         func._actor,
                     )
                 )
+            elif isinstance(func, HandoffAgentWrapper):
+                # add a child agent as a tool
+                useable.append(AddChild(
+                        func.agent.name,
+                        func.agent._actor,
+                        handoff=True,
+                    )
+                )
             else:
                 useable.extend(func.get_tools())
         return useable
-
 
     def add_child(self, child_agent: 'ActorAgent'):
         """
@@ -477,7 +575,6 @@ class ActorAgent(AgentBase):
 
         for path in paths_to_search:
             prompts_file = Path(path) / prompts_filename
-            print(prompts_file)
 
             if prompts_file.exists():
                 with open(prompts_file, "r") as f:
@@ -503,15 +600,11 @@ class ActorAgent(AgentBase):
 
 from rich.live import Live
 from rich.markdown import Markdown
-from rich.columns import Columns
-from rich.spinner import Spinner
-from rich.console import Console
-from rich.layout import Layout
 class ActorAgentRunner:
     def __init__(self, agent: ActorAgent, debug: bool = False) -> None:
         self.agent = agent
         self.asys, _ = create_actor_system()
-        self.debug = debug
+        self.debug = debug or os.environ.get("AGENTIC_DEBUG")
 
     def start(self, request: str):
         self.asys.tell(
@@ -519,7 +612,7 @@ class ActorAgentRunner:
             Prompt(self.agent.name, request, depth=0, debug=self.debug),
         )
 
-    def run_sync(self, request: str, debug: bool = False) -> str:
+    def turn(self, request: str, debug: bool = False) -> str:
         """ Runs the agent and waits for the turn to finish, then returns the results
             of all output events as a single string."""
         if debug:
@@ -529,25 +622,63 @@ class ActorAgentRunner:
         for event in self.next(include_children=False):
             if self.debug:
                 print(f"{event.debug(True)}")
-            results.append(str(event))
+
+            if self._should_print(event):
+                results.append(str(event))
 
         return "".join(results)
     
+    def __lshift__(self, prompt: str):
+        print(self.turn(prompt))
+
+    def _should_print(self, event: Event) -> bool:
+        flag = self.debug or ""
+        if flag == True or flag == 'all':
+            return True
+        if event.is_output:
+            return True
+        elif isinstance(event, (ToolCall, ToolResult, PromptStarted)):
+            return 'tools' in flag
+        else:
+            return False
+        
     def next(
         self, include_children: bool = True, timeout: int = 10, include_completions: bool = False,
     ) -> Generator[Event, Any, Any]:
+        agents_running = set([self.agent.name])
+        waiting_final_timestamp = None
         while True:
-            event: Event = self.asys.listen(timeout)
+            event: Event = self.asys.listen(1) if waiting_final_timestamp else self.asys.listen(timeout)
+            if event is None:
+                break
+            if isinstance(event, PoisonMessage):
+                print("Agent unexpected error: ", event)
+                continue
+            if event.agent not in agents_running:
+                agents_running.add(event.agent)
             if not include_completions and isinstance(event, (StartCompletion, FinishCompletion)):
                 continue
             if isinstance(event, TurnEnd):
-                break
+                agents_running.remove(event.agent)
+                if len(agents_running) == 0:
+                    # All agents are finished
+                    if waiting_final_timestamp:
+                        break
+                    else:
+                        waiting_final_timestamp = time.time()
             yield event
 
-    def continue_with(self, response: str):
+    def reset_session(self):
+        """ Clears the chat history from the agent """
         self.asys.tell(
             self.agent._actor,
-            TurnEnd(self.agent.name, [{"role": "user", "content": response}]),
+            ResetHistory(self.agent.name),
+        )
+
+    def continue_with(self, response: dict):
+        self.asys.tell(
+            self.agent._actor,
+            ResumeWithInput(self.agent.name, response),
         )
 
     def repl_loop(self):
@@ -592,8 +723,9 @@ class ActorAgentRunner:
                 )
                 
         saved_completions = []
+        fancy = False
 
-        while True:
+        while fancy:
             try:
                 # Get input directly from sys.stdin
                 line = console.input("> ")
@@ -603,8 +735,7 @@ class ActorAgentRunner:
 
                 output = ""
                 with console.status("[bold blue]thinking...", spinner="dots") as status:
-                    with Live(Markdown(output), refresh_per_second=1, auto_refresh=True) as live:
-                        spinner = rich.spinner.Spinner("dots")
+                    with Live(Markdown(output), refresh_per_second=1, auto_refresh=not self.debug) as live:
                         self.start(line)
 
                         for event in self.next(include_completions=True):
@@ -630,5 +761,42 @@ class ActorAgentRunner:
             except KeyboardInterrupt:
                 print("\nKeyboardInterrupt. Type 'exit()' to quit.")
             except Exception as e:
+                traceback.print_exc()
                 print(f"Error: {e}")
 
+
+        while not fancy:
+            try:
+                # Get input directly from sys.stdin
+                line = console.input("> ")
+
+                if line == "quit" or line == "":
+                    break
+
+                self.start(line)
+
+                for event in self.next(include_completions=True):
+                    if event is None:
+                        break
+                    elif isinstance(event, WaitForInput):
+                        replies = {}
+                        for key, value in event.request_keys.items():
+                            replies[key] = input(f"\n{value}\n:> ")
+                        self.continue_with(replies)
+                    elif isinstance(event, FinishCompletion):
+                        saved_completions.append(event)
+                    else:
+                        if self._should_print(event):
+                            print(str(event), end="")
+                print()
+                for row in print_stats_report(saved_completions):
+                    console.out(row)
+                readline.write_history_file(hist)
+            except EOFError:
+                print("\nExiting REPL.")
+                break
+            except KeyboardInterrupt:
+                print("\nKeyboardInterrupt. Type 'exit()' to quit.")
+            except Exception as e:
+                traceback.print_exc()
+                print(f"Error: {e}")

@@ -2,7 +2,7 @@ from typing import Callable, Any
 import asyncio
 from agentic.tools import LinkedinDataTool
 
-from agentic import Agent, AgentRunner, PauseAgentResult
+from agentic import Agent, AgentRunner, handoff, WaitForInput
 
 def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
     return asyncio.run(async_func(*args, **kwargs))
@@ -15,10 +15,36 @@ def search_profiles(name: str, company: str = ""):
 def get_profile(url: str):
     return invoke_async(linkedin.get_linkedin_profile_info, url)
 
-def get_human_input(request_message: str):
-    return PauseAgentResult(request_message)
+def get_company_linkedin_info(company: str):
+    return invoke_async(linkedin.get_company_linkedin_info, company)
 
-from agentic import Agent, PauseToolResult
+def get_human_input(request_message: str):
+    return WaitForInput(request_message)
+
+from agentic import Agent
+
+person_report_writer = Agent(
+        name="Person Report Writer",
+        instructions="""
+You will receive the URL to a linkedin profile. Retreive and review the profile.
+Now call the Company Reporter to research the company the person works for.
+Finally, write an extensive background report on the person, focusing on their career progression
+and last 3 roles.
+""",
+        max_tokens=10000,
+        model="openai/gpt-4o-mini",
+        tools=[get_profile,
+                    Agent(
+                    name="Company Reporter",
+                    instructions="""
+Retrieve Linkedin information on the company, and perform web research. Then write a 
+background report on the company.
+""",
+                    max_tokens=10000,
+                    tools=[get_company_linkedin_info]
+                    )
+        ]   
+    )
 
 people_researcher = Agent(
     name="Person Researcher",
@@ -26,21 +52,12 @@ people_researcher = Agent(
     instructions="""
 You do research on people. Given a name and a company:
 1. Search for matching profiles on linkedin.
-2. If you find a single strong match, then prepare a background report on that person.
-3. If you find multiple matches, then request human input. If the response
-identifies a profile then go back to step 2.
-If you are missing info, then seek clarification from the user.
+2. If you find multiple matches, please ask the user which one they are interested in.
+3. Now call the Person Report Writer and pass in the linked profile URL.
 """,
-    tools=[search_profiles, get_human_input, 
-            Agent(
-               name="Person Report Writer",
-               instructions="""
-        You will receive the URL to a linkedin profile. Retreive the profile and
-        write a background report on the person, focusing on their career progression
-        and current role.
-        """,
-                tools=[get_profile],
-            )
+    tools=[ search_profiles, 
+            get_human_input, 
+            handoff(person_report_writer)
     ]
 )
 

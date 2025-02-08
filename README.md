@@ -16,6 +16,37 @@ A new, easy to use AI Agents framework. Agentic offers these features:
 ```python
 % agentic set OPENAI_API_KEY $OPENAI_API_KEY # or wherever you have this key
 
+% agentic repl
+> .load examples/basic_agent.py
+I am a simple agent here to help. I have a single weather function.
+> what is the weather in San Francisco?
+The current weather in San Francisco is as follows:
+
+- **Temperature:** 48.2°F
+- **Feels Like:** 46.3°F
+- **Wind Speed:** 9.8 km/h
+...
+> .load examples\database_agent.py
+Hi! I can help you run SQL queries on any standard database.
+> show me the tables in the db
+...
+please enter the DATBASE URL :> sqlite:///examples/chinook.db
+> list the tables
+INFO: Connecting to database: sqlite:///examples/chinook.db
+The tables in the database are as follows:
+
+1. albums
+2. artists
+3. customers
+6. invoices
+...
+> how many invoices do we have?
+There are a total of 412 invoices in the database.
+> what is the total amount?
+The total amount of all invoices is $2,328.60.
+```
+
+
 % python examples/basic_agent.py
 I am a simple agent here to help. I have a single weather function.
 press <enter> to quit

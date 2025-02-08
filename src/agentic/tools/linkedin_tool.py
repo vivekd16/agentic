@@ -98,7 +98,7 @@ class LinkedinDataTool():
         df = pd.DataFrame([profile_data])
         return str(df)
 
-    async def get_company_linkedin_info(self, company_username_or_domain: str) -> dict:
+    async def get_company_linkedin_info(self, company_username_or_domain: str) -> str|pd.DataFrame:
         """queries the LinkedIn Data API of rapidapi to get company information either by username or domain.
         Args:
             company_username_or_domain: Company username (e.g., "Google") or domain (e.g., "google.com")
@@ -152,11 +152,7 @@ class LinkedinDataTool():
 
                 # Convert to DataFrame for consistent output format
                 df = pd.DataFrame(items)
-                return self.get_dataframe_preview(
-                    df,
-                    max_rows=len(df),
-                    name_hint="linkedin_company_info",
-                )
+                return df
 
             except httpx.HTTPStatusError as e:
                 return f"Error: API request failed with status code {e.response.status_code}"

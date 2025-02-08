@@ -13,7 +13,7 @@ def test_agent():
     assert agent.instructions == "You are a helpful assistant."
 
     agent_runnner = AgentRunner(agent)
-    response = agent_runnner.run_sync("please tell me hello")
+    response = agent_runnner.turn("please tell me hello")
     assert 'hello' in response.lower(), response
 
 def test_agent_as_tool():
@@ -27,7 +27,7 @@ def test_agent_as_tool():
     )
 
     agent_runnner = AgentRunner(agent)
-    response = agent_runnner.run_sync("run your instructions")
+    response = agent_runnner.turn("run your instructions")
     assert 'agent 2' in response.lower(), response
 
 read_file_was_called: bool = False
@@ -48,6 +48,6 @@ def test_simple_tool_use():
     )
 
     agent_runnner = AgentRunner(agent)
-    response = agent_runnner.run_sync("read the file")
+    response = agent_runnner.turn("read the file")
     assert read_file_was_called, "Verify tool function was invoked"
     assert "world" in response.lower(), response

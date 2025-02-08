@@ -4,7 +4,7 @@ import re
 from typing import Optional
 
 from .settings import settings
-from .secrets import agentic_secrets
+from .agentic_secrets import agentic_secrets
 from litellm import completion
 import litellm
 from litellm import token_counter

@@ -40,8 +40,8 @@ class GoogleNewsTool():
 
     def _news_items_to_df(self, news_items: List[NewsItem]) -> dict:
         df = pd.DataFrame([item.__dict__ for item in news_items])
-        df['pubDate'] = pd.to_datetime(df['pubDate'], utc=True)
-        df['pubDate'] = df['pubDate'].dt.date
+        #df['pubDate'] = pd.to_datetime(df['pubDate'], utc=True)
+        #df['pubDate'] = df['pubDate'].dt.date
         return df
 
     def get_top_headlines(self, language: str = 'en', country: str = 'US') -> pd.DataFrame:

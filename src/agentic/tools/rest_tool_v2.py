@@ -28,6 +28,7 @@ with tool_registry.safe_imports():
     from httpx import BasicAuth
     import httpx
 
+
 class AsyncRequestBuilder:
     def __init__(self, base_url: str, logger_func: Callable[..., Awaitable[None]]):
         parsed_url = urlparse(base_url)
@@ -121,7 +122,7 @@ class AsyncRequestBuilder:
 
 
 @tool_registry.register(
-    name="rest_api_v2", 
+    name="rest_api_v2",
     description="REST API Tool",
     dependencies=[
         Dependency(
@@ -129,13 +130,12 @@ class AsyncRequestBuilder:
             version="0.24.1",
             type="pip",
         )
-    ]
+    ],
 )
 class RESTAPIToolV2(BaseAgenticTool):
     request_map: dict[str, AsyncRequestBuilder] = {}
     return_dataframe: bool = False
     run_context: RunContext | None = None
-
 
     def get_tools(self) -> list[Callable]:
         return [

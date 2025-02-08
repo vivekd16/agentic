@@ -83,7 +83,7 @@ class ToolRegistry:
             print(f"Module not found: {e}")
         except Exception as e:
             print(f"Unexpected error during import: {e}")
-            
+
     def check_pip_dependency(self, dep: Dependency) -> bool:
         """Check if a Python package is installed."""
         try:
@@ -100,9 +100,7 @@ class ToolRegistry:
         """Install a Python package using pip."""
         try:
             version_spec = f"{dep.name}=={dep.version}" if dep.version else dep.name
-            subprocess.check_call(
-                ["uv", "pip", "install", version_spec]
-            )
+            subprocess.check_call(["uv", "pip", "install", version_spec])
             return True
         except subprocess.CalledProcessError:
             return False
@@ -123,7 +121,7 @@ class ToolRegistry:
 
     def ensure_dependencies(self, tool) -> bool:
         """Check and optionally install missing dependencies."""
-        if hasattr(tool, '__class__'):  
+        if hasattr(tool, "__class__"):
             toolcls = tool.__class__
             while True:
                 tool_spec = self.tools.get(toolcls)
@@ -183,7 +181,7 @@ class ToolRegistry:
 
     def execute(self, tool: Any, config: Dict[str, Any] = None, *args, **kwargs) -> Any:
         """Execute a tool, checking dependencies and configuration first."""
-        if hasattr(tool, '__class__'):
+        if hasattr(tool, "__class__"):
             tool_spec = self.tools.get(tool.__class__)
         else:
             tool_spec = self.tools.get(tool)
@@ -193,9 +191,10 @@ class ToolRegistry:
         # Check dependencies
         if not self.ensure_dependencies(tool_spec):
             missing = [
-                dep.name for dep in tool_spec.dependencies
-                if (dep.type == 'pip' and not self.check_pip_dependency(dep)) or
-                   (dep.type == 'system' and not self.check_system_dependency(dep))
+                dep.name
+                for dep in tool_spec.dependencies
+                if (dep.type == "pip" and not self.check_pip_dependency(dep))
+                or (dep.type == "system" and not self.check_system_dependency(dep))
             ]
             raise RuntimeError(
                 f"Tool '{tool}' has missing dependencies: {', '.join(missing)}"
@@ -204,7 +203,6 @@ class ToolRegistry:
         # Validate and process configuration
         config = config or {}
         processed_config = self.validate_config(tool_spec, config)
-        
 
 
 # Example usage:

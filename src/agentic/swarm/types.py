@@ -37,7 +37,8 @@ class RunContext:
 
     def get_secret(self, key, default=None):
         return agentic_secrets.get_secret(
-            self.agent_name + "/" + key, agentic_secrets.get_secret(key, self.get(key, default))
+            self.agent_name + "/" + key,
+            agentic_secrets.get_secret(key, self.get(key, default)),
         )
 
     def error(self, *args):

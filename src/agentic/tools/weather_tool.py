@@ -34,7 +34,7 @@ Create this in the app under tools-.options->API key and set the value here."
 class WeatherTool(BaseAgenticTool):
     def __init__(self):
         pass
-    
+
     def get_tools(self) -> list[Callable]:
         return [
             self.get_current_weather,

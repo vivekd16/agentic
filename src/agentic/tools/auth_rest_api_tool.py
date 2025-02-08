@@ -4,14 +4,15 @@ from .rest_tool_v2 import RESTAPIToolV2
 from agentic.agentic_secrets import agentic_secrets as secrets
 from agentic import RunContext
 
+
 class AuthorizedRESTAPITool(RESTAPIToolV2):
     token_type: str = "bearer"
     token_var: str = "bearer_token"
     token_name: str = "Bearer"
 
-    def __init__(self, token_type: str, token_var:str, token_name:str):
-        """ Construct with the type of token (bearer,basic,parameter,header) and the name
-            of the secret that holds the token value. For Basic auth set the token as "<user>:<password>"
+    def __init__(self, token_type: str, token_var: str, token_name: str):
+        """Construct with the type of token (bearer,basic,parameter,header) and the name
+        of the secret that holds the token value. For Basic auth set the token as "<user>:<password>"
         """
         super().__init__()
         self.token_type = token_type
@@ -36,7 +37,7 @@ class AuthorizedRESTAPITool(RESTAPIToolV2):
         token = run_context.get_secret(self.token_var)
         if token is None:
             raise RuntimeError(f"Token variable {self.token_var} not found in secrets")
-        
+
         print("Token: ", token)
         auth_type = "none"
         token: str | None = None
@@ -63,7 +64,7 @@ class AuthorizedRESTAPITool(RESTAPIToolV2):
             token_name=token_name,
         )
 
-        if self.token_type == 'header':
+        if self.token_type == "header":
             super().add_request_header(
                 auth_var,
                 self.token_name,
@@ -98,7 +99,10 @@ class AuthorizedRESTAPITool(RESTAPIToolV2):
         Returns the response and status code.
         """
         return await super().post_resource(
-            url, content_type, data, auth_config_var=await self.get_auth_variable(run_context)
+            url,
+            content_type,
+            data,
+            auth_config_var=await self.get_auth_variable(run_context),
         )
 
     async def put_resource(

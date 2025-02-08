@@ -21,7 +21,7 @@ uploader = Agent(
     name="TransistorFM",
     welcome="I can work with podcast episodes via the Transistor.fm API.",
     instructions="{{TRANSISTOR_FM}}",
-    tools=[AuthorizedRESTAPITool('header', 'TRANSISTOR_API_KEY', 'x-api-key')],
+    tools=[AuthorizedRESTAPITool("header", "TRANSISTOR_API_KEY", "x-api-key")],
     memories=["Default show ID is 60214"],
 )
 

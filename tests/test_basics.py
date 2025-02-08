@@ -44,6 +44,7 @@ def read_file() -> str:
     read_file_was_called = True
     return "Hello world, i am in a file."
 
+
 def test_simple_tool_use():
     global read_file_was_called
 

@@ -71,6 +71,7 @@ from thespian.actors import Actor, ActorSystem, PoisonMessage
 # Global console for Rich
 console = ConsoleWithInputBackspaceFixed()
 
+
 def wrap_llm_function(fname, doc, func, *args):
     f = partial(func, *args)
     setattr(f, "__name__", fname)
@@ -79,6 +80,7 @@ def wrap_llm_function(fname, doc, func, *args):
     # Keep the original arg list
     f.__annotations__ = func.__annotations__
     return f
+
 
 @dataclass
 class AgentPauseContext:
@@ -528,9 +530,9 @@ class ActorAgent(AgentBase):
             directory = os.path.dirname(caller_file)
             # Get just the filename without extension
             base = os.path.splitext(os.path.basename(caller_file))[0]
-            
+
             # Create new path with .prompts.yaml extension
-            template_path = os.path.join(directory, f'{base}.prompts.yaml')
+            template_path = os.path.join(directory, f"{base}.prompts.yaml")
 
         # Get the file where Agent() was called
         self.template_path = template_path
@@ -613,7 +615,6 @@ class ActorAgent(AgentBase):
     @staticmethod
     def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
         return asyncio.run(async_func(*args, **kwargs))
-
 
     def add_child(self, child_agent: "ActorAgent"):
         """

@@ -4,12 +4,14 @@ import re
 from typing import Callable
 
 import html2text
-#import requests
+
+# import requests
 import httpx
 
+from .base import BaseAgenticTool
 
 
-class ScaleSerpBrowserTool():
+class ScaleSerpBrowserTool(BaseAgenticTool):
     # def __init__(self, **kwargs):
     #     if kwargs:
     #         super().__init__(**kwargs)
@@ -26,14 +28,16 @@ class ScaleSerpBrowserTool():
     #     )
 
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions([
-            self.browse_web_tool,
-            self.download_web_pages,
-        ])
+        return self.wrap_tool_functions(
+            [
+                self.browse_web_tool,
+                self.download_web_pages,
+            ]
+        )
 
     @staticmethod
-    async def try_scrapingbee(search: str)  -> list[tuple[str,str]]:
-        url='https://app.scrapingbee.com/api/v1/store/google'
+    async def try_scrapingbee(search: str) -> list[tuple[str, str]]:
+        url = "https://app.scrapingbee.com/api/v1/store/google"
         params = {
             "api_key": os.environ.get("SCRAPINGBEE_API_KEY"),
             "search": search,
@@ -47,20 +51,20 @@ class ScaleSerpBrowserTool():
                 timeout=90,
             )
             results = response.json()
-            if 'organic_results' not in results:
+            if "organic_results" not in results:
                 return []
             else:
                 return [
-                    (serp['url'], serp['title']) for serp in results['organic_results'][0:5]
+                    (serp["url"], serp["title"])
+                    for serp in results["organic_results"][0:5]
                 ]
 
     async def browse_web_tool(
         self,
         search: str,
     ):
-        """ Browses the web using the SCALESERP API and returns full page contents related to the search term.
-        """
-        api_key: str|None = os.environ.get("SCALESERP_API_KEY")
+        """Browses the web using the SCALESERP API and returns full page contents related to the search term."""
+        api_key: str | None = os.environ.get("SCALESERP_API_KEY")
         if api_key is None:
             return "Error: no API key available for the SCALE SERP API"
 
@@ -75,7 +79,7 @@ class ScaleSerpBrowserTool():
                     "location": "San Francisco, California, United States",
                     "timeout": 10000,
                     "num": 8,
-                    "api_key": api_key
+                    "api_key": api_key,
                 }
                 try:
                     async with httpx.AsyncClient() as client:
@@ -86,11 +90,11 @@ class ScaleSerpBrowserTool():
                         )
                         results = response.json()
 
-                        if 'organic_results' not in results:
+                        if "organic_results" not in results:
                             return "ScaleSerp return no results."
 
-                        for serp in results['organic_results'][0:5]:
-                            urls.append((serp['link'], serp['title']))
+                        for serp in results["organic_results"][0:5]:
+                            urls.append((serp["link"], serp["title"]))
                 except httpx.TimeoutException:
                     # Let's try Scrapingbee
                     print("Timed out! Fallback to ScrapingBee")
@@ -100,7 +104,7 @@ class ScaleSerpBrowserTool():
 
         text_results = [f"search: {search}"]
         used = len(text_results[-1])
-        max_count = 10000 # need to know actual token limit
+        max_count = 10000  # need to know actual token limit
         text_results.extend(await self.convert_downloaded_pages(urls[0:4], max_count))
 
         # FIXME: Download pages in parallel
@@ -109,28 +113,36 @@ class ScaleSerpBrowserTool():
         return "\n".join(text_results)
 
     async def download_web_pages(self, page_urls: list[str] = []) -> str:
-        """ Returns the contents of one or more web pages. Text is extracted from HTML pages. """
+        """Returns the contents of one or more web pages. Text is extracted from HTML pages."""
         url_titles = [(url, url[0:40]) for url in page_urls]
         text_results = await self.convert_downloaded_pages(url_titles, 10000)
         return "\n".join(text_results)
 
-    async def convert_downloaded_pages(self, url_titles: list[tuple], max_count:int) -> list[str]:
+    async def convert_downloaded_pages(
+        self, url_titles: list[tuple], max_count: int
+    ) -> list[str]:
         used = 0
         text_results = []
         for res_dict in await self.download_pages(url_titles):
             if "content" in res_dict:
-                text_results.append(f"PAGE: {res_dict['title']} (url: {res_dict['url']})")
+                text_results.append(
+                    f"PAGE: {res_dict['title']} (url: {res_dict['url']})"
+                )
                 used += len(text_results[-1])
                 remaining = max_count - used
                 if remaining > 0:
-                    text_results.append(html2text.html2text(res_dict['content'])[0:remaining])
+                    text_results.append(
+                        html2text.html2text(res_dict["content"])[0:remaining]
+                    )
                 else:
                     break
                 used += len(text_results[-1])
                 text_results.append("-----")
         return text_results
 
-    async def download_pages(self, url_titles: list[tuple], max_concurrency=10) -> list[dict]:
+    async def download_pages(
+        self, url_titles: list[tuple], max_concurrency=10
+    ) -> list[dict]:
         async with httpx.AsyncClient() as client:
             sem = asyncio.Semaphore(max_concurrency)
 

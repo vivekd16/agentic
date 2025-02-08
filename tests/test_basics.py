@@ -1,6 +1,7 @@
 import pytest
 from agentic import Agent, AgentRunner
 
+
 def test_agent():
     agent = Agent(
         name="Basic Agent",
@@ -20,10 +21,12 @@ def test_agent_as_tool():
     agent = Agent(
         name="Agent A",
         instructions="Print this 'I am agent 1'. \nThen call agent B",
-        tools=[Agent(
-            name="Agent B",
-            instructions="Print 'I am agent 2'.",
-        )],
+        tools=[
+            Agent(
+                name="Agent B",
+                instructions="Print 'I am agent 2'.",
+            )
+        ],
     )
 
     agent_runnner = AgentRunner(agent)
@@ -32,15 +35,16 @@ def test_agent_as_tool():
 
 read_file_was_called: bool = False
 
+
 def test_simple_tool_use():
     global read_file_was_called
 
     def read_file() -> str:
-        """ Reads the current file """
+        """Reads the current file"""
         global read_file_was_called
         read_file_was_called = True
         return "Hello world, i am in a file."
-    
+
     agent = Agent(
         name="Agent A",
         instructions="You are helpful assistant.",

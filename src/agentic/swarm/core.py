@@ -55,7 +55,7 @@ class Swarm:
             if __CTX_VARS_NAME__ in params["required"]:
                 params["required"].remove(__CTX_VARS_NAME__)
 
-        #if agent.trim_context:
+        # if agent.trim_context:
         #    messages = trim_messages(messages, model=model_override or agent.model)
 
         create_params = {
@@ -106,8 +106,7 @@ class Swarm:
         report_tool_result: Callable = None,
     ) -> Response:
         function_map = {f.__name__: f for f in functions}
-        partial_response = Response(
-            messages=[], agent=None, context_variables={})
+        partial_response = Response(messages=[], agent=None, context_variables={})
 
         for tool_call in tool_calls:
             name = tool_call.function.name

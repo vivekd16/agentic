@@ -64,6 +64,7 @@ from .colors import Colors
 # Global console for Rich
 console = ConsoleWithInputBackspaceFixed()
 
+
 @dataclass
 class AgentPauseContext:
     orig_history_length: int
@@ -90,7 +91,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
     max_tokens: int = None
 
     class Config:
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed = True
 
     def __init__(self):
         super().__init__()
@@ -125,18 +126,21 @@ class ActorBaseAgent(SwarmAgent, Actor):
         yield StartCompletion(self.name)
 
         self._callback_params = {}
+
         def custom_callback(
-            kwargs,                 # kwargs to completion
-            completion_response,    # response from completion
-            start_time, end_time    # start/end time
+            kwargs,  # kwargs to completion
+            completion_response,  # response from completion
+            start_time,
+            end_time,  # start/end time
         ):
             try:
-                response_cost = kwargs["response_cost"] # litellm calculates response cost for you
-                self._callback_params['cost'] = response_cost
+                response_cost = kwargs[
+                    "response_cost"
+                ]  # litellm calculates response cost for you
+                self._callback_params["cost"] = response_cost
             except:
                 pass
-            self._callback_params['elapsed'] = end_time - start_time
-            
+            self._callback_params["elapsed"] = end_time - start_time
 
         # Assign the custom callback function
         litellm.success_callback = [custom_callback]
@@ -161,7 +165,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
             delta = json.loads(chunk.choices[0].delta.model_dump_json())
             if delta["role"] == "assistant":
                 delta["sender"] = self.name
-            if not delta.get("tool_calls") and delta.get('content'):
+            if not delta.get("tool_calls") and delta.get("content"):
                 yield ChatOutput(self.name, delta, self.depth)
             delta.pop("role", None)
             delta.pop("sender", None)
@@ -169,22 +173,26 @@ class ActorBaseAgent(SwarmAgent, Actor):
         llm_message = litellm.stream_chunk_builder(chunks, messages=self.history)
         input = self.history[-1:]
         output = llm_message.choices[0].message
-        
+
         if len(input) > 0:
-             self._callback_params['input_tokens'] = token_counter(self.model, messages=self.history[-1:])
+            self._callback_params["input_tokens"] = token_counter(
+                self.model, messages=self.history[-1:]
+            )
         if output.content:
-            self._callback_params['output_tokens'] = token_counter(self.model, text=llm_message.choices[0].message.content)
+            self._callback_params["output_tokens"] = token_counter(
+                self.model, text=llm_message.choices[0].message.content
+            )
         # Have to calc cost after we have seen all the chunks
         debug_print(self._swarm.llm_debug, "That completion cost you: ", self._callback_params)
 
         yield FinishCompletion.create(
-            self.name, 
+            self.name,
             llm_message.choices[0].message,
             self.model,
-            self._callback_params.get('cost', 0),
-            self._callback_params.get('input_tokens'),
-            self._callback_params.get('output_tokens'),
-            self._callback_params.get('elapsed'),
+            self._callback_params.get("cost", 0),
+            self._callback_params.get("input_tokens"),
+            self._callback_params.get("output_tokens"),
+            self._callback_params.get("elapsed"),
         )
 
     def relay_message(self, actor_message, sender):
@@ -374,9 +382,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                 )
 
             case AddChild():
-                self.functions.append(
-                    self._build_child_func(actor_message)
-                )
+                self.functions.append(self._build_child_func(actor_message))
 
             case ResetHistory():
                 self.history = []
@@ -454,13 +460,16 @@ class HandoffAgentWrapper:
     def get_agent(self):
         return self.agent
 
+
 def handoff(agent, **kwargs):
-    """ Signal that a child agent should take over the execution context instead of being
-        called as a subroutine. """
-    return HandoffAgentWrapper(agent)    
+    """Signal that a child agent should take over the execution context instead of being
+    called as a subroutine."""
+    return HandoffAgentWrapper(agent)
+
 
 class AgentBase:
     pass
+
 
 class ActorAgent(AgentBase):
     def __init__(
@@ -482,29 +491,29 @@ class ActorAgent(AgentBase):
         
         # Initialize the base actor
         self._init_base_actor(instructions)
-        
+
         # Ensure API key is set
         self.ensure_api_key_for_model(self.model)
 
     def _init_base_actor(self, instructions: str | None):
         """Initialize the underlying actor system with the given instructions."""
         asys, logger = create_actor_system()
-        
+
         # Process instructions if provided
         if instructions:
             template = Template(instructions)
             self.instructions = template.render(**self.prompt_variables)
         else:
             self.instructions = "You are a helpful assistant."
-            
+
         # Create the base actor
         self._actor = asys.createActor(
-            ActorBaseAgent, 
+            ActorBaseAgent,
             # We don't stricly need names, and Im not sure if it changes behavior in case you
             # tried to use the same name, like for a test.
-            #globalName=f"{self.name}-{secrets.token_hex(4)}"
+            # globalName=f"{self.name}-{secrets.token_hex(4)}"
         )
-        
+
         # Set initial state. Small challenge is that a child agent might have been
         # provided in tools. But we need to initialize ourselve
         asys.ask(
@@ -529,7 +538,8 @@ class ActorAgent(AgentBase):
                 useable.append(func)
             elif isinstance(func, AgentBase):
                 # add a child agent as a tool
-                useable.append(AddChild(
+                useable.append(
+                    AddChild(
                         func.name,
                         func._actor,
                     )
@@ -549,12 +559,12 @@ class ActorAgent(AgentBase):
     def add_child(self, child_agent: 'ActorAgent'):
         """
         Add a child agent to this agent.
-        
+
         Args:
             child_agent: Another ActorAgent instance to add as a child
         """
         asys, logger = create_actor_system()
-        
+
         # sending the AddChild event has the effect of adding the child function
         # to our list of tool functions
         asys.ask(
@@ -616,7 +626,7 @@ class ActorAgentRunner:
         """ Runs the agent and waits for the turn to finish, then returns the results
             of all output events as a single string."""
         if debug:
-            self.debug = True        
+            self.debug = True
         self.start(request)
         results = []
         for event in self.next(include_children=False):
@@ -643,7 +653,10 @@ class ActorAgentRunner:
             return False
         
     def next(
-        self, include_children: bool = True, timeout: int = 10, include_completions: bool = False,
+        self,
+        include_children: bool = True,
+        timeout: int = 10,
+        include_completions: bool = False,
     ) -> Generator[Event, Any, Any]:
         agents_running = set([self.agent.name])
         waiting_final_timestamp = None
@@ -692,7 +705,7 @@ class ActorAgentRunner:
         @dataclass
         class Modelcost:
             model: str
-            inputs: int 
+            inputs: int
             calls: int
             outputs: int
             cost: float
@@ -701,27 +714,22 @@ class ActorAgentRunner:
         def print_stats_report(completions: list[FinishCompletion]):
             costs = dict[str, Modelcost]()
             for comp in completions:
-                if comp.metadata['model'] not in costs:
-                    costs[comp.metadata['model']] = Modelcost(
-                        comp.metadata['model'],
-                        0,
-                        0,
-                        0,
-                        0,
-                        0
+                if comp.metadata["model"] not in costs:
+                    costs[comp.metadata["model"]] = Modelcost(
+                        comp.metadata["model"], 0, 0, 0, 0, 0
                     )
-                mc = costs[comp.metadata['model']]
+                mc = costs[comp.metadata["model"]]
                 mc.calls += 1
-                mc.cost += comp.metadata['cost']*100
-                mc.inputs += comp.metadata['input_tokens']
-                mc.outputs += comp.metadata['output_tokens']
-                if 'elapsed_time' in comp.metadata:
-                    mc.time += comp.metadata['elapsed_time'].total_seconds()
+                mc.cost += comp.metadata["cost"] * 100
+                mc.inputs += comp.metadata["input_tokens"]
+                mc.outputs += comp.metadata["output_tokens"]
+                if "elapsed_time" in comp.metadata:
+                    mc.time += comp.metadata["elapsed_time"].total_seconds()
             for mc in costs.values():
-                yield ( 
+                yield (
                     f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s]"
                 )
-                
+
         saved_completions = []
         fancy = False
 

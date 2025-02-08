@@ -9,17 +9,14 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 selected_agent = st.selectbox(
-    "",
-    all,
-    format_func=lambda x: x.name,
-    on_change=lambda: st.session_state.clear()
+    "", all, format_func=lambda x: x.name, on_change=lambda: st.session_state.clear()
 )
 
-if 'agent' not in st.session_state:
+if "agent" not in st.session_state:
     st.session_state.agent = selected_agent
 
-    
-if 'agent' in st.session_state:
+
+if "agent" in st.session_state:
     agent = st.session_state.agent
     st.title(agent.name)
     with st.chat_message("assistant"):
@@ -34,7 +31,7 @@ if 'agent' in st.session_state:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        with st.spinner('thinking...'):
+        with st.spinner("thinking..."):
             if "runner" not in st.session_state or st.session_state.runner is None:
                 st.session_state.runner = AgentRunner(agent)
 
@@ -48,6 +45,5 @@ if 'agent' in st.session_state:
 
             with st.chat_message("assistant"):
                 response = st.write_stream(get_output())
-                
-            st.session_state.messages.append({"role": "assistant", "content": response})
 
+            st.session_state.messages.append({"role": "assistant", "content": response})

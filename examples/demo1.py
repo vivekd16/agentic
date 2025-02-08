@@ -6,18 +6,25 @@ from agentic.tools import GoogleNewsTool
 
 from agentic import Agent, AgentRunner, PauseForInputResult, RunContext
 
+
 def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
     return asyncio.run(async_func(*args, **kwargs))
 
+
 linkedin = LinkedinDataTool()
+
+
 def search_profiles(name: str, company: str = ""):
-    """ Searches for linkedin profiles. """
+    """Searches for linkedin profiles."""
     return invoke_async(linkedin.linkedin_people_search, name=name, company=company)
+
 
 def get_profile(url: str):
     return invoke_async(linkedin.get_linkedin_profile_info, url)
 
+
 gnt = GoogleNewsTool()
+
 
 def query_news(topic: str):
     return gnt.query_news(topic)
@@ -26,6 +33,7 @@ def get_human_input(run_context: RunContext):
     if run_context.get("topic"):
         return run_context.get("topic")
     return PauseForInputResult({"topic" : "What is the news topic?"})
+
 
 reporter = Agent(
     name="News Reporter",

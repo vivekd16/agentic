@@ -7,36 +7,40 @@ from googlenewsdecoder import new_decoderv1
 from google_news_feed import GoogleNewsFeed, NewsItem
 
 from .scaleserp_browser import ScaleSerpBrowserTool
+from .base import BaseAgenticTool
 
-class GoogleNewsTool():
+
+class GoogleNewsTool(BaseAgenticTool):
     browser_tool: ScaleSerpBrowserTool = None
 
     def __init__(self):
-#         super().__init__(
-#             id = "google_news_connector",
-#             system_name = "Google News",
-#             logo_url=super().logo_from_domain("google.com"),
-#             category=ToolCategory.CATEGORY_INTERNET,
-#             auth_config = { },
-#             help="""
-# Pull articles from Google News RSS feed
-# """,
-#         )
+        #         super().__init__(
+        #             id = "google_news_connector",
+        #             system_name = "Google News",
+        #             logo_url=super().logo_from_domain("google.com"),
+        #             category=ToolCategory.CATEGORY_INTERNET,
+        #             auth_config = { },
+        #             help="""
+        # Pull articles from Google News RSS feed
+        # """,
+        #         )
 
         self.browser_tool = ScaleSerpBrowserTool()
 
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions([
-            self.get_top_headlines,
-            self.query_topic,
-            self.query_news,
-            self.get_category_news,
-            self.get_location_news,
-            self.get_local_topics,
-            self.get_trending_topics,
-            self.explain_search_syntax,
-            self.download_news_article,
-        ])
+        return self.wrap_tool_functions(
+            [
+                self.get_top_headlines,
+                self.query_topic,
+                self.query_news,
+                self.get_category_news,
+                self.get_location_news,
+                self.get_local_topics,
+                self.get_trending_topics,
+                self.explain_search_syntax,
+                self.download_news_article,
+            ]
+        )
 
     def _news_items_to_df(self, news_items: List[NewsItem]) -> dict:
         df = pd.DataFrame([item.__dict__ for item in news_items])
@@ -44,23 +48,37 @@ class GoogleNewsTool():
         #df['pubDate'] = df['pubDate'].dt.date
         return df
 
-    def get_top_headlines(self, language: str = 'en', country: str = 'US') -> pd.DataFrame:
+    def get_top_headlines(
+        self, language: str = "en", country: str = "US"
+    ) -> pd.DataFrame:
         """Gets top headlines for the specified language and country."""
         gnf = GoogleNewsFeed(language=language, country=country)
         results = gnf.top_headlines()
         return self._news_items_to_df(results)
 
-    def query_topic(self, topic: str, language: str = 'en', country: str = 'US') -> pd.DataFrame:
+    def query_topic(
+        self, topic: str, language: str = "en", country: str = "US"
+    ) -> pd.DataFrame:
         """Gets new articles related to the specified topic."""
         gnf = GoogleNewsFeed(language=language, country=country)
         results = gnf.query_topic(topic)
         return self._news_items_to_df(results)
 
-    def query_news(self, query: str, language: str = 'en', country: str = 'US',
-                   before: date = None, after: date = None, back_days: int = 1,
-                   exact_phrase: str = None, exclude_terms: List[str] = None,
-                   site: str = None, in_title: bool = False, in_url: bool = False,
-                   all_in_text: bool = False) -> pd.DataFrame:
+    def query_news(
+        self,
+        query: str,
+        language: str = "en",
+        country: str = "US",
+        before: date = None,
+        after: date = None,
+        back_days: int = 1,
+        exact_phrase: str = None,
+        exclude_terms: List[str] = None,
+        site: str = None,
+        in_title: bool = False,
+        in_url: bool = False,
+        all_in_text: bool = False,
+    ) -> pd.DataFrame:
         """
         Searches for news articles based on the given query and parameters.
 
@@ -81,26 +99,30 @@ class GoogleNewsTool():
         Returns:
             A DataFrame where each row is a news item.
         """
-        gnf = GoogleNewsFeed(language=language, country=country, resolve_internal_links=False)
+        gnf = GoogleNewsFeed(
+            language=language, country=country, resolve_internal_links=False
+        )
 
         # Construct advanced query
         if exact_phrase:
             query += f' "{exact_phrase}"'
         if exclude_terms:
-            query += ' ' + ' '.join([f'-"{term}"' for term in exclude_terms])
+            query += " " + " ".join([f'-"{term}"' for term in exclude_terms])
         if site:
-            query += f' site:{site}'
+            query += f" site:{site}"
         if in_title:
-            query = f'intitle:{query}'
+            query = f"intitle:{query}"
         if in_url:
-            query = f'inurl:{query}'
+            query = f"inurl:{query}"
         if all_in_text:
-            query = f'allintext:{query}'
+            query = f"allintext:{query}"
 
         results = gnf.query(query, before=before, after=after, when=f"{back_days}d")
         return self._news_items_to_df(results)
 
-    def get_category_news(self, category: str, language: str = 'en', country: str = 'US') -> List[NewsItem]:
+    def get_category_news(
+        self, category: str, language: str = "en", country: str = "US"
+    ) -> List[NewsItem]:
         """
         Gets news from a specific category.
         Categories: 'WORLD', 'NATION', 'BUSINESS', 'TECHNOLOGY', 'ENTERTAINMENT', 'SCIENCE', 'SPORTS', 'HEALTH'
@@ -109,7 +131,13 @@ class GoogleNewsTool():
         results = gnf.query_topic(category)
         return self._news_items_to_df(results)
 
-    def get_location_news(self, location: str, language: str = 'en', country: str = 'US', max_results: int = 10) -> List[NewsItem]:
+    def get_location_news(
+        self,
+        location: str,
+        language: str = "en",
+        country: str = "US",
+        max_results: int = 10,
+    ) -> List[NewsItem]:
         """
         Gets news articles related to a specific location.
 
@@ -126,7 +154,13 @@ class GoogleNewsTool():
         results = gnf.query(f'location:"{location}"')
         return self._news_items_to_df(results[:max_results])
 
-    def get_local_topics(self, location: str, language: str = 'en', country: str = 'US', num_topics: int = 10) -> Dict[str, Any]:
+    def get_local_topics(
+        self,
+        location: str,
+        language: str = "en",
+        country: str = "US",
+        num_topics: int = 10,
+    ) -> Dict[str, Any]:
         """
         Analyzes news to extract trending topics for a specific location.
 
@@ -154,7 +188,27 @@ class GoogleNewsTool():
             words.extend(headline.split())
 
         # Remove common words and location name
-        stop_words = set(['the', 'best', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'but', 'is', 'are', 'was', 'were'])
+        stop_words = set(
+            [
+                "the",
+                "best",
+                "a",
+                "an",
+                "in",
+                "on",
+                "at",
+                "to",
+                "for",
+                "of",
+                "and",
+                "or",
+                "but",
+                "is",
+                "are",
+                "was",
+                "were",
+            ]
+        )
         stop_words.update(location.lower().split())
         words = [word for word in words if word not in stop_words and len(word) > 2]
 
@@ -171,12 +225,16 @@ class GoogleNewsTool():
                     break
 
         return {
-            'topics': local_topics,
-            'topic_frequencies': {topic: count for topic, count in word_counts.most_common(num_topics)},
-            'sample_headlines': sample_headlines
+            "topics": local_topics,
+            "topic_frequencies": {
+                topic: count for topic, count in word_counts.most_common(num_topics)
+            },
+            "sample_headlines": sample_headlines,
         }
 
-    def get_trending_topics(self, language: str = 'en', country: str = 'US', num_topics: int = 10) -> List[str]:
+    def get_trending_topics(
+        self, language: str = "en", country: str = "US", num_topics: int = 10
+    ) -> List[str]:
         """
         Retrieves a list of currently trending topics on Google News.
 
@@ -196,10 +254,26 @@ class GoogleNewsTool():
         headlines = gnf.top_headlines()
 
         # Extract words from headlines
-        words = ' '.join([article.title for article in headlines]).lower().split()
+        words = " ".join([article.title for article in headlines]).lower().split()
 
         # Remove common words (you might want to expand this list)
-        stop_words = set(['the', 'a', 'an', 'best', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'but'])
+        stop_words = set(
+            [
+                "the",
+                "a",
+                "an",
+                "best",
+                "in",
+                "on",
+                "at",
+                "to",
+                "for",
+                "of",
+                "and",
+                "or",
+                "but",
+            ]
+        )
         words = [word for word in words if word not in stop_words and len(word) > 2]
 
         # Count word frequency and get top N most common words as trending topics
@@ -232,19 +306,23 @@ class GoogleNewsTool():
         """
         return explanation
 
-    async def download_news_article(self, title:str, url: str) -> str:
-        """ Resolves internal Google News links to the actual news article links. """
+    async def download_news_article(self, title: str, url: str) -> str:
+        """Resolves internal Google News links to the actual news article links."""
 
         try:
-            if 'news.google.com' in url:
+            if "news.google.com" in url:
                 decoded_url = new_decoderv1(url, interval=1)
                 if decoded_url.get("status"):
                     url = decoded_url["decoded_url"]
                 else:
-                    return f"Error resolving actual article link: {decoded_url['message']}"
+                    return (
+                        f"Error resolving actual article link: {decoded_url['message']}"
+                    )
 
             url_titles = [(url, title)]
-            text_results = await self.browser_tool.convert_downloaded_pages(url_titles, 5000)
+            text_results = await self.browser_tool.convert_downloaded_pages(
+                url_titles, 5000
+            )
             return "\n".join(text_results)
 
         except Exception as e:

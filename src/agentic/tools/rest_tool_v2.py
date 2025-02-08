@@ -16,97 +16,17 @@ from pydantic import BaseModel
 
 from urllib.parse import parse_qsl, urlencode
 
-# from supercog.shared.utils import upload_file_to_s3
-# from supercog.engine.tools.s3_utils import public_image_bucket
-
 import os
 from urllib.parse import urlparse
 from typing import Dict, Optional, Any
 
-from httpx import BasicAuth
-import httpx
-
 from .base import BaseAgenticTool
+from agentic.tools.registry import tool_registry, Dependency
+from agentic import RunContext
 
-# Converted from requests lib to async httpx
-# class RequestBuilder:
-#     def __init__(self, base_url: str, logger_func: Callable[..., Awaitable[None]]):
-#         parsed_url = urlparse(base_url)
-#         self.base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-#         self.base_path = parsed_url.path
-#         self.headers: Dict[str, str] = {}
-#         self.auth: Optional[HTTPBasicAuth] = None
-#         self.session: Optional[requests.Session] = None
-#         self.logger_func = logger_func
-
-#     def with_bearer_token(self, token: str, token_name: str = "Bearer"):
-#         self.headers["Authorization"] = f"{token_name} {token}"
-#         return self
-
-#     def with_basic_auth(self, username: str, password: str):
-#         self.auth = HTTPBasicAuth(username, password)
-#         return self
-
-#     def with_header(self, key: str, value: str):
-#         self.headers[key] = value
-#         return self
-
-#     def create_session(self):
-#         if self.session is None:
-#             self.session = requests.Session()
-#             self.session.headers.update(self.headers)
-#             if self.auth:
-#                 self.session.auth = self.auth
-
-#     def close_session(self):
-#         if self.session:
-#             self.session.close()
-#             self.session = None
-
-#     def _ensure_session(self):
-#         if self.session is None:
-#             self.create_session()
-
-#     async def _request(self, method: str, path: str, **kwargs) -> requests.Response:
-#         self._ensure_session()
-#         if self.base_url:
-#             parsed = urlparse(path)
-#             url = path if parsed.netloc else self.base_url + os.path.join(self.base_path, path).rstrip("/")
-#         else:
-#             url = path
-#         await self.logger_func(f"{method.upper()} {url}")
-#         if self.auth:
-#             await self.logger_func(f"Auth: {self.auth.username}")
-#         if self.headers:
-#             await self.logger_func(f"--Headers--")
-#             for k, v in self.headers.items():
-#                 await self.logger_func(f"  {k}: {v}")
-#         print(f"Requesting {method} {url}")
-#         return self.session.request(method, url, timeout=60, **kwargs)
-
-#     async def get(self, path: str, **kwargs):
-#         return await self._request("GET", path, **kwargs)
-
-#     async def post_json(self, path: str, json: Any = None, **kwargs):
-#         return await self._request("POST", path, json=json, **kwargs)
-
-#     async def put_json(self, path: str, json: Any = None, **kwargs):
-#         return await self._request("PUT", path, json=json, **kwargs)
-
-#     async def post_form(self, path: str, form_data: Any = None, **kwargs):
-#         kwargs['data'] = form_data
-#         kwargs.setdefault('headers', {})['Content-Type'] = 'application/x-www-form-urlencoded'
-#         return await self._request("POST", path, **kwargs)
-
-#     async def put(self, path: str, data: Any = None, json: Any = None, **kwargs):
-#         return await self._request("PUT", path, data=data, json=json, **kwargs)
-
-#     async def patch(self, path: str, data: Any = None, json: Any = None, **kwargs):
-#         return await self._request("PATCH", path, data=data, json=json, **kwargs)
-
-#     async def delete(self, path: str, **kwargs):
-#         return await self._request("DELETE", path, **kwargs)
-
+with tool_registry.safe_imports():
+    from httpx import BasicAuth
+    import httpx
 
 class AsyncRequestBuilder:
     def __init__(self, base_url: str, logger_func: Callable[..., Awaitable[None]]):
@@ -159,13 +79,13 @@ class AsyncRequestBuilder:
             )
         else:
             url = path
-        await self.logger_func(f"{method.upper()} {url}")
+        self.logger_func(f"{method.upper()} {url}")
         if self.auth:
-            await self.logger_func(f"Auth: {self.auth}")
+            self.logger_func(f"Auth: {self.auth}")
         if self.headers:
-            await self.logger_func(f"--Headers--")
+            self.logger_func(f"--Headers--")
             for k, v in self.headers.items():
-                await self.logger_func(f"  {k}: {v}")
+                self.logger_func(f"  {k}: {v}")
         print(f"Requesting {method} {url}")
         if self.auth_params:
             if "params" in kwargs:
@@ -200,9 +120,22 @@ class AsyncRequestBuilder:
         return await self._request("DELETE", path, **kwargs)
 
 
+@tool_registry.register(
+    name="rest_api_v2", 
+    description="REST API Tool",
+    dependencies=[
+        Dependency(
+            name="httpx",
+            version="0.24.1",
+            type="pip",
+        )
+    ]
+)
 class RESTAPIToolV2(BaseAgenticTool):
     request_map: dict[str, AsyncRequestBuilder] = {}
     return_dataframe: bool = False
+    run_context: RunContext | None = None
+
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -250,7 +183,7 @@ class RESTAPIToolV2(BaseAgenticTool):
         Any value can refer to ENV VARS using ${KEY} syntax.
         Returns the variable name of the auth config for use in request calls.
         """
-        request = AsyncRequestBuilder("", logger_func=self.log)
+        request = AsyncRequestBuilder("", logger_func=self.run_context.info)
 
         auth_type = auth_type.lower()
 
@@ -258,18 +191,18 @@ class RESTAPIToolV2(BaseAgenticTool):
             username = self.run_context.resolve_secrets(username or "")
             password = self.run_context.resolve_secrets(password or "")
             request = request.with_basic_auth(username, password)
-            await self.log("Basic Auth: {} / {}".format(username, password))
+            self.run_context.info("Basic Auth: {} / {}".format(username, password))
         elif auth_type in ["bearer", "token"]:
             token = self.run_context.resolve_secrets(token or "")
             request = request.with_bearer_token(token, token_name)
-            await self.log(f"[token] {token_name}: {token}")
+            self.run_context.info(f"[token] {token_name}: {token}")
         elif auth_type == "parameter":
             token = self.run_context.resolve_secrets(token or "")
             if token:
                 request = request.with_auth_param(token_name, token)
             else:
                 raise ValueError(f"Token value is empty.")
-            await self.log(f"[param] {token_name}: {token}")
+            self.run_context.info(f"[param] {token_name}: {token}")
         elif auth_type == "none":
             pass
         else:
@@ -305,7 +238,7 @@ class RESTAPIToolV2(BaseAgenticTool):
                     f"Auth config '{auth_config_var}' not found. Must call prepare_auth_config first."
                 )
         else:
-            request = AsyncRequestBuilder("", logger_func=self.log)
+            request = AsyncRequestBuilder("", logger_func=self.run_context.info)
 
         response = await request.get(url, params=params)
 
@@ -322,7 +255,7 @@ class RESTAPIToolV2(BaseAgenticTool):
             params = json.loads(params)
 
         if not auth_config_var:
-            request = AsyncRequestBuilder("", logger_func=self.log)
+            request = AsyncRequestBuilder("", logger_func=self.run_context.info)
         else:
             request = self.request_map.get(auth_config_var)
             if request is None:
@@ -363,7 +296,7 @@ class RESTAPIToolV2(BaseAgenticTool):
                 if request is None:
                     raise ValueError(f"Request '{auth_config_var}' not found.")
             else:
-                request = AsyncRequestBuilder("", logger_func=self.log)
+                request = AsyncRequestBuilder("", logger_func=self.run_context.info)
 
             # Convert params to URL-encoded string if it's not already
             if isinstance(params, dict):
@@ -412,7 +345,7 @@ class RESTAPIToolV2(BaseAgenticTool):
             if request is None:
                 raise ValueError(f"Request '{auth_config_var}' not found.")
         else:
-            request = AsyncRequestBuilder("", logger_func=self.log)
+            request = AsyncRequestBuilder("", logger_func=self.run_context.info)
 
         response = await request.delete(url)
         return await self.process_response(response)

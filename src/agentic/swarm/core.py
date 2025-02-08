@@ -1,5 +1,5 @@
 # Standard library imports
-import copy
+import asyncio
 import json
 import os
 from collections import defaultdict
@@ -129,13 +129,23 @@ class Swarm:
 
             func = function_map[name]
             # pass context_variables to agent functions
+            run_context = RunContext(context_variables, agent.name)
             if __CTX_VARS_NAME__ in func.__code__.co_varnames:
-                args[__CTX_VARS_NAME__] = RunContext(context_variables, agent.name)
+                args[__CTX_VARS_NAME__] = run_context
 
             if report_callback:
                 report_callback(name, args)
 
-            raw_result = function_map[name](**args)
+            # Call the function!!
+            # Wrap async functions in asyncio.run
+            try:
+                if asyncio.iscoroutinefunction(function_map[name]):
+                    raw_result = asyncio.run(function_map[name](**args))
+                else:
+                    raw_result = function_map[name](**args)
+            except Exception as e:
+                raw_result = f"{name} - Error: {e}"
+                run_context.error(raw_result)
 
             result: Result = self.handle_function_result(raw_result, debug)
             result.tool_function = Function(

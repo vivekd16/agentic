@@ -4,6 +4,7 @@ from openai.types.chat.chat_completion_message_tool_call import (
     Function,
 )
 from typing import List, Callable, Union, Optional
+from agentic.agentic_secrets import agentic_secrets
 from agentic.settings import settings
 
 # Third-party imports
@@ -33,6 +34,11 @@ class RunContext:
 
     def set_config(self, key, value):
         settings.set(self.agent_name + "/" + key, value)
+
+    def get_secret(self, key, default=None):
+        return agentic_secrets.get_secret(
+            self.agent_name + "/" + key, agentic_secrets.get_secret(key, self.get(key, default))
+        )
 
     def error(self, *args):
         print("ERROR:", *args)

@@ -70,6 +70,12 @@ class SecretManager:
             else default_value
         )
 
+    def get_required_secret(self, name) -> str:
+        val = self.get_secret(name)
+        if val is None:
+            raise ValueError(f"Secret '{name}' is not set")
+        return val
+
     def list_secrets(self):
         self.cursor.execute("SELECT name FROM secrets")
         return [row[0] for row in self.cursor.fetchall()]

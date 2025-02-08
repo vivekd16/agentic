@@ -1,5 +1,5 @@
 from typing import Callable, Any
-from agentic.tools import WeatherTool
+from agentic.tools.weather_tool import WeatherTool
 
 from agentic import Agent, AgentRunner
 

@@ -96,8 +96,7 @@ def run_dot_commands(line: str):
         if not os.path.exists(agent_file):
             print(f"File {agent_file} does not exist")
             return
-        agent = find_agent_objects(load_agent(agent_file), Agent)[0]
-        if agent:
+        for agent in find_agent_objects(load_agent(agent_file), Agent):
             runner = AgentRunner(agent)
             ACTIVE_AGENTS.append(runner)
             CURRENT_RUNNER = runner
@@ -142,12 +141,15 @@ def run_dot_commands(line: str):
         print("Unknown command: ", line)
 
 
-def repl_loop():
+def repl_loop(filename: str | None = None):
     hist = os.path.expanduser("~/.agentic_history")
     if os.path.exists(hist):
         readline.read_history_file(hist)
 
     fancy = False
+
+    if filename:
+        run_dot_commands(f".load {filename}")
 
     print("Use .help for help")
     while not fancy:
@@ -201,7 +203,11 @@ def repl_loop():
 
 
 def main():
-    repl_loop()
+    # Command will be: agentic repl <filename>
+    filename = None
+    if len(sys.argv) > 1:
+        filename = sys.argv[1]
+    repl_loop(filename)
 
 
 if __name__ == "__main__":

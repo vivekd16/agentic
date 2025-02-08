@@ -1,10 +1,13 @@
 import atexit
+import asyncio
 from thespian.actors import Actor, ActorSystem, ActorAddress
 from typing import Any, Optional, Generator
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
 from pathlib import Path
+from functools import partial
+import inspect
 import json
 import os
 import time
@@ -15,15 +18,12 @@ from datetime import datetime
 from agentic.agentic_secrets import agentic_secrets
 import readline
 from pathlib import Path
-import secrets
 import os
 import yaml
 from jinja2 import Template
 from rich.markdown import Markdown
 from .fix_console import ConsoleWithInputBackspaceFixed
 from rich.live import Live
-from rich.progress import Progress
-import rich.spinner
 
 import yaml
 from typing import Callable, Any, List
@@ -64,13 +64,21 @@ from .events import (
     PauseForChildResult,
     ResumeWithInput,
 )
+from agentic.tools.registry import tool_registry
 
 from thespian.actors import Actor, ActorSystem, PoisonMessage
-from .colors import Colors
 
 # Global console for Rich
 console = ConsoleWithInputBackspaceFixed()
 
+def wrap_llm_function(fname, doc, func, *args):
+    f = partial(func, *args)
+    setattr(f, "__name__", fname)
+    f.__doc__ = doc
+    setattr(f, "__code__", func.__code__)
+    # Keep the original arg list
+    f.__annotations__ = func.__annotations__
+    return f
 
 @dataclass
 class AgentPauseContext:
@@ -92,6 +100,8 @@ class ActorBaseAgent(SwarmAgent, Actor):
     depth: int = 0
     children: dict = {}
     history: list = []
+    # Memories are static facts that are always injected into the context on every turn
+    memories: list[str] = []
     _logger: Actor = None
     # The Actor who sent us our Prompt
     _prompter: Actor = None
@@ -396,6 +406,8 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     self.model = state["model"]
                 if "max_tokens" in state:
                     self.max_tokens = state["max_tokens"]
+                if "memories" in state:
+                    self.memories = state["memories"]
 
                 self.send(
                     sender,
@@ -414,16 +426,10 @@ class ActorBaseAgent(SwarmAgent, Actor):
         child = event.actor_ref
         name = event.agent
         self.children[name] = child
-
-        f = partial(self.call_child, child, event.handoff)
-
         llm_name = f"call_{name.lower().replace(' ', '_')}"
-        setattr(f, "__name__", llm_name)
-        f.__doc__ = f"Send a message to sub-agent {name}"
-        setattr(f, "__code__", self.call_child.__code__)
-        # Keep the original arg list
-        f.__annotations__ = self.call_child.__annotations__
-        return f
+        doc = f"Send a message to sub-agent {name}"
+
+        return wrap_llm_function(llm_name, doc, self.call_child, child, event.handoff)
 
     def call_child(
         self,
@@ -509,15 +515,28 @@ class ActorAgent(AgentBase):
         welcome: str | None = None,
         tools: list = [],
         model: str | None = None,
-        template_dir: str | Path = None,
+        template_path: str | Path = None,
         max_tokens: int = None,
+        memories: list[str] = [],
     ):
         self.name = name
         self.welcome = welcome or f"Hello, I am {name}."
         self.model = model or "gpt-4o-mini"
-        self.template_dir = template_dir
+        caller_frame = inspect.currentframe()
+        if caller_frame:
+            caller_file = inspect.getframeinfo(caller_frame.f_back).filename
+            directory = os.path.dirname(caller_file)
+            # Get just the filename without extension
+            base = os.path.splitext(os.path.basename(caller_file))[0]
+            
+            # Create new path with .prompts.yaml extension
+            template_path = os.path.join(directory, f'{base}.prompts.yaml')
+
+        # Get the file where Agent() was called
+        self.template_path = template_path
         self._tools = tools
         self.max_tokens = max_tokens
+        self.memories = memories
 
         # Initialize the base actor
         self._init_base_actor(instructions)
@@ -557,6 +576,7 @@ class ActorAgent(AgentBase):
                     "functions": self._get_funcs(self._tools),
                     "model": self.model,
                     "max_tokens": self.max_tokens,
+                    "memories": self.memories,
                 },
             ),
         )
@@ -565,6 +585,7 @@ class ActorAgent(AgentBase):
         useable = []
         for func in thefuncs:
             if callable(func):
+                tool_registry.ensure_dependencies(func)
                 useable.append(func)
             elif isinstance(func, AgentBase):
                 # add a child agent as a tool
@@ -584,8 +605,15 @@ class ActorAgent(AgentBase):
                     )
                 )
             else:
+                tool_registry.ensure_dependencies(func)
                 useable.extend(func.get_tools())
+
         return useable
+
+    @staticmethod
+    def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
+        return asyncio.run(async_func(*args, **kwargs))
+
 
     def add_child(self, child_agent: "ActorAgent"):
         """
@@ -606,19 +634,18 @@ class ActorAgent(AgentBase):
             ),
         )
 
+    def add_tool(self, tool: Any):
+        new_funcs = self._get_funcs([tool])
+        self._tools.extend(new_funcs)
+
     @property
     def prompt_variables(self) -> dict:
         """Dictionary of variables to make available to prompt templates."""
-        prompts_filename = f"{self.safe_name}.prompts.yaml"
-        paths_to_search = [
-            self.template_dir if self.template_dir else Path.cwd(),
-        ]
+        paths_to_search = [self.template_path]
 
-        for path in paths_to_search:
-            prompts_file = Path(path) / prompts_filename
-
-            if prompts_file.exists():
-                with open(prompts_file, "r") as f:
+        for path in [Path(p) for p in paths_to_search]:
+            if path.exists():
+                with open(path, "r") as f:
                     prompts = yaml.safe_load(f)
                 return prompts
 

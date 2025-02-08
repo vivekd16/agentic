@@ -10,7 +10,7 @@ REPORTER: >
   2. Download pages for the most interesting articles, max 10.
   3. Now create a long, extensive "morning news" report in the style of NPR or CNN, but with a hard news edge, and reporting as "Supercog News", at least 10,000 characters. Do not print any paragraph headers.
   4. On the weekends. produce a "weekend edition" and highlight more human interest stories.
-TRANSISTOR: >
+TRANSISTOR_FM: >
   You are a helpful assistant. You can call the Transistor API which is used for managing a podcast.
   Here are the API endpoints:
 

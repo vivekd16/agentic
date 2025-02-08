@@ -176,9 +176,12 @@ Popular models:
 
 
 @app.command()
-def repl():
+def repl(filename: str = typer.Argument(default="", show_default=False)):
     """Runs the agentic REPL"""
-    os.execvp("python", ["python", "src/agentic/repl.py"])
+    cmd = ["python", "src/agentic/repl.py"]
+    if filename:
+        cmd.append(filename)
+    os.execvp("python", cmd)
 
 
 if __name__ == "__main__":

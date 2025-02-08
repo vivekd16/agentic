@@ -2,10 +2,10 @@ from typing import Any, Callable, Optional
 import requests
 from datetime import datetime, timedelta
 import zoneinfo
-import time
 import statistics
 
 from .base import BaseAgenticTool
+from agentic.tools.registry import tool_registry
 
 """
 import openmeteopy  #pip inst
@@ -25,21 +25,16 @@ Create this in the app under tools-.options->API key and set the value here."
             """
 
 
+@tool_registry.register(
+    name="WeatherTool",
+    description="A tool for getting weather information",
+    dependencies=[],
+    config_requirements=[],
+)
 class WeatherTool(BaseAgenticTool):
     def __init__(self):
         pass
-
-    #         super().__init__(
-    #             id="weather_connector",
-    #             system_name="Weather",
-    #             logo_url=super().logo_from_domain('open-meteo.com'),
-    #             auth_config={},
-    #             category=ToolCategory.CATEGORY_INTERNET,
-    #             help="""
-    # Use this tool to get weather data.
-    # """
-    #        )
-
+    
     def get_tools(self) -> list[Callable]:
         return [
             self.get_current_weather,

@@ -10,18 +10,6 @@ from .base import BaseAgenticTool
 class LinkedinDataTool(BaseAgenticTool):
     BASE_URL: ClassVar[str] = "https://linkedin-data-api.p.rapidapi.com"
 
-    #     def __init__(self):
-    #         super().__init__(
-    #             id="linkedin_data_tool",
-    #             system_name="LinkedIn Data Tool",
-    #             logo_url=super().logo_from_domain("linkedin.com"),
-    #             auth_config={},
-    #             category=ToolCategory.CATEGORY_INTERNET,
-    #             help="""
-    # Get real-time LinkedIn data
-    # """,
-    #         )
-
     def get_api_key(self) -> str | None:
         """Retrieve RAPIDAPI_KEY."""
         return os.environ.get("RAPIDAPI_KEY")
@@ -34,13 +22,11 @@ class LinkedinDataTool(BaseAgenticTool):
         }
 
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions(
-            [
-                self.get_linkedin_profile_info,
-                self.get_company_linkedin_info,
-                self.linkedin_people_search,
-            ]
-        )
+        return [
+            self.get_linkedin_profile_info,
+            self.get_company_linkedin_info,
+            self.linkedin_people_search,
+        ]
 
     async def search_location(self, keyword: str) -> str:
         """Search for LinkedIn location ID by keyword.

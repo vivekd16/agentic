@@ -5,20 +5,35 @@ import os
 from datetime import datetime
 from typing import List, Callable, Optional, Literal
 
-from supercog.shared.services import config
 from openai import OpenAI
-from pydub import AudioSegment
-from pydub.playback import play
-from pydub import AudioSegment
 
 from .base import BaseAgenticTool
+from .registry import tool_registry, Dependency, ConfigRequirement
 
+from agentic.agentic_secrets import agentic_secrets
 
+with tool_registry.safe_imports():
+    from pydub import AudioSegment
+    from pydub.playback import play
+    from pydub import AudioSegment
+
+@tool_registry.register(
+    name="TextToSpeechTool",
+    description="Convert text to speech with different voices",
+    dependencies=[
+        Dependency("pydub", type="pip", version="0.25.1"),
+    ],
+    config_requirements=[
+        ConfigRequirement(key="OPENAI_API_KEY", description="OpenAI API key", required=True),
+    ]
+)
 class TextToSpeechTool(BaseAgenticTool):
     openai_api_key: str = ""
 
+    def __init__(self):
+        return super().__init__()
+
     def get_tools(self) -> List[Callable]:
-        self.openai_api_key = os.environ["OPENAI_API_KEY"]
         return [
             self.generate_speech_file_from_text,
         ]
@@ -128,6 +143,8 @@ class TextToSpeechTool(BaseAgenticTool):
         :return: str
             The URL of the generated audio file.
         """
+        self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
+
         if input_file_name:
             text = (text or "") + open(input_file_name, "r").read()
 

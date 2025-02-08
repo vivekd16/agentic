@@ -2,7 +2,7 @@ from typing import Callable, Any
 import asyncio
 from agentic.tools import LinkedinDataTool
 
-from agentic import Agent, AgentRunner, handoff, WaitForInput
+from agentic import Agent, AgentRunner, handoff, PauseForInputResult
 
 
 def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
@@ -26,7 +26,7 @@ def get_company_linkedin_info(company: str):
 
 
 def get_human_input(request_message: str):
-    return WaitForInput(request_message)
+    return PauseForInputResult({"input": request_message})
 
 
 from agentic import Agent

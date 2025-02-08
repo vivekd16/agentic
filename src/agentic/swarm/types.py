@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 AgentFunction = Callable[[], Union[str, "SwarmAgent", dict]]
 
+
 class RunContext:
     def __init__(self, context: dict = {}, agent_name: str = ""):
         self._context = context
@@ -26,7 +27,9 @@ class RunContext:
         self._context[key] = value
 
     def get_config(self, key, default=None):
-        return settings.get(self.agent_name + "/" + key, settings.get(key, self.get(key, default)))
+        return settings.get(
+            self.agent_name + "/" + key, settings.get(key, self.get(key, default))
+        )
 
     def set_config(self, key, value):
         settings.set(self.agent_name + "/" + key, value)
@@ -52,7 +55,6 @@ class SwarmAgent(BaseModel):
     max_tokens: bool = None
 
 
-
 class Result(BaseModel):
     """
     Encapsulates the possible return values for an agent function.
@@ -68,9 +70,9 @@ class Result(BaseModel):
     context_variables: dict = {}
     tool_function: Optional[Function] = None
 
+
 class Response(BaseModel):
     messages: List = []
     agent: Optional[SwarmAgent] = None
     context_variables: dict = {}
     last_tool_result: Optional[Result] = None
-

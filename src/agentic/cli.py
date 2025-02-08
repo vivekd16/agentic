@@ -172,13 +172,14 @@ Popular models:
     openai/gpt-4o-mini
     anthropic/claude-3-5-sonnet-20240620
      """
-)
-    
+    )
+
+
 @app.command()
 def repl():
-    """ Runs the agentic REPL """
+    """Runs the agentic REPL"""
     os.execvp("python", ["python", "src/agentic/repl.py"])
 
-    
+
 if __name__ == "__main__":
     app()

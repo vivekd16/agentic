@@ -20,36 +20,40 @@ def search_profiles(name: str, company: str = ""):
 def get_profile(url: str):
     return invoke_async(linkedin.get_linkedin_profile_info, url)
 
+
 def get_company_linkedin_info(company: str):
     return invoke_async(linkedin.get_company_linkedin_info, company)
+
 
 def get_human_input(request_message: str):
     return WaitForInput(request_message)
 
+
 from agentic import Agent
 
 person_report_writer = Agent(
-        name="Person Report Writer",
-        instructions="""
+    name="Person Report Writer",
+    instructions="""
 You will receive the URL to a linkedin profile. Retreive and review the profile.
 Now call the Company Reporter to research the company the person works for.
 Finally, write an extensive background report on the person, focusing on their career progression
 and last 3 roles.
 """,
-        max_tokens=10000,
-        model="openai/gpt-4o-mini",
-        tools=[get_profile,
-                    Agent(
-                    name="Company Reporter",
-                    instructions="""
+    max_tokens=10000,
+    model="openai/gpt-4o-mini",
+    tools=[
+        get_profile,
+        Agent(
+            name="Company Reporter",
+            instructions="""
 Retrieve Linkedin information on the company, and perform web research. Then write a 
 background report on the company.
 """,
-                    max_tokens=10000,
-                    tools=[get_company_linkedin_info]
-                    )
-        ]   
-    )
+            max_tokens=10000,
+            tools=[get_company_linkedin_info],
+        ),
+    ],
+)
 
 people_researcher = Agent(
     name="Person Researcher",
@@ -60,10 +64,7 @@ You do research on people. Given a name and a company:
 2. If you find multiple matches, please ask the user which one they are interested in.
 3. Now call the Person Report Writer and pass in the linked profile URL.
 """,
-    tools=[ search_profiles, 
-            get_human_input, 
-            handoff(person_report_writer)
-    ]
+    tools=[search_profiles, get_human_input, handoff(person_report_writer)],
 )
 
 if __name__ == "__main__":

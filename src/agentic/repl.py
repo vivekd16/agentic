@@ -18,53 +18,54 @@ from agentic.events import FinishCompletion, WaitForInput
 
 console = ConsoleWithInputBackspaceFixed()
 
+
 @dataclass
 class Modelcost:
     model: str
-    inputs: int 
+    inputs: int
     calls: int
     outputs: int
     cost: float
     time: float
 
+
 def print_stats_report(completions: list[FinishCompletion]):
     costs = dict[str, Modelcost]()
     for comp in completions:
-        if comp.metadata['model'] not in costs:
-            costs[comp.metadata['model']] = Modelcost(
-                comp.metadata['model'],
-                0,
-                0,
-                0,
-                0,
-                0
+        if comp.metadata["model"] not in costs:
+            costs[comp.metadata["model"]] = Modelcost(
+                comp.metadata["model"], 0, 0, 0, 0, 0
             )
-        mc = costs[comp.metadata['model']]
+        mc = costs[comp.metadata["model"]]
         mc.calls += 1
-        mc.cost += comp.metadata['cost']*100
-        mc.inputs += comp.metadata['input_tokens']
-        mc.outputs += comp.metadata['output_tokens']
-        if 'elapsed_time' in comp.metadata:
-            mc.time += comp.metadata['elapsed_time'].total_seconds()
+        mc.cost += comp.metadata["cost"] * 100
+        mc.inputs += comp.metadata["input_tokens"]
+        mc.outputs += comp.metadata["output_tokens"]
+        if "elapsed_time" in comp.metadata:
+            mc.time += comp.metadata["elapsed_time"].total_seconds()
     for mc in costs.values():
-        yield ( 
+        yield (
             f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s]"
         )
 
 
 ACTIVE_AGENTS: List[AgentRunner] = []
-CURRENT_RUNNER: AgentRunner  | None = None
+CURRENT_RUNNER: AgentRunner | None = None
 CURRENT_DEBUG_LEVEL = None
 
-def find_agent_objects(module_members: Dict[str, Any], agent_class: Type) -> List[Agent]:
+
+def find_agent_objects(
+    module_members: Dict[str, Any], agent_class: Type
+) -> List[Agent]:
     agent_instances = []
-    
+
     for name, obj in module_members.items():
         # Check for classes that inherit from Agent
         if isinstance(obj, agent_class):
             agent_instances.append(obj)
-            
+
     return agent_instances
+
 
 def load_agent(filename: str) -> Dict[str, Any]:
     try:
@@ -72,20 +73,20 @@ def load_agent(filename: str) -> Dict[str, Any]:
         spec = importlib.util.spec_from_file_location("dynamic_module", filename)
         if spec is None or spec.loader is None:
             raise ImportError(f"Could not load file: {filename}")
-            
+
         # Create the module
         module = importlib.util.module_from_spec(spec)
         sys.modules["dynamic_module"] = module
-        
+
         # Execute the module
         spec.loader.exec_module(module)
-        
+
         # Find all classes defined in the module
         return dict(inspect.getmembers(module))
-    
-        
+
     except Exception as e:
         raise RuntimeError(f"Error loading file {filename}: {str(e)}")
+
 
 def run_dot_commands(line: str):
     global CURRENT_RUNNER, CURRENT_DEBUG_LEVEL
@@ -113,19 +114,21 @@ def run_dot_commands(line: str):
         if len(line.split()) > 1:
             debug_level = line.split()[1]
         else:
-            debug_level = 'all'
+            debug_level = "all"
         CURRENT_DEBUG_LEVEL = debug_level
         print(f"Debug level set to {debug_level}")
 
     elif line.startswith(".help"):
-        print("""
+        print(
+            """
         .load <filename> - Load an agent from a file
         .run <agent name> - switch the active agent
         .debug [<level>] - enable debug. Default or one of 'llm', 'tools', 'all'
         .settings - show the current config settings
         .help - Show this help
         .quit - Quit the REPL
-        """)
+        """
+        )
         if len(ACTIVE_AGENTS) > 1:
             print("Loaded:")
             for agent in ACTIVE_AGENTS:
@@ -143,7 +146,7 @@ def repl_loop():
     hist = os.path.expanduser("~/.agentic_history")
     if os.path.exists(hist):
         readline.read_history_file(hist)
-            
+
     fancy = False
 
     print("Use .help for help")
@@ -196,8 +199,10 @@ def repl_loop():
             traceback.print_exc()
             print(f"Error: {e}")
 
+
 def main():
     repl_loop()
-    
+
+
 if __name__ == "__main__":
     main()

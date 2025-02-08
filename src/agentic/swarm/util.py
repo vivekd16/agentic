@@ -2,6 +2,7 @@ import inspect
 from datetime import datetime
 from pprint import pformat
 
+
 def debug_print(debug: bool, *args: str) -> None:
     if not debug:
         return

@@ -60,7 +60,7 @@ class Swarm:
 
         create_params = {
             "model": model_override or agent.model,
-            "temperature": 0.0, 
+            "temperature": 0.0,
             "messages": messages,
             "tools": tools or None,
             "tool_choice": agent.tool_choice,
@@ -124,7 +124,8 @@ class Swarm:
                 continue
             args = json.loads(tool_call.function.arguments)
             debug_print(
-                self.llm_debug, f"Processing tool call: {name} with arguments {args}")
+                self.llm_debug, f"Processing tool call: {name} with arguments {args}"
+            )
 
             func = function_map[name]
             # pass context_variables to agent functions
@@ -137,7 +138,11 @@ class Swarm:
             raw_result = function_map[name](**args)
 
             result: Result = self.handle_function_result(raw_result, debug)
-            result.tool_function = Function(name=name, arguments=tool_call.function.arguments, _request_id=tool_call.id)
+            result.tool_function = Function(
+                name=name,
+                arguments=tool_call.function.arguments,
+                _request_id=tool_call.id,
+            )
 
             if report_tool_result:
                 report_tool_result(name, result.value)

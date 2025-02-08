@@ -7,7 +7,7 @@ import base64
 import hashlib
 from unittest.mock import patch, MagicMock
 from cryptography.fernet import Fernet
-from agentic.secrets import SecretManager, get_machine_id, generate_fernet_key
+from agentic.agentic_secrets import SecretManager, get_machine_id, generate_fernet_key
 
 
 # Test fixtures
@@ -73,7 +73,7 @@ def test_get_machine_id_macos():
 
 # Tests for generate_fernet_key
 def test_generate_fernet_key(mock_machine_id):
-    with patch("agentic.secrets.get_machine_id", return_value=mock_machine_id):
+    with patch("agentic.agentic_secrets.get_machine_id", return_value=mock_machine_id):
         key = generate_fernet_key()
         assert len(key) == 44  # Standard Fernet key length
         assert isinstance(key, bytes)
@@ -82,7 +82,7 @@ def test_generate_fernet_key(mock_machine_id):
 
 
 def test_generate_fernet_key_no_machine_id():
-    with patch("agentic.secrets.get_machine_id", return_value=None):
+    with patch("agentic.agentic_secrets.get_machine_id", return_value=None):
         with pytest.raises(ValueError, match="Could not determine machine ID"):
             generate_fernet_key()
 

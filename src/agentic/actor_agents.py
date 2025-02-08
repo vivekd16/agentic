@@ -29,7 +29,14 @@ import yaml
 from typing import Callable, Any, List
 from pydantic import Field
 from .swarm import Swarm
-from .swarm.types import AgentFunction, Response, SwarmAgent, Result, ChatCompletionMessageToolCall, Function
+from .swarm.types import (
+    AgentFunction,
+    Response,
+    SwarmAgent,
+    Result,
+    ChatCompletionMessageToolCall,
+    Function,
+)
 from .swarm.util import merge_chunk, debug_print
 from jinja2 import Template
 import litellm
@@ -183,7 +190,9 @@ class ActorBaseAgent(SwarmAgent, Actor):
                 self.model, text=llm_message.choices[0].message.content
             )
         # Have to calc cost after we have seen all the chunks
-        debug_print(self._swarm.llm_debug, "That completion cost you: ", self._callback_params)
+        debug_print(
+            self._swarm.llm_debug, "That completion cost you: ", self._callback_params
+        )
 
         yield FinishCompletion.create(
             self.name,
@@ -202,7 +211,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
     def receiveMessage(self, actor_message, sender):
         self.relay_message(actor_message, sender)
-        #print(f"[RECEIVE: {self.myAddress}/{self.name}: {actor_message} from {sender}")
+        # print(f"[RECEIVE: {self.myAddress}/{self.name}: {actor_message} from {sender}")
 
         def report_calling_tool(name: str, args: dict):
             self.send(sender, ToolCall(self.name, name, args))
@@ -210,24 +219,29 @@ class ActorBaseAgent(SwarmAgent, Actor):
         def report_tool_result(name: str, result):
             self.send(sender, ToolResult(self.name, name, result))
 
-
         match actor_message:
             case Prompt() | TurnEnd() | ResumeWithInput():
                 if isinstance(actor_message, Prompt):
                     self.debug = actor_message.debug
                     self._prompter = sender
-                    #self.log(f"Prompt: {actor_message}")
+                    # self.log(f"Prompt: {actor_message}")
                     self.depth = actor_message.depth
                     init_len = len(self.history)
                     context_variables = {}
                     self.history.append(
                         {"role": "user", "content": actor_message.payload}
                     )
-                    self.send(sender, PromptStarted(self.name, actor_message.payload, self.depth))
+                    self.send(
+                        sender,
+                        PromptStarted(self.name, actor_message.payload, self.depth),
+                    )
                 elif isinstance(actor_message, TurnEnd):
                     # Sub-agent call "as tool" has completed. So finish our tool call with the agent result as the tool result
                     if not self.paused_context:
-                        self.log("Ignoring TurnEnd/ResumeWithInput event, parent not paused: ", actor_message)
+                        self.log(
+                            "Ignoring TurnEnd/ResumeWithInput event, parent not paused: ",
+                            actor_message,
+                        )
                         return
                     init_len = self.paused_context.orig_history_length
                     # This little tricky bit grabs the full child output from the TurnEnd event
@@ -245,7 +259,10 @@ class ActorBaseAgent(SwarmAgent, Actor):
                 elif isinstance(actor_message, ResumeWithInput):
                     # Call resuming us with user input after wait. We re-call our tool function after merging the human results
                     if not self.paused_context:
-                        self.log("Ignoring ResumeWithInput event, parent not paused: ", actor_message)
+                        self.log(
+                            "Ignoring ResumeWithInput event, parent not paused: ",
+                            actor_message,
+                        )
                         return
                     init_len = self.paused_context.orig_history_length
                     # Copy human input into our context
@@ -253,15 +270,17 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     # Re-call our tool function
                     tool_function = self.paused_context.tool_function
                     if tool_function is None:
-                        raise RuntimeError("Tool function not found on AgentResume event")
+                        raise RuntimeError(
+                            "Tool function not found on AgentResume event"
+                        )
                     # FIXME: Would be nice to DRY up the tool call handling
                     partial_response = self._swarm.handle_tool_calls(
                         self,
                         [
                             ChatCompletionMessageToolCall(
-                                id=(tool_function._request_id or ""), 
+                                id=(tool_function._request_id or ""),
                                 function=tool_function,
-                                type="function"
+                                type="function",
                             )
                         ],
                         self.functions,
@@ -273,7 +292,6 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     self.history.extend(partial_response.messages)
                     context_variables.update(partial_response.context_variables)
 
-
                 # This is the agent "turn" loop. We keep running as long as the agent
                 # requests more tool calls.
                 # Critically, if a "wait_for_human" tool is requested, then we save our
@@ -282,7 +300,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
                 while len(self.history) - init_len < 10:
                     for event in self._yield_completion_steps():
-                        #event] ", event.__dict__)
+                        # event] ", event.__dict__)
                         if event is None:
                             breakpoint()
                         self.send(sender, event)
@@ -293,7 +311,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     # these lines from Swarm.. not sure what they do
 
                     debug_print(self._swarm.llm_debug, "Received completion:", response)
-                    
+
                     self.history.append(response)
                     if not response.tool_calls:
                         # No more tool calls, so assume this turn is done
@@ -312,11 +330,9 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
                     # FIXME: handle this better, and handle the case of multiple tool calls
 
-                    last_tool_result: Result|None = partial_response.last_tool_result
+                    last_tool_result: Result | None = partial_response.last_tool_result
                     if last_tool_result:
-                        if (
-                            PauseForChildResult.matches_sentinel(last_tool_result.value)
-                        ):
+                        if PauseForChildResult.matches_sentinel(last_tool_result.value):
                             # agent needs to pause to wait for a child. Should have notified the child already
                             # child will call us back with TurnEnd
                             self.paused_context = AgentPauseContext(
@@ -325,7 +341,9 @@ class ActorBaseAgent(SwarmAgent, Actor):
                                 sender=sender,
                             )
                             return
-                        elif PauseForInputResult.matches_sentinel(last_tool_result.value):
+                        elif PauseForInputResult.matches_sentinel(
+                            last_tool_result.value
+                        ):
                             # tool function has request user input. We save the tool function so we can re-call it when
                             # we get the response back
                             self.paused_context = AgentPauseContext(
@@ -334,7 +352,12 @@ class ActorBaseAgent(SwarmAgent, Actor):
                                 sender=sender,
                                 tool_function=last_tool_result.tool_function,
                             )
-                            self.send(sender, WaitForInput(self.name, last_tool_result.context_variables))
+                            self.send(
+                                sender,
+                                WaitForInput(
+                                    self.name, last_tool_result.context_variables
+                                ),
+                            )
                             return
                         elif FinishAgentResult.matches_sentinel(
                             partial_response.messages[-1]["content"]
@@ -342,7 +365,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                             # short-circuit any further agent execution. But for chat history we need to
                             # record a result from the tool call
                             msg = deepcopy(partial_response.messages[-1])
-                            msg['content'] = ''
+                            msg["content"] = ""
                             self.history.extend(partial_response.messages)
                             break
 
@@ -371,8 +394,8 @@ class ActorBaseAgent(SwarmAgent, Actor):
                 self.instructions = state.get("instructions")
                 if "model" in state:
                     self.model = state["model"]
-                if 'max_tokens' in state:
-                    self.max_tokens = state['max_tokens']
+                if "max_tokens" in state:
+                    self.max_tokens = state["max_tokens"]
 
                 self.send(
                     sender,
@@ -412,10 +435,10 @@ class ActorBaseAgent(SwarmAgent, Actor):
         self.send(
             child_ref,
             Prompt(
-                self.name, 
-                message, 
-                depth=depth, 
-                debug=self.debug, 
+                self.name,
+                message,
+                depth=depth,
+                debug=self.debug,
             ),
         )
         if handoff:
@@ -443,15 +466,22 @@ logger = None
 def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
     global logger
 
-    asys = ActorSystem('multiprocTCPBase')
+    if os.environ.get("AGENTIC_SIMPLE_ACTORS"):
+        asys = ActorSystem()
+    else:
+        asys = ActorSystem("multiprocTCPBase")
     if logger is None:
         logger = asys.createActor(Logger)
     return asys, logger
 
+
 def shutdown_actor_system():
-    asys = ActorSystem('multiprocTCPBase')
+    asys = ActorSystem("multiprocTCPBase")
     asys.shutdown()
+
+
 atexit.register(shutdown_actor_system)
+
 
 class HandoffAgentWrapper:
     def __init__(self, agent):
@@ -488,7 +518,7 @@ class ActorAgent(AgentBase):
         self.template_dir = template_dir
         self._tools = tools
         self.max_tokens = max_tokens
-        
+
         # Initialize the base actor
         self._init_base_actor(instructions)
 
@@ -546,7 +576,8 @@ class ActorAgent(AgentBase):
                 )
             elif isinstance(func, HandoffAgentWrapper):
                 # add a child agent as a tool
-                useable.append(AddChild(
+                useable.append(
+                    AddChild(
                         func.agent.name,
                         func.agent._actor,
                         handoff=True,
@@ -556,7 +587,7 @@ class ActorAgent(AgentBase):
                 useable.extend(func.get_tools())
         return useable
 
-    def add_child(self, child_agent: 'ActorAgent'):
+    def add_child(self, child_agent: "ActorAgent"):
         """
         Add a child agent to this agent.
 
@@ -610,6 +641,8 @@ class ActorAgent(AgentBase):
 
 from rich.live import Live
 from rich.markdown import Markdown
+
+
 class ActorAgentRunner:
     def __init__(self, agent: ActorAgent, debug: bool = False) -> None:
         self.agent = agent
@@ -623,8 +656,8 @@ class ActorAgentRunner:
         )
 
     def turn(self, request: str, debug: bool = False) -> str:
-        """ Runs the agent and waits for the turn to finish, then returns the results
-            of all output events as a single string."""
+        """Runs the agent and waits for the turn to finish, then returns the results
+        of all output events as a single string."""
         if debug:
             self.debug = True
         self.start(request)
@@ -637,21 +670,21 @@ class ActorAgentRunner:
                 results.append(str(event))
 
         return "".join(results)
-    
+
     def __lshift__(self, prompt: str):
         print(self.turn(prompt))
 
     def _should_print(self, event: Event) -> bool:
         flag = self.debug or ""
-        if flag == True or flag == 'all':
+        if flag == True or flag == "all":
             return True
         if event.is_output:
             return True
         elif isinstance(event, (ToolCall, ToolResult, PromptStarted)):
-            return 'tools' in flag
+            return "tools" in flag
         else:
             return False
-        
+
     def next(
         self,
         include_children: bool = True,
@@ -661,7 +694,11 @@ class ActorAgentRunner:
         agents_running = set([self.agent.name])
         waiting_final_timestamp = None
         while True:
-            event: Event = self.asys.listen(1) if waiting_final_timestamp else self.asys.listen(timeout)
+            event: Event = (
+                self.asys.listen(1)
+                if waiting_final_timestamp
+                else self.asys.listen(timeout)
+            )
             if event is None:
                 break
             if isinstance(event, PoisonMessage):
@@ -669,7 +706,9 @@ class ActorAgentRunner:
                 continue
             if event.agent not in agents_running:
                 agents_running.add(event.agent)
-            if not include_completions and isinstance(event, (StartCompletion, FinishCompletion)):
+            if not include_completions and isinstance(
+                event, (StartCompletion, FinishCompletion)
+            ):
                 continue
             if isinstance(event, TurnEnd):
                 agents_running.remove(event.agent)
@@ -682,7 +721,7 @@ class ActorAgentRunner:
             yield event
 
     def reset_session(self):
-        """ Clears the chat history from the agent """
+        """Clears the chat history from the agent"""
         self.asys.tell(
             self.agent._actor,
             ResetHistory(self.agent.name),
@@ -743,7 +782,11 @@ class ActorAgentRunner:
 
                 output = ""
                 with console.status("[bold blue]thinking...", spinner="dots") as status:
-                    with Live(Markdown(output), refresh_per_second=1, auto_refresh=not self.debug) as live:
+                    with Live(
+                        Markdown(output),
+                        refresh_per_second=1,
+                        auto_refresh=not self.debug,
+                    ) as live:
                         self.start(line)
 
                         for event in self.next(include_completions=True):
@@ -771,7 +814,6 @@ class ActorAgentRunner:
             except Exception as e:
                 traceback.print_exc()
                 print(f"Error: {e}")
-
 
         while not fancy:
             try:

@@ -99,7 +99,9 @@ class LinkedinDataTool(BaseAgenticTool):
         df = pd.DataFrame([profile_data])
         return str(df)
 
-    async def get_company_linkedin_info(self, company_username_or_domain: str) -> str|pd.DataFrame:
+    async def get_company_linkedin_info(
+        self, company_username_or_domain: str
+    ) -> str | pd.DataFrame:
         """queries the LinkedIn Data API of rapidapi to get company information either by username or domain.
         Args:
             company_username_or_domain: Company username (e.g., "Google") or domain (e.g., "google.com")

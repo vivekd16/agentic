@@ -21,8 +21,7 @@ with col1.container():
     if "messages1" not in st.session_state:
         st.session_state.messages1 = []
 
-
-    if 'agent1' not in st.session_state:
+    if "agent1" not in st.session_state:
         st.session_state.agent1 = selected_agent1
 
     selected_agent1 = st.selectbox(
@@ -49,7 +48,7 @@ with col1.container():
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            with st.spinner('thinking...'):
+            with st.spinner("thinking..."):
                 if "runner" not in st.session_state or st.session_state.runner is None:
                     st.session_state.runner = AgentRunner(agent)
 
@@ -63,16 +62,17 @@ with col1.container():
 
                 with st.chat_message("assistant"):
                     response = st.write_stream(get_output())
-                    
-                st.session_state.messages1.append({"role": "assistant", "content": response})
+
+                st.session_state.messages1.append(
+                    {"role": "assistant", "content": response}
+                )
 
 
 with col2.container():
     if "messages2" not in st.session_state:
         st.session_state.messages2 = []
 
-
-    if 'agent2' not in st.session_state:
+    if "agent2" not in st.session_state:
         st.session_state.agent2 = selected_agent2
 
     selected_agent2 = st.selectbox(
@@ -98,7 +98,7 @@ with col2.container():
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            with st.spinner('thinking...'):
+            with st.spinner("thinking..."):
                 if "runner" not in st.session_state or st.session_state.runner is None:
                     st.session_state.runner2 = AgentRunner(agent2)
 
@@ -112,6 +112,7 @@ with col2.container():
 
                 with st.chat_message("assistant"):
                     response = st.write_stream(get_output())
-                    
-                st.session_state.messages2.append({"role": "assistant", "content": response})
 
+                st.session_state.messages2.append(
+                    {"role": "assistant", "content": response}
+                )

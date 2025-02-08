@@ -15,7 +15,8 @@ def test_agent():
 
     agent_runnner = AgentRunner(agent)
     response = agent_runnner.turn("please tell me hello")
-    assert 'hello' in response.lower(), response
+    assert "hello" in response.lower(), response
+
 
 def test_agent_as_tool():
     agent = Agent(
@@ -31,19 +32,20 @@ def test_agent_as_tool():
 
     agent_runnner = AgentRunner(agent)
     response = agent_runnner.turn("run your instructions")
-    assert 'agent 2' in response.lower(), response
+    assert "agent 2" in response.lower(), response
+
 
 read_file_was_called: bool = False
 
 
+def read_file() -> str:
+    """Reads the current file"""
+    global read_file_was_called
+    read_file_was_called = True
+    return "Hello world, i am in a file."
+
 def test_simple_tool_use():
     global read_file_was_called
-
-    def read_file() -> str:
-        """Reads the current file"""
-        global read_file_was_called
-        read_file_was_called = True
-        return "Hello world, i am in a file."
 
     agent = Agent(
         name="Agent A",

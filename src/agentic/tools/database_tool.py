@@ -13,13 +13,16 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from agentic import RunContext, PauseForInputResult
 
+
 class DatabaseConnectionError(Exception):
     pass
+
 
 class LocalhostConnectionError(DatabaseConnectionError):
     pass
 
-class DatabaseTool():
+
+class DatabaseTool:
     connection_string: str = ""
     engine: Engine = None
 
@@ -27,127 +30,169 @@ class DatabaseTool():
         return [
             self.run_database_query,
             self.get_database_type,
-            #self.connect_to_database,
+            # self.connect_to_database,
         ]
 
     def parse_connection_string(self, connection_string: str) -> str:
         if connection_string.startswith("sqlite"):
             return connection_string
-        
+
         """Parse the connection string or CLI command and check for localhost."""
-        if '://' in connection_string:  # SQLAlchemy connection string
+        if "://" in connection_string:  # SQLAlchemy connection string
             parsed = urlparse(connection_string)
 
             # Modify the scheme based on the database type
             scheme = parsed.scheme
-            if scheme == 'mysql':
-                new_scheme = 'mysql+pymysql'
-            elif scheme == 'postgresql':
-                new_scheme = 'postgresql+psycopg2'
-            elif scheme == 'mssql':
+            if scheme == "mysql":
+                new_scheme = "mysql+pymysql"
+            elif scheme == "postgresql":
+                new_scheme = "postgresql+psycopg2"
+            elif scheme == "mssql":
                 # Convert `mssql+pyodbc` to `mssql+pymssql`
                 # Split the netloc part into user credentials and host+port/database
-                netloc_parts = parsed.netloc.split('@', 1) if '@' in parsed.netloc else ['', parsed.netloc]
-                user_info = netloc_parts[0].split(':', 1) if ':' in netloc_parts[0] else [netloc_parts[0], '']
+                netloc_parts = (
+                    parsed.netloc.split("@", 1)
+                    if "@" in parsed.netloc
+                    else ["", parsed.netloc]
+                )
+                user_info = (
+                    netloc_parts[0].split(":", 1)
+                    if ":" in netloc_parts[0]
+                    else [netloc_parts[0], ""]
+                )
                 user = user_info[0]
-                password = user_info[1] if len(user_info) > 1 else ''
+                password = user_info[1] if len(user_info) > 1 else ""
 
                 # Split host and port/database
-                host_and_port = netloc_parts[1].split('/', 1) if '/' in netloc_parts[1] else [netloc_parts[1], '']
+                host_and_port = (
+                    netloc_parts[1].split("/", 1)
+                    if "/" in netloc_parts[1]
+                    else [netloc_parts[1], ""]
+                )
                 host = host_and_port[0]
-                database = host_and_port[1] if len(host_and_port) > 1 else ''
+                database = host_and_port[1] if len(host_and_port) > 1 else ""
 
                 # Handle empty values and defaults
                 if not user:
-                    user = ''
+                    user = ""
                 if not host:
                     raise ValueError("Host is required in the connection string.")
                 if not database:
-                    database = ''  # Default to empty string if not specified
+                    database = ""  # Default to empty string if not specified
 
                 # Parse and remove the driver parameter from the query
                 query_params = parse_qs(parsed.query)
-                query_params.pop('driver', None)
+                query_params.pop("driver", None)
                 new_query = urlencode(query_params, doseq=True)
 
-                new_scheme = 'mssql+pymssql'
+                new_scheme = "mssql+pymssql"
                 # Reconstruct the connection string
-                return urlunparse((new_scheme, f"{user}:{password}@{host}", '', '', new_query, ''))
+                return urlunparse(
+                    (new_scheme, f"{user}:{password}@{host}", "", "", new_query, "")
+                )
             else:
                 new_scheme = scheme  # Keep the original scheme for other databases
             # Reconstruct the connection string with the new scheme
-            return urlunparse((new_scheme, parsed.netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+            return urlunparse(
+                (
+                    new_scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    parsed.query,
+                    parsed.fragment,
+                )
+            )
         else:  # CLI command
             # PostgreSQL
             pg_match = re.match(
-                r'(?:PGPASSWORD=(\S+)\s+)?psql\s+(?:-h|--host)\s+(\S+)\s+(?:-p|--port)\s+(\d+)?\s+(?:-U|--username)\s+(\S+)(?:\s+(?:-d|--dbname)\s+(\S+))?(?:\s+(\S+))?(?:\s+--set=sslmode=(\S+))?(?:\s+(-W))?', 
-                connection_string
+                r"(?:PGPASSWORD=(\S+)\s+)?psql\s+(?:-h|--host)\s+(\S+)\s+(?:-p|--port)\s+(\d+)?\s+(?:-U|--username)\s+(\S+)(?:\s+(?:-d|--dbname)\s+(\S+))?(?:\s+(\S+))?(?:\s+--set=sslmode=(\S+))?(?:\s+(-W))?",
+                connection_string,
             )
-            
+
             if pg_match:
-                
+
                 # Unpack matched groups with default values
-                password, host, port, user, db_with_d_flag, db_positional, sslmode, prompt_password = pg_match.groups(default='')
-                
+                (
+                    password,
+                    host,
+                    port,
+                    user,
+                    db_with_d_flag,
+                    db_positional,
+                    sslmode,
+                    prompt_password,
+                ) = pg_match.groups(default="")
+
                 # Database can come either from the -d flag or as a positional argument
                 database = db_with_d_flag or db_positional
-                
+
                 if not database:
-                    raise ValueError("Database is required either via -d or as a positional argument.")
-                
+                    raise ValueError(
+                        "Database is required either via -d or as a positional argument."
+                    )
+
                 # Default port to 5432 if not specified
                 port = port or "5432"
-                
+
                 # Return formatted connection string for SQLAlchemy
-                return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+                return (
+                    f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}"
+                )
 
             # MySQL
             mysql_match = re.match(
-                r'mysql\s+-h\s+(\S+)\s+-P\s+(\d+)\s+-u\s+(\S+)\s+(?:-p\s*(\S*)\s*)?(?:-D\s+(\S+))?', 
-                connection_string
+                r"mysql\s+-h\s+(\S+)\s+-P\s+(\d+)\s+-u\s+(\S+)\s+(?:-p\s*(\S*)\s*)?(?:-D\s+(\S+))?",
+                connection_string,
             )
-            
+
             if mysql_match:
-                
+
                 # Unpack matched groups with default values
-                host, port, user, password, database = mysql_match.groups(default='')
-                
+                host, port, user, password, database = mysql_match.groups(default="")
+
                 # Handle optional password and database
-                password = password if password is not None else ''  # No password provided
-                database = database if database else ''  # Default to empty string if not specified
-                
+                password = (
+                    password if password is not None else ""
+                )  # No password provided
+                database = (
+                    database if database else ""
+                )  # Default to empty string if not specified
+
                 # Return the formatted connection string for further use (e.g., SQLAlchemy)
                 return f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
 
             # MSSQL
             mssql_match = re.match(
-                r'(?:sqlcmd|mssql-cli)\s+-S\s+(\S+)\s+-U\s+(\S+)\s+-P\s+(\S+)(?:\s+-d\s+(\S+))?', 
-                connection_string
+                r"(?:sqlcmd|mssql-cli)\s+-S\s+(\S+)\s+-U\s+(\S+)\s+-P\s+(\S+)(?:\s+-d\s+(\S+))?",
+                connection_string,
             )
-            
+
             if mssql_match:
-                
+
                 # Unpack matched groups with default values
-                tool, host, user, password, database = mssql_match.groups(default='')
-                
+                tool, host, user, password, database = mssql_match.groups(default="")
+
                 # Handle the absence of the -d parameter (optional database)
                 if database is None:
-                    database = ''  # Default to empty string or set a default value if needed
-                
+                    database = (
+                        ""  # Default to empty string or set a default value if needed
+                    )
+
                 # Return the connection string formatted for SQLAlchemy or other usage
                 return f"mssql+pymssql://{user}:{password}@{host}/{database}"
-            
+
             # Handle ODBC-style MSSQL connection strings with optional parameters
             odbc_match = re.match(
-                r'Server=(\S+)?(?:;Database=(\S+))?(?:;User Id=(\S+))?(?:;Password=(\S+))?;', 
-                connection_string
+                r"Server=(\S+)?(?:;Database=(\S+))?(?:;User Id=(\S+))?(?:;Password=(\S+))?;",
+                connection_string,
             )
-            
+
             if odbc_match:
-                
+
                 # Unpack matched groups with default values
-                host, database, user, password = odbc_match.groups(default='')
-                
+                host, database, user, password = odbc_match.groups(default="")
+
                 # Return the connection string formatted for SQLAlchemy or other usage
                 return f"mssql+pymssql://{user}:{password}@{host}/{database}"
         raise ValueError("Unable to parse connection string")
@@ -162,14 +207,20 @@ class DatabaseTool():
         except Exception as e:
             raise DatabaseConnectionError(f"Failed to create database engine: {str(e)}")
 
-    def run_database_query(self, sql_query: str, run_context: RunContext) -> pd.DataFrame|dict|PauseForInputResult:
-        """ Runs a SQL query against a database."""
+    def run_database_query(
+        self, sql_query: str, run_context: RunContext
+    ) -> pd.DataFrame | dict | PauseForInputResult:
+        """Runs a SQL query against a database."""
 
         if not self.engine:
-            connection_string = self.connection_string or run_context.get_config("database_url")
+            connection_string = self.connection_string or run_context.get_config(
+                "database_url"
+            )
             if not connection_string:
-                return PauseForInputResult({"database_url": "Database connection string"})
-            
+                return PauseForInputResult(
+                    {"database_url": "Database connection string"}
+                )
+
             self.connection_string = connection_string
             run_context.set_config("database_url", connection_string)
             run_context.info(f"Connecting to database: {connection_string}")
@@ -179,7 +230,7 @@ class DatabaseTool():
             with self.engine.begin() as connection:
                 # Execute the query
                 result = connection.execute(text(sql_query))
-                
+
                 # Check if the query returns rows
                 if result.returns_rows:
                     # Try to read it into a DataFrame
@@ -192,7 +243,9 @@ class DatabaseTool():
                 else:
                     # Query didn't return any rows
                     if result.rowcount is not None and result.rowcount >= 0:
-                        return {"status": f"Query executed successfully. Rows affected: {result.rowcount}"}
+                        return {
+                            "status": f"Query executed successfully. Rows affected: {result.rowcount}"
+                        }
                     else:
                         return {"status": "Query executed successfully"}
         except LocalhostConnectionError as e:
@@ -207,19 +260,21 @@ class DatabaseTool():
             return {"status": f"Unexpected error: {str(e)}"}
 
     def get_database_type(self) -> str:
-        """ Returns the type and SQL dialect of the connected database """
+        """Returns the type and SQL dialect of the connected database"""
         if not self.connection_string:
             return "No database URL configured"
-        
+
         try:
-            parsed_connection_string = self.parse_connection_string(self.connection_string)
-            dialect = parsed_connection_string.split('://')[0].split('+')[0]
+            parsed_connection_string = self.parse_connection_string(
+                self.connection_string
+            )
+            dialect = parsed_connection_string.split("://")[0].split("+")[0]
             return dialect.capitalize()
         except LocalhostConnectionError as e:
             return f"Error: {str(e)}"
         except Exception as e:
             return f"Error determining database type: {str(e)}"
-        
+
     def connect_to_database(self, connection_string: str = None) -> dict:
         """Connects to the database using the provided connection string or the connected database.
         Sample:
@@ -232,7 +287,7 @@ class DatabaseTool():
 
         if not connection_string:
             return {"status": "Connection string is missing"}
-        
+
         try:
             engine = self.create_engine(connection_string)
             with engine.connect() as connection:
@@ -251,13 +306,13 @@ class DatabaseTool():
             return {"status": f"Unexpected error: {str(e)}"}
 
     def test_credential(self, cred, secrets: dict) -> str:
-        """ Test that the given credential secrets are valid. Return None if OK, otherwise
-            return an error message.
+        """Test that the given credential secrets are valid. Return None if OK, otherwise
+        return an error message.
         """
         connection_string = secrets.get("database_url")
         if not connection_string:
             return "Connection string is missing"
-        
+
         try:
             engine = self.create_engine(connection_string)
             with engine.connect() as connection:

@@ -34,6 +34,7 @@ from .swarm.types import (
     Response,
     SwarmAgent,
     Result,
+    RunContext,
     ChatCompletionMessageToolCall,
     Function,
 )
@@ -93,7 +94,7 @@ class AgentPauseContext:
 class ActorBaseAgent(SwarmAgent, Actor):
     name: str = "Agent"
     model: str = "gpt-4o"
-    instructions: str = "You are a helpful agent."
+    instructions_str: str = "You are a helpful agent."
     functions: List[AgentFunction] = []
     tool_choice: str = None
     parallel_tool_calls: bool = True
@@ -108,6 +109,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
     # The Actor who sent us our Prompt
     _prompter: Actor = None
     max_tokens: int = None
+    run_context: RunContext = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -128,7 +130,21 @@ class ActorBaseAgent(SwarmAgent, Actor):
             if key not in os.environ:
                 os.environ[key] = agentic_secrets.get_secret(key)
 
-    def _yield_completion_steps(self, context_variables: dict = {}):
+    def get_instructions(self, context: RunContext):
+        prompt = self.instructions_str
+        if self.memories:
+            prompt += """
+<memory blocks>
+{% for memory in MEMORIES -%}
+{{memory|trim}}
+{%- endfor %}
+</memory>
+"""
+        return Template(prompt).render(
+            context.get_context() | {"MEMORIES": self.memories}
+        )
+
+    def _yield_completion_steps(self, run_context: RunContext):
         llm_message = {
             "content": "",
             "sender": self.name,
@@ -142,7 +158,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                 }
             ),
         }
-        yield StartCompletion(self.name)
+        yield StartCompletion(self.name, self.depth)
 
         self._callback_params = {}
 
@@ -167,7 +183,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
         completion = self._swarm.get_chat_completion(
             agent=self,
             history=self.history,
-            context_variables=context_variables,
+            run_context=run_context,
             model_override=None,
             stream=True,
             debug=self.debug,
@@ -214,6 +230,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
             self._callback_params.get("input_tokens"),
             self._callback_params.get("output_tokens"),
             self._callback_params.get("elapsed"),
+            self.depth,
         )
 
     def relay_message(self, actor_message, sender):
@@ -223,6 +240,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
     def receiveMessage(self, actor_message, sender):
         self.relay_message(actor_message, sender)
+        self._swarm.llm_debug = os.environ.get("AGENTIC_DEBUG") == "llm"
         # print(f"[RECEIVE: {self.myAddress}/{self.name}: {actor_message} from {sender}")
 
         def report_calling_tool(name: str, args: dict):
@@ -234,6 +252,11 @@ class ActorBaseAgent(SwarmAgent, Actor):
         match actor_message:
             case Prompt() | TurnEnd() | ResumeWithInput():
                 if isinstance(actor_message, Prompt):
+                    self.run_context = (
+                        RunContext(agent_name=self.name)
+                        if self.run_context is None
+                        else self.run_context
+                    )
                     self.debug = actor_message.debug
                     self._prompter = sender
                     # self.log(f"Prompt: {actor_message}")
@@ -279,6 +302,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                     init_len = self.paused_context.orig_history_length
                     # Copy human input into our context
                     context_variables = actor_message.request_keys.copy()
+                    self.run_context.update(context_variables)
                     # Re-call our tool function
                     tool_function = self.paused_context.tool_function
                     if tool_function is None:
@@ -296,7 +320,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                             )
                         ],
                         self.functions,
-                        context_variables,
+                        self.run_context,
                         self.debug,
                         report_calling_tool,
                         report_tool_result,
@@ -311,7 +335,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                 # should call send another prompt when they have it and we will resume the turn.
 
                 while len(self.history) - init_len < 10:
-                    for event in self._yield_completion_steps():
+                    for event in self._yield_completion_steps(self.run_context):
                         # event] ", event.__dict__)
                         if event is None:
                             breakpoint()
@@ -334,7 +358,7 @@ class ActorBaseAgent(SwarmAgent, Actor):
                         self,
                         response.tool_calls,
                         self.functions,
-                        context_variables,
+                        self.run_context,
                         self.debug,
                         report_calling_tool,
                         report_tool_result,
@@ -386,30 +410,41 @@ class ActorBaseAgent(SwarmAgent, Actor):
 
                 # Altough we emit interim events, we also publish all the messages from this 'turn'
                 # in the final event. This lets a caller process our "function result" with a single event
-                if isinstance(actor_message, Prompt):
+                if isinstance(actor_message, (Prompt, TurnEnd)):
                     self.send(
                         sender,
-                        TurnEnd(self.name, self.history[init_len:], context_variables),
+                        TurnEnd(
+                            self.name,
+                            self.history[init_len:],
+                            context_variables,
+                            self.depth,
+                        ),
                     )
                 self.paused_context = None
 
             case SetState():
                 self.inject_secrets_into_env()
                 state = actor_message.payload
-                self.name = state.get("name")
-                self._logger = state.get("logger")
-                self.functions = []
-                for f in state.get("functions"):
-                    if isinstance(f, AddChild):
-                        f = self._build_child_func(f)
-                    self.functions.append(f)
-                self.instructions = state.get("instructions")
-                if "model" in state:
-                    self.model = state["model"]
-                if "max_tokens" in state:
-                    self.max_tokens = state["max_tokens"]
-                if "memories" in state:
-                    self.memories = state["memories"]
+                remap = {"instructions": "instructions_str", "logger": "_logger"}
+
+                for key in [
+                    "name",
+                    "logger",
+                    "instructions",
+                    "model",
+                    "max_tokens",
+                    "memories",
+                ]:
+                    if key in state:
+                        setattr(self, remap.get(key, key), state[key])
+
+                # Update our functions
+                if "functions" in state:
+                    self.functions = []
+                    for f in state.get("functions"):
+                        if isinstance(f, AddChild):
+                            f = self._build_child_func(f)
+                        self.functions.append(f)
 
                 self.send(
                     sender,
@@ -583,6 +618,17 @@ class ActorAgent(AgentBase):
             ),
         )
 
+    def add_tool(self, tool: Any):
+        self._tools.append(tool)
+        self._update_state({"functions": self._get_funcs(self._tools)})
+
+    def _update_state(self, state: dict):
+        asys, logger = create_actor_system()
+        asys.ask(
+            self._actor,
+            SetState(self.name, state),
+        )
+
     def _get_funcs(self, thefuncs: list):
         useable = []
         for func in thefuncs:
@@ -623,21 +669,7 @@ class ActorAgent(AgentBase):
         Args:
             child_agent: Another ActorAgent instance to add as a child
         """
-        asys, logger = create_actor_system()
-
-        # sending the AddChild event has the effect of adding the child function
-        # to our list of tool functions
-        asys.ask(
-            self._actor,
-            AddChild(
-                child_agent.name,
-                child_agent._actor,
-            ),
-        )
-
-    def add_tool(self, tool: Any):
-        new_funcs = self._get_funcs([tool])
-        self._tools.extend(new_funcs)
+        self.add_tool(child_agent)
 
     @property
     def prompt_variables(self) -> dict:
@@ -708,8 +740,14 @@ class ActorAgentRunner:
             return True
         if event.is_output:
             return True
-        elif isinstance(event, (ToolCall, ToolResult, PromptStarted)):
+        elif isinstance(event, (ToolCall, ToolResult)):
             return "tools" in flag
+        elif isinstance(event, PromptStarted):
+            return "llm" in flag or "agents" in flag
+        elif isinstance(event, TurnEnd):
+            return "agents" in flag
+        elif isinstance(event, (StartCompletion, FinishCompletion)):
+            return "llm" in flag
         else:
             return False
 
@@ -743,6 +781,7 @@ class ActorAgentRunner:
                 if len(agents_running) == 0:
                     # All agents are finished
                     if waiting_final_timestamp:
+                        yield event
                         break
                     else:
                         waiting_final_timestamp = time.time()
@@ -863,9 +902,8 @@ class ActorAgentRunner:
                         self.continue_with(replies)
                     elif isinstance(event, FinishCompletion):
                         saved_completions.append(event)
-                    else:
-                        if self._should_print(event):
-                            print(str(event), end="")
+                    if self._should_print(event):
+                        print(str(event), end="")
                 print()
                 for row in print_stats_report(saved_completions):
                     console.out(row)

@@ -10,6 +10,9 @@ from .base import BaseAgenticTool
 class LinkedinDataTool(BaseAgenticTool):
     BASE_URL: ClassVar[str] = "https://linkedin-data-api.p.rapidapi.com"
 
+    def __init__(self):
+        super().__init__()
+
     def get_api_key(self) -> str | None:
         """Retrieve RAPIDAPI_KEY."""
         return os.environ.get("RAPIDAPI_KEY")

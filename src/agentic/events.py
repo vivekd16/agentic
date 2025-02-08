@@ -18,11 +18,14 @@ class Event:
     payload: Any
     depth: int = 0
 
-    def print(self):
-        print(self)
-
     def __str__(self) -> str:
         return str(f"[{self.agent}: {self.type}] {self.payload}\n")
+
+    def print(self, debug_level: str):
+        return str(self)
+
+    def _indent(self, msg: str):
+        return "\n" + "  " * self.depth + msg + "\n"
 
     def _safe(self, d, keys: list[str], default_val=None):
         for k in keys:
@@ -67,7 +70,10 @@ class Prompt(Event):
 
 class PromptStarted(Event):
     def __init__(self, agent: str, message: str, depth: int = 0):
-        super().__init__(agent, "prompt_stated", message, depth)
+        super().__init__(agent, "prompt_started", message, depth)
+
+    def print(self, debug_level: str):
+        return self._indent(str(self))
 
 
 class ResetHistory(Event):
@@ -122,8 +128,8 @@ class ToolResult(Event):
 
 
 class StartCompletion(Event):
-    def __init__(self, agent: str):
-        super().__init__(agent, "completion_start", {})
+    def __init__(self, agent: str, depth: int = 0):
+        super().__init__(agent, "completion_start", {}, depth)
 
 
 class FinishCompletion(Event):
@@ -133,8 +139,10 @@ class FinishCompletion(Event):
     OUTPUT_TOKENS_KEY = "output_tokens"
     ELAPSED_TIME_KEY = "elapsed_time"
 
-    def __init__(self, agent: str, llm_message: Message, metadata: dict = {}):
-        super().__init__(agent, "completion_end", llm_message)
+    def __init__(
+        self, agent: str, llm_message: Message, metadata: dict = {}, depth: int = 0
+    ):
+        super().__init__(agent, "completion_end", llm_message, depth)
         self.metadata = metadata
 
     @classmethod
@@ -147,6 +155,7 @@ class FinishCompletion(Event):
         input_tokens: int | None,
         output_tokens: int | None,
         elapsed_time: float | None,
+        depth: int = 0,
     ):
         meta = {
             cls.MODEL_KEY: model,
@@ -156,7 +165,7 @@ class FinishCompletion(Event):
             cls.ELAPSED_TIME_KEY: elapsed_time or 0,
         }
 
-        return cls(agent, llm_message, meta)
+        return cls(agent, llm_message, meta, depth)
 
     @property
     def response(self) -> Message:
@@ -164,9 +173,11 @@ class FinishCompletion(Event):
 
 
 class TurnEnd(Event):
-    def __init__(self, agent: str, messages: list, context_variables: dict = {}):
+    def __init__(
+        self, agent: str, messages: list, context_variables: dict = {}, depth: int = 0
+    ):
         super().__init__(
-            agent, "turn_end", {"messages": messages, "vars": context_variables}
+            agent, "turn_end", {"messages": messages, "vars": context_variables}, depth
         )
 
     @property
@@ -180,6 +191,11 @@ class TurnEnd(Event):
     @property
     def context_variables(self):
         return self.payload["vars"]
+
+    def print(self, debug_level: str):
+        if debug_level == "agents":
+            return self._indent(f"[{self.agent}: finished turn]")
+        return super().print(debug_level)
 
 
 class SetState(Event):

@@ -27,6 +27,9 @@ class RunContext:
     def __setitem__(self, key, value):
         self._context[key] = value
 
+    def update(self, context: dict):
+        self._context.update(context)
+
     def get_config(self, key, default=None):
         return settings.get(
             self.agent_name + "/" + key, settings.get(key, self.get(key, default))
@@ -41,6 +44,9 @@ class RunContext:
             agentic_secrets.get_secret(key, self.get(key, default)),
         )
 
+    def get_context(self) -> dict:
+        return self._context
+
     def error(self, *args):
         print("ERROR:", *args)
 
@@ -50,16 +56,21 @@ class RunContext:
     def warn(self, *args):
         print("WARNING:", *args)
 
+    def __repr__(self):
+        return f"RunContext({self._context})"
+
 
 class SwarmAgent(BaseModel):
     name: str = "Agent"
     model: str = "gpt-4o"
-    instructions: Union[str, Callable[[RunContext], str]] = "You are a helpful agent."
-    functions: List[AgentFunction] = []
+    instructions_str: str = "You are a helpful agent."
     tool_choice: str = "auto"
     parallel_tool_calls: bool = True
     trim_context: bool = True
     max_tokens: bool = None
+
+    def get_instructions(self, context: RunContext) -> str:
+        return self.instructions_str
 
 
 class Result(BaseModel):
@@ -81,5 +92,7 @@ class Result(BaseModel):
 class Response(BaseModel):
     messages: List = []
     agent: Optional[SwarmAgent] = None
+    # These are meant to be updates to Run Context variables. But I think it's easier for
+    # tools to just update RunContext directly.
     context_variables: dict = {}
     last_tool_result: Optional[Result] = None

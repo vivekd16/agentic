@@ -12,28 +12,14 @@ from .base import BaseAgenticTool
 
 
 class ScaleSerpBrowserTool(BaseAgenticTool):
-    # def __init__(self, **kwargs):
-    #     if kwargs:
-    #         super().__init__(**kwargs)
-    #     else:
-    #         super().__init__(
-    #             id = "web_browser",
-    #             system_name = "Web Browsing (Scale SERP)",
-    #             logo_url="https://uxwing.com/wp-content/themes/uxwing/download/internet-network-technology/internet-web-browser-icon.png",
-    #             auth_config = { },
-    #             category=ToolCategory.CATEGORY_INTERNET,
-    #             help="""
-    # Web search or download web content using Scale SERP
-    # """,
-    #     )
+    def __init__(self):
+        super().__init__()
 
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions(
-            [
-                self.browse_web_tool,
-                self.download_web_pages,
-            ]
-        )
+        return [
+            self.browse_web_tool,
+            self.download_web_pages,
+        ]
 
     @staticmethod
     async def try_scrapingbee(search: str) -> list[tuple[str, str]]:

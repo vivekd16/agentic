@@ -1,7 +1,12 @@
-PRODUCER: >
+FULL_PRODUCER: >
   1. Call the AI News Reporter to get the daily news report.
   2. Now convert the report into speech, choosing one of the available voices at random.
   3. now call the Transistor agent, ask it to create and then publish a new episode using the audio link and naming the episode "Latest AI news from <date>" and add the date.
+  4. Print the episode ID returned
+PRODUCER: >
+  1. Call the AI News Reporter to get the daily news report.
+  2. Now convert the report into speech, choosing one of the available voices at random.
+  3. print the audio link
   4. Print the episode ID returned
 REPORTER: >
   You are an experienced, hard-hitting news reporter. You are preparing a news report.

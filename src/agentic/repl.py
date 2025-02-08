@@ -50,8 +50,8 @@ def print_stats_report(completions: list[FinishCompletion]):
 
 
 ACTIVE_AGENTS: List[AgentRunner] = []
-CURRENT_RUNNER: AgentRunner | None = None
-CURRENT_DEBUG_LEVEL = None
+CURRENT_RUNNER: AgentRunner = AgentRunner(Agent(name="", instructions=""))
+CURRENT_DEBUG_LEVEL = os.environ.get("AGENTIC_DEBUG", "agents")
 
 
 def find_agent_objects(
@@ -113,8 +113,10 @@ def run_dot_commands(line: str):
         if len(line.split()) > 1:
             debug_level = line.split()[1]
         else:
-            debug_level = "all"
-        CURRENT_DEBUG_LEVEL = debug_level
+            debug_level = "tools"
+        if debug_level == "off":
+            debug_level = False
+        set_debug_level(debug_level)
         print(f"Debug level set to {debug_level}")
 
     elif line.startswith(".help"):
@@ -122,12 +124,13 @@ def run_dot_commands(line: str):
             """
         .load <filename> - Load an agent from a file
         .run <agent name> - switch the active agent
-        .debug [<level>] - enable debug. Default or one of 'llm', 'tools', 'all'
+        .debug [<level>] - enable debug. Defaults to 'tools', or one of 'llm', 'tools', 'all', 'off'
         .settings - show the current config settings
         .help - Show this help
         .quit - Quit the REPL
         """
         )
+        print("Debug level: ", CURRENT_DEBUG_LEVEL)
         if len(ACTIVE_AGENTS) > 1:
             print("Loaded:")
             for agent in ACTIVE_AGENTS:
@@ -139,6 +142,17 @@ def run_dot_commands(line: str):
             print("  None")
     else:
         print("Unknown command: ", line)
+
+
+def set_debug_level(level: str):
+    global CURRENT_DEBUG_LEVEL
+    CURRENT_DEBUG_LEVEL = level
+    CURRENT_RUNNER.debug = level
+    if level == False:
+        if "AGENTIC_DEBUG" in os.environ:
+            del os.environ["AGENTIC_DEBUG"]
+    else:
+        os.environ["AGENTIC_DEBUG"] = level
 
 
 def repl_loop(filename: str | None = None):
@@ -155,10 +169,7 @@ def repl_loop(filename: str | None = None):
     while not fancy:
         try:
             # Get input directly from sys.stdin
-            if CURRENT_RUNNER is None:
-                line = console.input("> ")
-            else:
-                line = console.input(f"{CURRENT_RUNNER.agent.name} > ")
+            line = console.input(f"{CURRENT_RUNNER.agent.name} > ")
 
             readline.write_history_file(hist)
             if line == ".quit" or line == "":
@@ -166,10 +177,6 @@ def repl_loop(filename: str | None = None):
 
             if line.startswith("."):
                 run_dot_commands(line)
-                continue
-
-            if CURRENT_RUNNER is None:
-                print("Please use .load to load an agent first")
                 continue
 
             CURRENT_RUNNER.debug = CURRENT_DEBUG_LEVEL
@@ -186,9 +193,9 @@ def repl_loop(filename: str | None = None):
                     CURRENT_RUNNER.continue_with(replies)
                 elif isinstance(event, FinishCompletion):
                     saved_completions.append(event)
-                else:
-                    if CURRENT_RUNNER._should_print(event):
-                        print(str(event), end="")
+
+                if CURRENT_RUNNER._should_print(event):
+                    print(event.print(CURRENT_DEBUG_LEVEL), end="")
             print()
             for row in print_stats_report(saved_completions):
                 console.out(row)

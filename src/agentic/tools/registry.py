@@ -133,7 +133,9 @@ class ToolRegistry:
         else:
             tool_spec = self.tools.get(tool)
         if not tool_spec:
-            raise ValueError(f"Tool '{tool}' not found")
+            # Skip the dependency check for tools not registered. Up to the user
+            # to ensure packages are installed.
+            return True
 
         all_satisfied = True
         for dep in tool_spec.dependencies:

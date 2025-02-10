@@ -1,6 +1,12 @@
 import atexit
 import asyncio
-from thespian.actors import Actor, ActorSystem, PoisonMessage, ActorAddress, ActorExitRequest
+from thespian.actors import (
+    Actor,
+    ActorSystem,
+    PoisonMessage,
+    ActorAddress,
+    ActorExitRequest,
+)
 from typing import Any, Optional, Generator
 from dataclasses import dataclass
 from functools import partial
@@ -27,6 +33,8 @@ from rich.live import Live
 
 import yaml
 from typing import Callable, Any, List
+from mcp import StdioServerParameters, ClientSession
+from mcp.client.stdio import stdio_client
 from pydantic import Field
 from .swarm import Swarm
 from .swarm.types import (
@@ -65,7 +73,14 @@ from .events import (
     PauseForChildResult,
     ResumeWithInput,
 )
-from agentic.tools.registry import tool_registry
+from agentic.tools.registry import tool_registry, Tool
+
+import inspect
+import asyncio
+import os
+import yaml
+from typing import List, Any, Callable
+
 
 
 # Global console for Rich
@@ -507,10 +522,11 @@ logger = None
 
 running_agents: list = []
 
+
 def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
     global logger
 
-    if True: #os.environ.get("AGENTIC_SIMPLE_ACTORS"):
+    if True:  # os.environ.get("AGENTIC_SIMPLE_ACTORS"):
         asys = ActorSystem()
     else:
         asys = ActorSystem("multiprocTCPBase")
@@ -522,9 +538,11 @@ def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
 def register_agent(agent):
     running_agents.append(agent)
 
+
 def shutdown_agents():
     for agent in running_agents:
         agent.shutdown()
+
 
 atexit.register(shutdown_agents)
 
@@ -660,10 +678,16 @@ class ActorAgent(AgentBase):
                         handoff=True,
                     )
                 )
+            elif isinstance(func, Tool):
+                # Wrap the Tool instance to be callable using its underlying function attribute.
+                tool_registry.ensure_dependencies(func)
+                wrapped_tool = wrap_llm_function(func.name, func.description, func.function)
+                # Preserve the original Tool instance if needed
+                wrapped_tool._original_tool = func
+                useable.append(wrapped_tool)
             else:
                 tool_registry.ensure_dependencies(func)
                 useable.extend(func.get_tools())
-
         return useable
 
     @staticmethod
@@ -696,6 +720,63 @@ class ActorAgent(AgentBase):
     def safe_name(self) -> str:
         """Renders the ActorAgent's name, but filesystem safe."""
         return "".join(c if c.isalnum() else "_" for c in self.name).lower()
+
+    async def connect_mcp(self, command: str, args: List[str] = None) -> "ActorAgent":
+        """
+        Connect to an MCP server and register its tools with this agent.
+
+        Args:
+            command (str): The command to run the MCP server (e.g. "python", "uv run")
+            args (List[str]): Optional list of arguments for the command
+
+        Returns:
+            self: Returns the agent instance for method chaining
+        """
+        server_params = StdioServerParameters(command=command, args=args or [])
+
+        # Connect to MCP server and load tools
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                # Initialize connection
+                await session.initialize()
+
+                tools = await session.list_tools()
+
+                # Wrap each MCP tool as an Agent tool and add it
+                for mcp_tool in tools.tools:
+                    self.add_tool(
+                        Tool(
+                            mcp_tool.name,
+                            mcp_tool.description,
+                            self._create_mcp_tool_runner(session, mcp_tool.name),
+                            []
+                        )
+                    )
+
+        return self
+
+    def _create_mcp_tool_runner(
+        self, session: "ClientSession", tool_name: str
+    ) -> Callable:
+        """Create an async runner function for an MCP tool."""
+
+        async def run_tool(**kwargs) -> Any:
+            return await session.call_tool(tool_name, arguments=kwargs)
+
+        return run_tool
+
+    def connect_mcp_sync(self, command: str, args: List[str] = None) -> "ActorAgent":
+        """
+        Synchronous wrapper for connect_mcp.
+
+        Args:
+            command (str): The command to run the MCP server.
+            args (List[str]): Optional list of arguments for the command.
+
+        Returns:
+            self: Returns the agent instance for method chaining.
+        """
+        return self.invoke_async(self.connect_mcp, command, args)
 
     def ensure_api_key_for_model(self, model: str):
         """Ensure the appropriate API key is set for the given model."""

@@ -100,14 +100,14 @@ def run_dot_commands(line: str):
             runner = AgentRunner(agent)
             ACTIVE_AGENTS.append(runner)
             CURRENT_RUNNER = runner
-            print(runner.agent.welcome)
+            print(runner.facade.welcome)
     elif line.startswith(".run"):
         agent_name = line.split()[1].lower()
         for agent in ACTIVE_AGENTS:
-            if agent_name in agent.agent.name.lower():
+            if agent_name in agent.facade.name.lower():
                 CURRENT_RUNNER = agent
                 print(f"Switched to {agent_name}")
-                print(f"  {CURRENT_RUNNER.agent.welcome}")
+                print(f"  {CURRENT_RUNNER.facade.welcome}")
                 break
     elif line.startswith(".debug"):
         if len(line.split()) > 1:
@@ -134,10 +134,10 @@ def run_dot_commands(line: str):
         if len(ACTIVE_AGENTS) > 1:
             print("Loaded:")
             for agent in ACTIVE_AGENTS:
-                print(f"  {agent.agent.name}")
+                print(f"  {agent.facade.name}")
         print("Current:")
         if CURRENT_RUNNER:
-            print(f"  {CURRENT_RUNNER.agent.name}")
+            print(f"  {CURRENT_RUNNER.facade.name}")
         else:
             print("  None")
     else:
@@ -169,7 +169,7 @@ def repl_loop(filename: str | None = None):
     while not fancy:
         try:
             # Get input directly from sys.stdin
-            line = console.input(f"{CURRENT_RUNNER.agent.name} > ")
+            line = console.input(f"{CURRENT_RUNNER.facade.name} > ")
 
             readline.write_history_file(hist)
             if line == ".quit" or line == "":

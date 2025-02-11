@@ -8,7 +8,7 @@ def main():
         welcome="Please echo some random text for me, using the provided function.",
         model="gpt-4o-mini",
     )
-    agent.connect_mcp_sync("python", ["examples/mcp_echo.py"])
+    agent.connect_mcp_sync("uv", ["run", "python", "examples/mcp_echo.py"])
 
     AgentRunner(agent).repl_loop()
 

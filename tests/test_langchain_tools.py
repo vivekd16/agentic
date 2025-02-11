@@ -1,0 +1,22 @@
+from agentic import Agent, AgentRunner
+from agentic.tools.automatic_tools import AutomaticTools
+from agentic.tools.registry import tool_registry
+
+def test_langchain_tool():
+    agent = Agent(
+        name="Basic Agent",
+        instructions="You are a helpful assistant.",
+        model="openai/gpt-4o-mini",
+        tools=[
+            tool_registry.load_tool(
+                "langchain_community.tools.DuckDuckGoSearchRun",
+                requires=["duckduckgo-search", "langchain-community"],
+                always_install=True,
+            ),
+        ],
+    )
+
+    agent_runner = AgentRunner(agent)
+    response = agent_runner.turn("search for 'supercog ai'")
+    print(response)
+    assert "supercog" in response.lower(), response

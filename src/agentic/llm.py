@@ -1,7 +1,7 @@
 # Utility functions for doing "LLM as coder" in your programs.
 import os
 import re
-from typing import Optional
+from typing import Optional, Type
 
 from .settings import settings
 from .agentic_secrets import agentic_secrets
@@ -10,6 +10,7 @@ import litellm
 from litellm import token_counter
 from jinja2 import Template
 from dataclasses import dataclass
+from pydantic import BaseModel
 
 DEFAULT_MODEL = settings.get("DEFAULT_CODE_LLM", "openai/gpt-4o-mini")
 
@@ -84,4 +85,23 @@ def llm_generate(prompt: str, **kwargs) -> str:
     return response_text
 
 
-# set callback
+from typing import TypeVar, Generic
+
+T = TypeVar("T", bound=BaseModel)
+
+
+def llm_generate_with_format(prompt: str, return_format: Type[T], **kwargs) -> T:
+    """Core LLM call utility. Takes a prompt, potential
+    Jinja template variables to substitute, and calls the
+    default LLM to generate a completion. Pass a 'usage' object (LLMUsage) as an argument to get usage info back.
+    It will be populated with 'model', 'input_tokens' and 'output_tokens' keys."""
+
+    model = kwargs.get("model") or DEFAULT_MODEL
+    setup_model_key(model)
+    template = Template(prompt)
+    prompt = template.render(**kwargs)
+
+    msg = {"content": prompt, "role": "user"}
+
+    resp = completion(model=model, messages=[msg], response_format=return_format)
+    return return_format.model_validate_json(resp.choices[0].message.content)

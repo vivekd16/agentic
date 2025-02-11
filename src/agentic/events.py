@@ -35,15 +35,36 @@ class Event:
                 return default_val
         return d or default_val
 
-    def debug(self, indent: bool = False):
-        prefix = ""
-        if indent:
-            prefix = ".." * (self.depth + 1)
-        return f"{prefix}{self.type.upper()}: {self.payload}"
-
     @property
     def is_output(self):
         return False
+
+
+class DebugLevel:
+    OFF: str = ""
+
+    def __init__(self, level: str | bool):
+        if isinstance(level, bool):
+            if level == True:
+                level = "tools,llm"
+            else:
+                level = ""
+        self.level = str(level)
+
+    def debug_tools(self):
+        return self.level == "all" or "tools" in self.level
+
+    def debug_llm(self):
+        return self.level == "all" or "llm" in self.level
+
+    def debug_agents(self):
+        return self.level == "all" or "agents" in self.level
+
+    def debug_all(self):
+        return self.level == "all"
+
+    def __str__(self) -> str:
+        return str(self.level)
 
 
 class Prompt(Event):
@@ -51,16 +72,17 @@ class Prompt(Event):
     # agent. This gets passed around into the agent call chain in case sub-agents need to communicate
     # back to the top. Note that in Thespian, we don't have this address until the first receiveMessage
     # is called, so we set it then.
-    debug: bool = False
+    debug: DebugLevel
 
     def __init__(
         self,
         agent: str,
         message: str,
+        debug: DebugLevel,
         depth: int = 0,
-        debug: bool = False,
         originator=None,
         ignore_result: bool = False,
+        agent_ref_map: dict = {},
     ):
         super().__init__(agent, "prompt", message, depth)
         self.debug = debug
@@ -204,12 +226,12 @@ class SetState(Event):
 
 
 class AddChild(Event):
-    def __init__(self, agent, actor_ref, handoff: bool = False):
-        super().__init__(agent, "add_child", actor_ref)
+    def __init__(self, agent, remote_ref, handoff: bool = False):
+        super().__init__(agent, "add_child", remote_ref)
         self.handoff = handoff
 
     @property
-    def actor_ref(self):
+    def remote_ref(self):
         return self.payload
 
 

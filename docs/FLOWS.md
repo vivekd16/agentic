@@ -100,3 +100,47 @@ sequenceDiagram
     Agent B->>caller: TurnEnd
 ```
 
+## Ray Actor logic
+
+Each running agent is execute by a _remote_ Ray object. This means that we call its
+methods via Ray and they return Promises to get their results. We have to call `ray.get`
+to retrieve or wait for the actual result.
+
+Our basic agent execution loop looks like:
+
+```python
+user input ->
+    remote_gen = agent.receiveMessage.remote(Prompt())
+        (agent starts the LLM "turn" loop, calling LLM completions and yielding events)
+    for next_ref in remote_gen:
+        event = ray.get(next_ref)  # Prompt handling yields events until turn is over
+```
+
+If our agent needs to call another agent, it creates the Agent and calls it via
+Ray remote:
+
+```python
+user input ->
+    remote_gen = 
+        (agent starts the LLM "turn" loop, calling LLM completions and yielding events)
+    for next_ref in agent.receiveMessage.remote(Prompt()):
+            # Agent does a function call to a child. 
+            agent -> starts sub_agent
+                agent -> iterate over Prompt
+                    sub_agent yield Event
+                agent yield Event
+        event = ray.get(next_ref)  # Prompt handling yields events until turn is over
+```
+If the child call is a `handoff` then the parent agent simply gives the child agent
+the same `depth`, and once the child is done then the parent agent finishes without
+generating the `TurnEnd` event, since the child already did.
+
+### Pause and Resume
+
+To support "human in the loop", the agent can "pause" execution by saving its state, yielding
+a `WaitForInput` event, then returning from its loop. Now the caller should send the `ResumeWithInput`
+event to the agent which will continue executing from where it left off.
+
+If a sub agent needs to Pause, then it emits the WaitForInput event, and all parent agents
+pause and re-yield that event. They save their context of the child call and restore it
+when the Resume event is received.

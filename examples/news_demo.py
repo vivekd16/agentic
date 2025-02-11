@@ -49,7 +49,10 @@ Call Google News to get headlines on the indicated news topic.
 producer = Agent(
     name="Producer",
     welcome="I am the news producer. Tell me the topic, and I'll get the news from my reporter.",
-    instructions="You are a news producer. Call the human to get the topic, then call the reporter with the indicated topic.",
+    instructions="""
+You are a news producer. Call the human to get the topic, then call the reporter with the indicated topic. 
+Print one sentence summary of the report.
+""",
     model=model,
     tools=[get_human_input],
 )

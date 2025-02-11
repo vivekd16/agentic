@@ -10,13 +10,14 @@ from agentic.settings import settings
 # Third-party imports
 from pydantic import BaseModel
 
-AgentFunction = Callable[[], Union[str, "SwarmAgent", dict]]
+AgentFunction = Callable[[], Union[str, "SwarmAgent", dict]] | dict
 
 
 class RunContext:
-    def __init__(self, context: dict = {}, agent_name: str = ""):
+    def __init__(self, agent, context: dict = {}, agent_name: str = ""):
         self._context = context
         self.agent_name = agent_name
+        self.agent = agent
 
     def __getitem__(self, key):
         return self._context.get(key, None)
@@ -29,6 +30,9 @@ class RunContext:
 
     def update(self, context: dict):
         self._context.update(context)
+
+    def get_agent(self) -> "Agent":
+        return self.agent
 
     def get_config(self, key, default=None):
         return settings.get(

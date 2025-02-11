@@ -1,5 +1,5 @@
 from agentic import Agent, AgentRunner
-from agentic.tools import DatabaseTool
+from agentic.tools.database_tool import DatabaseTool
 
 database_agent = Agent(
     name="Database Agent",

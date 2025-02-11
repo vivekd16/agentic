@@ -1,11 +1,8 @@
-import asyncio
-import io
 from typing import Any, Callable
 import re
 
 import pandas as pd
 from psycopg2.extras import DictCursor
-import psycopg2.extras
 
 from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 from sqlalchemy import create_engine, text, Engine
@@ -23,8 +20,19 @@ class LocalhostConnectionError(DatabaseConnectionError):
 
 
 class DatabaseTool:
+    """Accessing any SQL database."""
+
     connection_string: str = ""
     engine: Engine = None
+
+    def __init__(self, connection_string: str = None):
+        self.connection_string = connection_string
+        self.engine = None
+
+    def __reduce__(self):
+        deserializer = DatabaseTool
+        serialized_data = (self.connection_string,)
+        return deserializer, serialized_data
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -207,11 +215,9 @@ class DatabaseTool:
         except Exception as e:
             raise DatabaseConnectionError(f"Failed to create database engine: {str(e)}")
 
-    def run_database_query(
-        self, sql_query: str, run_context: RunContext
-    ) -> pd.DataFrame | dict | PauseForInputResult:
-        """Runs a SQL query against a database."""
-
+    def _check_missing_connection(
+        self, run_context: RunContext
+    ) -> PauseForInputResult | None:
         if not self.engine:
             connection_string = self.connection_string or run_context.get_config(
                 "database_url"
@@ -222,9 +228,29 @@ class DatabaseTool:
                 )
 
             self.connection_string = connection_string
+            try:
+                engine = self.create_engine(connection_string)
+                with engine.begin() as conn:
+                    conn.execute(text("SELECT 1"))
+            except Exception as e:
+                print(f"Error connecting to database: {e}")
+                return PauseForInputResult(
+                    {"database_url": "Corrected database connection string"}
+                )
+
             run_context.set_config("database_url", connection_string)
             run_context.info(f"Connecting to database: {connection_string}")
             self.engine = self.create_engine(connection_string)
+        return None
+
+    def run_database_query(
+        self, sql_query: str, run_context: RunContext
+    ) -> pd.DataFrame | dict | PauseForInputResult:
+        """Runs a SQL query against a database."""
+
+        wait_event = self._check_missing_connection(run_context)
+        if wait_event:
+            return wait_event
 
         try:
             with self.engine.begin() as connection:
@@ -259,10 +285,11 @@ class DatabaseTool:
         except Exception as e:
             return {"status": f"Unexpected error: {str(e)}"}
 
-    def get_database_type(self) -> str:
+    def get_database_type(self, run_context: RunContext) -> str:
         """Returns the type and SQL dialect of the connected database"""
-        if not self.connection_string:
-            return "No database URL configured"
+        wait_event = self._check_missing_connection(run_context)
+        if wait_event:
+            return wait_event
 
         try:
             parsed_connection_string = self.parse_connection_string(

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Callable, Optional, Dict, Any, Type
 import importlib
+import importlib.util
+
 import shutil
 import subprocess
 import sys
@@ -91,6 +93,10 @@ class ToolRegistry:
             return True
         except ImportError:
             return False
+
+    def is_package_installed(self, package_name):
+        spec = importlib.util.find_spec(package_name)
+        return spec is not None
 
     def check_system_dependency(self, dep: Dependency) -> bool:
         """Check if a system binary is available."""
@@ -205,6 +211,27 @@ class ToolRegistry:
         # Validate and process configuration
         config = config or {}
         processed_config = self.validate_config(tool_spec, config)
+
+    def load_tool(self, tool_name: str, requires: List[str] = None, always_install: bool = False) -> Tool:
+        for req in requires:
+            dep = Dependency(name=req, type="pip")
+            if not self.is_package_installed(dep.name):
+                if self.auto_install:
+                    if not always_install:
+                        choice = input(f"Install {dep}? (y/n)")
+                        if choice == "y":
+                            always_install = True
+                    if always_install:
+                        success = self.install_pip_dependency(dep)
+                        if not success:
+                            raise RuntimeError(f"Failed to install {dep}")
+        module_path, class_name = tool_name.rsplit(".", 1)
+
+        # Import the module
+        module = importlib.import_module(module_path)
+
+        # Get the class from the module
+        return getattr(module, class_name)()
 
 
 # Example usage:

@@ -171,6 +171,7 @@ Popular models:
     openai/gpt-4o
     openai/gpt-4o-mini
     anthropic/claude-3-5-sonnet-20240620
+    anthropic/claude-3-5-haiku-20241022
      """
     )
 

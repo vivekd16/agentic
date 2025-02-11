@@ -1,8 +1,11 @@
 from agentic import Agent, AgentRunner
 from agentic.tools.text_to_speech_tool import TextToSpeechTool
 from agentic.tools.auth_rest_api_tool import AuthorizedRESTAPITool
+from agentic.tools.google_news import GoogleNewsTool
+from agentic.models import CLAUDE, GPT_4O_MINI
 
-model = "groq/llama-3.3-70b-versatile"
+#model = "groq/llama-3.3-70b-versatile"
+model = GPT_4O_MINI
 
 producer = Agent(
     name="Podcast Producer",
@@ -14,7 +17,8 @@ producer = Agent(
 reporter = Agent(
     name="AI News Reporter",
     instructions="{{REPORTER}}",
-    model=model,
+    model=CLAUDE,
+    tools=[GoogleNewsTool()]
 )
 
 producer.add_tool(reporter)
@@ -31,4 +35,4 @@ uploader = Agent(
 producer.add_tool(uploader)
 
 if __name__ == "__main__":
-    AgentRunner(producer).repl_loop()
+    AgentRunner(reporter).repl_loop()

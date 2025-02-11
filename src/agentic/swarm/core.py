@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import List, Callable, Union
 
 # Package/library imports
-from litellm import completion
+import litellm
 from litellm.utils import trim_messages
 
 # Local imports
@@ -71,7 +71,8 @@ class Swarm:
 
         debug_print(self.llm_debug, "Getting chat completion for...:\n", create_params)
         # Use LiteLLM's completion instead of OpenAI's client
-        return completion(**create_params)
+        print("Calling litellm completion with params: ", create_params)
+        return litellm.completion(**create_params)
 
     def handle_function_result(self, result, debug) -> Result:
         match result:

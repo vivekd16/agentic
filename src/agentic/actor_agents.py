@@ -1,6 +1,12 @@
 import atexit
 import asyncio
-from thespian.actors import Actor, ActorSystem, PoisonMessage, ActorAddress, ActorExitRequest
+from thespian.actors import (
+    Actor,
+    ActorSystem,
+    PoisonMessage,
+    ActorAddress,
+    ActorExitRequest,
+)
 from typing import Any, Optional, Generator
 from dataclasses import dataclass
 from functools import partial
@@ -11,19 +17,16 @@ import inspect
 import json
 import os
 import time
-import traceback
 from copy import deepcopy
 from pprint import pprint
 from datetime import datetime
 from agentic.agentic_secrets import agentic_secrets
-import readline
 from pathlib import Path
 import os
 import yaml
 from jinja2 import Template
-from rich.markdown import Markdown
 from .fix_console import ConsoleWithInputBackspaceFixed
-from rich.live import Live
+import ray
 
 import yaml
 from typing import Callable, Any, List
@@ -32,19 +35,35 @@ from .swarm import Swarm
 from .swarm.types import (
     AgentFunction,
     Response,
-    SwarmAgent,
     Result,
     RunContext,
     ChatCompletionMessageToolCall,
     Function,
 )
-from .swarm.util import merge_chunk, debug_print
+from .swarm.util import (
+    merge_chunk,
+    debug_print,
+    function_to_json,
+    looks_like_langchain_tool,
+    langchain_function_to_json,
+    wrap_llm_function,
+)
+
 from jinja2 import Template
 import litellm
 from litellm.types.utils import ModelResponse, Message
 from litellm import completion_cost
 from litellm import token_counter
 
+from .swarm.types import (
+    AgentFunction,
+    ChatCompletionMessage,
+    ChatCompletionMessageToolCall,
+    Function,
+    Response,
+    Result,
+    RunContext,
+)
 from .events import (
     Event,
     Prompt,
@@ -64,6 +83,7 @@ from .events import (
     PauseForInputResult,
     PauseForChildResult,
     ResumeWithInput,
+    DebugLevel,
 )
 from agentic.tools.registry import tool_registry
 
@@ -71,77 +91,204 @@ from agentic.tools.registry import tool_registry
 # Global console for Rich
 console = ConsoleWithInputBackspaceFixed()
 
-
-def wrap_llm_function(fname, doc, func, *args):
-    f = partial(func, *args)
-    setattr(f, "__name__", fname)
-    f.__doc__ = doc
-    setattr(f, "__code__", func.__code__)
-    # Keep the original arg list
-    f.__annotations__ = func.__annotations__
-    return f
+__CTX_VARS_NAME__ = "run_context"
 
 
 @dataclass
 class AgentPauseContext:
     orig_history_length: int
     tool_partial_response: Response
-    sender: Optional[Actor] = None
+    #    sender: Optional[Actor] = None
     tool_function: Optional[Function] = None
 
 
-class ActorBaseAgent(SwarmAgent, Actor):
+@ray.remote
+class ActorBaseAgent:
     name: str = "Agent"
     model: str = "gpt-4o"
     instructions_str: str = "You are a helpful agent."
+    tools: list[str] = []
     functions: List[AgentFunction] = []
     tool_choice: str = None
     parallel_tool_calls: bool = True
     paused_context: Optional[AgentPauseContext] = None
-    debug: bool = False
+    debug: DebugLevel = DebugLevel(False)
     depth: int = 0
     children: dict = {}
     history: list = []
     # Memories are static facts that are always injected into the context on every turn
     memories: list[str] = []
-    _logger: Actor = None
     # The Actor who sent us our Prompt
-    _prompter: Actor = None
     max_tokens: int = None
     run_context: RunContext = None
+    _prompter = None
 
     class Config:
         arbitrary_types_allowed = True
 
     def __init__(self):
         super().__init__()
-        self.children = {}
-        self._swarm = Swarm()
         self.history: list = []
 
-    @property
-    def myid(self):
-        return self.myAddress
+    def __repr__(self):
+        return f"Agent({self.name})"
 
-    def inject_secrets_into_env(self):
-        """Ensure the appropriate API key is set for the given model."""
-        for key in agentic_secrets.list_secrets():
-            if key not in os.environ:
-                os.environ[key] = agentic_secrets.get_secret(key)
+    def _get_llm_completion(
+        self,
+        history: List,
+        run_context: RunContext,
+        model_override: str,
+        stream: bool,
+    ) -> ChatCompletionMessage:
+        """Call the LLM completion endpoint"""
+        instructions = self.get_instructions(run_context)
+        messages = [{"role": "system", "content": instructions}] + history
 
-    def get_instructions(self, context: RunContext):
-        prompt = self.instructions_str
-        if self.memories:
-            prompt += """
-<memory blocks>
-{% for memory in MEMORIES -%}
-{{memory|trim}}
-{%- endfor %}
-</memory>
-"""
-        return Template(prompt).render(
-            context.get_context() | {"MEMORIES": self.memories}
+        tools = [function_to_json(f) for f in self.functions]
+        # hide run_context from model
+        for tool in tools:
+            params = tool["function"]["parameters"]
+            params["properties"].pop(__CTX_VARS_NAME__, None)
+            if __CTX_VARS_NAME__ in params["required"]:
+                params["required"].remove(__CTX_VARS_NAME__)
+
+        create_params = {
+            "model": model_override or self.model,
+            "temperature": 0.0,
+            "messages": messages,
+            "tools": tools or None,
+            "tool_choice": self.tool_choice,
+            "stream": stream,
+            "stream_options": {"include_usage": True},
+        }
+        if self.max_tokens:
+            create_params["max_tokens"] = self.max_tokens
+
+        if tools:
+            create_params["parallel_tool_calls"] = self.parallel_tool_calls
+
+        debug_version = create_params.copy()
+        if debug_version.get("tools"):
+            debug_version["tools"] = [
+                f["function"]["name"] for f in debug_version["tools"]
+            ]
+
+        debug_print(
+            self.debug.debug_llm(),
+            f"[{self.name}] Generating completion for:\n",
+            debug_version,
         )
+        # Use LiteLLM's completion instead of OpenAI's client
+        return litellm.completion(**create_params)
+
+    def _execute_tool_calls(
+        self,
+        tool_calls: List[ChatCompletionMessageToolCall],
+        functions: List[AgentFunction],
+        run_context: RunContext,
+    ) -> tuple[Response, list[Event]]:
+        """When the LLM completion includes tool calls, now invoke the tool functions.
+        Returns the LLM processing response, and a list of events to publish
+        """
+
+        function_map = {f.__name__: f for f in functions}
+        partial_response = Response(messages=[], agent=None, context_variables={})
+
+        events = []
+
+        for tool_call in tool_calls:
+            name = tool_call.function.name
+            # handle missing tool case, skip to next tool
+            if name not in function_map:
+                debug_print(
+                    self.debug.debug_tools(), f"Tool {name} not found in function map."
+                )
+                partial_response.messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "tool_name": name,
+                        "content": f"Error: Tool {name} not found.",
+                    }
+                )
+                continue
+
+            try:
+                args = json.loads(tool_call.function.arguments)
+            except Exception as e:
+                debug_print(
+                    self.debug.debug_tools(),
+                    f"Error parsing tool call arguments: {e}\n"
+                    + f"Tool call: {tool_call.function.arguments}",
+                )
+                args = {}
+
+            debug_print(
+                self.debug.debug_tools(),
+                f"Processing tool call: {name} with arguments {args}",
+            )
+
+            func = function_map[name]
+            # pass context_variables to agent functions
+            if __CTX_VARS_NAME__ in func.__code__.co_varnames:
+                args[__CTX_VARS_NAME__] = run_context
+
+            events.append(ToolCall(self.name, name, args))
+
+            # Call the function!!
+            try:
+                if asyncio.iscoroutinefunction(function_map[name]):
+                    # Wrap async functions in asyncio.run
+                    raw_result = asyncio.run(function_map[name](**args))
+                    # else if function is a generator, iterate over it
+                elif inspect.isgeneratorfunction(function_map[name]):
+                    # We use our generator for our call_child function. I guess we could let user's
+                    # write generate functions as long as they yield events. Or we could catch
+                    # strings and wrap them as events.
+                    for child_event in function_map[name](**args):
+                        if isinstance(child_event, TurnEnd):
+                            raw_result = child_event.result
+                            events.append(child_event)
+                        elif isinstance(child_event, Result):
+                            raw_result = child_event
+                        else:
+                            events.append(child_event)
+                else:
+                    raw_result = function_map[name](**args)
+            except Exception as e:
+                raw_result = f"{name} - Error: {e}"
+                run_context.error(raw_result)
+
+            result: Result = (
+                raw_result
+                if isinstance(raw_result, Result)
+                else Result(value=str(raw_result))
+            )
+
+            result.tool_function = Function(
+                name=name,
+                arguments=tool_call.function.arguments,
+                _request_id=tool_call.id,
+            )
+
+            events.append(ToolResult(self.name, name, result.value))
+
+            tool_name_key = ""
+            partial_response.messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": name,
+                    "content": result.value,
+                }
+            )
+            partial_response.last_tool_result = result
+            partial_response.context_variables.update(result.context_variables)
+            # This was the simple way that Swarm did handoff
+            if result.agent:
+                partial_response.agent = result.agent
+
+        return partial_response, events
 
     def _yield_completion_steps(self, run_context: RunContext):
         llm_message = {
@@ -179,13 +326,12 @@ class ActorBaseAgent(SwarmAgent, Actor):
         # Assign the custom callback function
         litellm.success_callback = [custom_callback]
 
-        completion = self._swarm.get_chat_completion(
-            agent=self,
+        # litellm._turn_on_debug()
+        completion = self._get_llm_completion(
             history=self.history,
             run_context=run_context,
             model_override=None,
             stream=True,
-            debug=self.debug,
         )
 
         # With 'streaming' we get the response back in chunks. For the output text
@@ -218,7 +364,9 @@ class ActorBaseAgent(SwarmAgent, Actor):
             )
         # Have to calc cost after we have seen all the chunks
         debug_print(
-            self._swarm.llm_debug, "That completion cost you: ", self._callback_params
+            self.debug.debug_llm(),
+            f"[{self.name}] Completion cost: ",
+            self._callback_params,
         )
 
         yield FinishCompletion.create(
@@ -232,240 +380,120 @@ class ActorBaseAgent(SwarmAgent, Actor):
             self.depth,
         )
 
-    def relay_message(self, actor_message, sender):
-        if self._prompter and sender != self._prompter:
-            # Relay sub-agent messages to our prompter so they "bubble up"
-            self.send(self._prompter, actor_message)
+    def handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput):
+        if isinstance(actor_message, Prompt):
+            self.run_context = (
+                RunContext(agent_name=self.name, agent=self)
+                if self.run_context is None
+                else self.run_context
+            )
+            self.debug = actor_message.debug
+            self.depth = actor_message.depth
+            init_len = len(self.history)
+            context_variables = {}
+            self.history.append({"role": "user", "content": actor_message.payload})
+            yield PromptStarted(self.name, actor_message.payload, self.depth)
 
-    def receiveMessage(self, actor_message, sender):
-        self.relay_message(actor_message, sender)
-        self._swarm.llm_debug = os.environ.get("AGENTIC_DEBUG") == "llm"
-        # print(f"[RECEIVE: {self.myAddress}/{self.name}: {actor_message} from {sender}")
-
-        def report_calling_tool(name: str, args: dict):
-            self.send(sender, ToolCall(self.name, name, args))
-
-        def report_tool_result(name: str, result):
-            self.send(sender, ToolResult(self.name, name, result))
-
-        match actor_message:
-            case Prompt() | TurnEnd() | ResumeWithInput():
-                if isinstance(actor_message, Prompt):
-                    self.run_context = (
-                        RunContext(agent_name=self.name)
-                        if self.run_context is None
-                        else self.run_context
-                    )
-                    self.debug = actor_message.debug
-                    self._prompter = sender
-                    # self.log(f"Prompt: {actor_message}")
-                    self.depth = actor_message.depth
-                    init_len = len(self.history)
-                    context_variables = {}
-                    self.history.append(
-                        {"role": "user", "content": actor_message.payload}
-                    )
-                    self.send(
-                        sender,
-                        PromptStarted(self.name, actor_message.payload, self.depth),
-                    )
-                elif isinstance(actor_message, TurnEnd):
-                    # Sub-agent call "as tool" has completed. So finish our tool call with the agent result as the tool result
-                    if not self.paused_context:
-                        self.log(
-                            "Ignoring TurnEnd/ResumeWithInput event, parent not paused: ",
-                            actor_message,
-                        )
-                        return
-                    init_len = self.paused_context.orig_history_length
-                    # This little tricky bit grabs the full child output from the TurnEnd event
-                    # and appends it to our history as the tool call result
-                    tool_msgs = self.paused_context.tool_partial_response.messages
-                    tool_msgs[-1]["content"] = actor_message.result
-                    self.history.extend(tool_msgs)
-
-                    # Copy human input into our context
-                    context_variables = actor_message.context_variables.copy()
-                    # Child calls BACK to parent, so we need to restore our original 'sender'
-                    sender = self.paused_context.sender
-                    self.paused_context = None
-
-                elif isinstance(actor_message, ResumeWithInput):
-                    # Call resuming us with user input after wait. We re-call our tool function after merging the human results
-                    if not self.paused_context:
-                        self.log(
-                            "Ignoring ResumeWithInput event, parent not paused: ",
-                            actor_message,
-                        )
-                        return
-                    init_len = self.paused_context.orig_history_length
-                    # Copy human input into our context
-                    context_variables = actor_message.request_keys.copy()
-                    self.run_context.update(context_variables)
-                    # Re-call our tool function
-                    tool_function = self.paused_context.tool_function
-                    if tool_function is None:
-                        raise RuntimeError(
-                            "Tool function not found on AgentResume event"
-                        )
-                    # FIXME: Would be nice to DRY up the tool call handling
-                    partial_response = self._swarm.handle_tool_calls(
-                        self,
-                        [
-                            ChatCompletionMessageToolCall(
-                                id=(tool_function._request_id or ""),
-                                function=tool_function,
-                                type="function",
-                            )
-                        ],
-                        self.functions,
-                        self.run_context,
-                        self.debug,
-                        report_calling_tool,
-                        report_tool_result,
-                    )
-                    self.history.extend(partial_response.messages)
-                    context_variables.update(partial_response.context_variables)
-
-                # This is the agent "turn" loop. We keep running as long as the agent
-                # requests more tool calls.
-                # Critically, if a "wait_for_human" tool is requested, then we save our
-                # 'turn' state, send a 'gather_input' event, and then we return. The caller
-                # should call send another prompt when they have it and we will resume the turn.
-
-                while len(self.history) - init_len < 10:
-                    for event in self._yield_completion_steps(self.run_context):
-                        # event] ", event.__dict__)
-                        if event is None:
-                            breakpoint()
-                        self.send(sender, event)
-
-                    assert isinstance(event, FinishCompletion)
-
-                    response: Message = event.response
-                    # these lines from Swarm.. not sure what they do
-
-                    debug_print(self._swarm.llm_debug, "Received completion:", response)
-
-                    self.history.append(response)
-                    if not response.tool_calls:
-                        # No more tool calls, so assume this turn is done
-                        break
-
-                    # handle function calls, updating context_variables, and switching agents
-                    partial_response = self._swarm.handle_tool_calls(
-                        self,
-                        response.tool_calls,
-                        self.functions,
-                        self.run_context,
-                        self.debug,
-                        report_calling_tool,
-                        report_tool_result,
-                    )
-
-                    # FIXME: handle this better, and handle the case of multiple tool calls
-
-                    last_tool_result: Result | None = partial_response.last_tool_result
-                    if last_tool_result:
-                        if PauseForChildResult.matches_sentinel(last_tool_result.value):
-                            # agent needs to pause to wait for a child. Should have notified the child already
-                            # child will call us back with TurnEnd
-                            self.paused_context = AgentPauseContext(
-                                orig_history_length=init_len,
-                                tool_partial_response=partial_response,
-                                sender=sender,
-                            )
-                            return
-                        elif PauseForInputResult.matches_sentinel(
-                            last_tool_result.value
-                        ):
-                            # tool function has request user input. We save the tool function so we can re-call it when
-                            # we get the response back
-                            self.paused_context = AgentPauseContext(
-                                orig_history_length=init_len,
-                                tool_partial_response=partial_response,
-                                sender=sender,
-                                tool_function=last_tool_result.tool_function,
-                            )
-                            self.send(
-                                sender,
-                                WaitForInput(
-                                    self.name, last_tool_result.context_variables
-                                ),
-                            )
-                            return
-                        elif FinishAgentResult.matches_sentinel(
-                            partial_response.messages[-1]["content"]
-                        ):
-                            # short-circuit any further agent execution. But for chat history we need to
-                            # record a result from the tool call
-                            msg = deepcopy(partial_response.messages[-1])
-                            msg["content"] = ""
-                            self.history.extend(partial_response.messages)
-                            break
-
-                    self.history.extend(partial_response.messages)
-                    context_variables.update(partial_response.context_variables)
-
-                # Altough we emit interim events, we also publish all the messages from this 'turn'
-                # in the final event. This lets a caller process our "function result" with a single event
-                if isinstance(actor_message, (Prompt, TurnEnd)):
-                    self.send(
-                        sender,
-                        TurnEnd(
-                            self.name,
-                            self.history[init_len:],
-                            context_variables,
-                            self.depth,
-                        ),
-                    )
-                self.paused_context = None
-
-            case SetState():
-                self.inject_secrets_into_env()
-                state = actor_message.payload
-                remap = {"instructions": "instructions_str", "logger": "_logger"}
-
-                for key in [
-                    "name",
-                    "logger",
-                    "instructions",
-                    "model",
-                    "max_tokens",
-                    "memories",
-                ]:
-                    if key in state:
-                        setattr(self, remap.get(key, key), state[key])
-
-                # Update our functions
-                if "functions" in state:
-                    self.functions = []
-                    for f in state.get("functions"):
-                        if isinstance(f, AddChild):
-                            f = self._build_child_func(f)
-                        self.functions.append(f)
-
-                self.send(
-                    sender,
-                    Output(
-                        self.name, f"State updated: {actor_message.payload}", self.depth
-                    ),
+        elif isinstance(actor_message, ResumeWithInput):
+            # Call resuming us with user input after wait. We re-call our tool function after merging the human results
+            if not self.paused_context:
+                self.log(
+                    "Ignoring ResumeWithInput event, parent not paused: ",
+                    actor_message,
                 )
+                return
+            init_len = self.paused_context.orig_history_length
+            # Copy human input into our context
+            context_variables = actor_message.request_keys.copy()
+            self.run_context.update(context_variables)
+            # Re-call our tool function
+            tool_function = self.paused_context.tool_function
+            if tool_function is None:
+                raise RuntimeError("Tool function not found on AgentResume event")
+            # FIXME: Would be nice to DRY up the tool call handling
+            partial_response, events = self._execute_tool_calls(
+                [
+                    ChatCompletionMessageToolCall(
+                        id=(tool_function._request_id or ""),
+                        function=tool_function,
+                        type="function",
+                    )
+                ],
+                self.functions,
+                self.run_context,
+            )
+            yield from events
+            self.history.extend(partial_response.messages)
+            context_variables.update(partial_response.context_variables)
 
-            case AddChild():
-                self.functions.append(self._build_child_func(actor_message))
+        # MAIN TURN LOOP
+        # Critically, if a "wait_for_human" tool is requested, then we save our
+        # 'turn' state, send a 'gather_input' event, and then we return. The caller
+        # should call send ResumeEvent when they have it and we will resume the turn.
 
-            case ResetHistory():
-                self.history = []
+        while len(self.history) - init_len < 10:
+            for event in self._yield_completion_steps(self.run_context):
+                # event] ", event.__dict__)
+                yield event
 
-    def _build_child_func(self, event: AddChild) -> Callable:
-        child = event.actor_ref
-        name = event.agent
-        self.children[name] = child
-        llm_name = f"call_{name.lower().replace(' ', '_')}"
-        doc = f"Send a message to sub-agent {name}"
+            assert isinstance(event, FinishCompletion)
 
-        return wrap_llm_function(llm_name, doc, self.call_child, child, event.handoff)
+            response: Message = event.response
+
+            debug_print(
+                self.debug.debug_llm(), f"[{self.name}] Completion finished:", response
+            )
+
+            self.history.append(response)
+            if not response.tool_calls:
+                # No more tool calls, so assume this turn is done
+                break
+
+            # handle function calls, updating context_variables, and switching agents
+            partial_response, events = self._execute_tool_calls(
+                response.tool_calls,
+                self.functions,
+                self.run_context,
+            )
+            yield from events
+
+            # FIXME: handle this better, and handle the case of multiple tool calls
+
+            last_tool_result: Result | None = partial_response.last_tool_result
+            if last_tool_result:
+                if PauseForInputResult.matches_sentinel(last_tool_result.value):
+                    # tool function has request user input. We save the tool function so we can re-call it when
+                    # we get the response back
+                    self.paused_context = AgentPauseContext(
+                        orig_history_length=init_len,
+                        tool_partial_response=partial_response,
+                        tool_function=last_tool_result.tool_function,
+                    )
+                    yield WaitForInput(self.name, last_tool_result.context_variables)
+                    return
+                elif FinishAgentResult.matches_sentinel(
+                    partial_response.messages[-1]["content"]
+                ):
+                    # short-circuit any further agent execution. But for chat history we need to
+                    # record a result from the tool call
+                    msg = deepcopy(partial_response.messages[-1])
+                    msg["content"] = ""
+                    self.history.extend(partial_response.messages)
+                    break
+
+            self.history.extend(partial_response.messages)
+            context_variables.update(partial_response.context_variables)
+            # end of turn loop
+
+        # Altough we emit interim events, we also publish all the messages from this 'turn'
+        # in the final event. This lets a caller process our "function result" with a single event
+        yield TurnEnd(
+            self.name,
+            self.history[init_len:],
+            context_variables,
+            self.depth,
+        )
+        self.paused_context = None
 
     def call_child(
         self,
@@ -474,59 +502,107 @@ class ActorBaseAgent(SwarmAgent, Actor):
         message,
     ):
         depth = self.depth if handoff else self.depth + 1
-        self.send(
-            child_ref,
+        for remote_event in child_ref.handlePromptOrResume.remote(
             Prompt(
                 self.name,
                 message,
                 depth=depth,
                 debug=self.debug,
-            ),
-        )
+            )
+        ):
+            event = ray.get(remote_event)
+            yield event
+
         if handoff:
-            return FinishAgentResult()
+            # by definition we don't care about remembering the child result since
+            # the parent is gonna end anyway
+            yield FinishAgentResult()
+
+    def _build_child_func(self, event: AddChild) -> Callable:
+        name = event.agent
+        llm_name = f"call_{name.lower().replace(' ', '_')}"
+        doc = f"Send a message to sub-agent {name}"
+
+        return wrap_llm_function(
+            llm_name, doc, self.call_child, event.remote_ref, event.handoff
+        )
+
+    def add_child(self, actor_message: AddChild):
+        self.add_tool(actor_message)
+
+    def add_tool(self, tool_func_or_cls):
+        if isinstance(tool_func_or_cls, AddChild):
+            tool_func_or_cls = self._build_child_func(tool_func_or_cls)
+
+        if looks_like_langchain_tool(tool_func_or_cls):
+            # Langchain tools which are single functions in a whole class inheriting from BaseTool
+            self.functions.append(langchain_function_to_json(tool_func_or_cls))
+            self.tools.append(self.functions[-1].__name__)
         else:
-            return PauseForChildResult(values={})
+            if callable(tool_func_or_cls):
+                self.functions.append(tool_func_or_cls)
+                self.tools.append(self.functions[-1].__name__)
+            else:
+                if hasattr(tool_func_or_cls, "get_tools"):
+                    self.functions.extend(tool_func_or_cls.get_tools())
+                    self.tools.append(tool_func_or_cls.__class__.__name__)
+
+    def reset_history(self):
+        self.history = []
+
+    def inject_secrets_into_env(self):
+        """Ensure the appropriate API key is set for the given model."""
+        for key in agentic_secrets.list_secrets():
+            if key not in os.environ:
+                os.environ[key] = agentic_secrets.get_secret(key)
+
+    def get_instructions(self, context: RunContext):
+        prompt = self.instructions_str
+        if self.memories:
+            prompt += """
+<memory blocks>
+{% for memory in MEMORIES -%}
+{{memory|trim}}
+{%- endfor %}
+</memory>
+"""
+        return Template(prompt).render(
+            context.get_context() | {"MEMORIES": self.memories}
+        )
+
+    def set_state(self, actor_message: SetState):
+        self.inject_secrets_into_env()
+        state = actor_message.payload
+        remap = {"instructions": "instructions_str"}
+
+        for key in [
+            "name",
+            "instructions",
+            "model",
+            "max_tokens",
+            "memories",
+        ]:
+            if key in state:
+                setattr(self, remap.get(key, key), state[key])
+
+        # Update our functions
+        if "functions" in state:
+            self.functions = []
+            for f in state.get("functions"):
+                self.add_tool(f)
+
+        return Output(self.name, f"State updated: {actor_message.payload}", self.depth)
+
+    def set_debug_level(self, debug: DebugLevel):
+        self.debug = debug
+        print("agent set new debug level: ", debug)
 
     def log(self, *args):
         message = " ".join([str(a) for a in args])
-        if self.debug:
-            self.send(self._logger, f"({self.name}) {message}")
+        print(f"({self.name}) {message}")
 
-
-class Logger(Actor):
-    def receiveMessage(self, message, sender):
-        # format current time
-        time = datetime.now().strftime("%H:%M:%S")
-        # send message to console
-        print(f"[{time} {message}]")
-
-
-logger = None
-
-
-running_agents: list = []
-
-def create_actor_system() -> tuple[ActorSystem, ActorAddress]:
-    global logger
-
-    if True: #os.environ.get("AGENTIC_SIMPLE_ACTORS"):
-        asys = ActorSystem()
-    else:
-        asys = ActorSystem("multiprocTCPBase")
-    if logger is None:
-        logger = asys.createActor(Logger)
-    return asys, logger
-
-
-def register_agent(agent):
-    running_agents.append(agent)
-
-def shutdown_agents():
-    for agent in running_agents:
-        agent.shutdown()
-
-atexit.register(shutdown_agents)
+    def list_tools(self) -> list[str]:
+        return self.tools
 
 
 class HandoffAgentWrapper:
@@ -543,11 +619,10 @@ def handoff(agent, **kwargs):
     return HandoffAgentWrapper(agent)
 
 
-class AgentBase:
-    pass
+_AGENT_REGISTRY: list = []
 
 
-class ActorAgent(AgentBase):
+class RayFacadeAgent:
     def __init__(
         self,
         name: str,
@@ -558,6 +633,7 @@ class ActorAgent(AgentBase):
         template_path: str | Path = None,
         max_tokens: int = None,
         memories: list[str] = [],
+        debug: DebugLevel = DebugLevel(DebugLevel.OFF),
     ):
         self.name = name
         self.welcome = welcome or f"Hello, I am {name}."
@@ -577,17 +653,16 @@ class ActorAgent(AgentBase):
         self._tools = tools
         self.max_tokens = max_tokens
         self.memories = memories
+        self.debug = debug
 
         # Initialize the base actor
         self._init_base_actor(instructions)
 
         # Ensure API key is set
         self.ensure_api_key_for_model(self.model)
+        _AGENT_REGISTRY.append(self)
 
     def _init_base_actor(self, instructions: str | None):
-        """Initialize the underlying actor system with the given instructions."""
-        asys, logger = create_actor_system()
-
         # Process instructions if provided
         if instructions:
             template = Template(instructions)
@@ -595,24 +670,15 @@ class ActorAgent(AgentBase):
         else:
             self.instructions = "You are a helpful assistant."
 
-        # Create the base actor
-        self._actor = asys.createActor(
-            ActorBaseAgent,
-            # We don't stricly need names, and Im not sure if it changes behavior in case you
-            # tried to use the same name, like for a test.
-            # globalName=f"{self.name}-{secrets.token_hex(4)}"
-        )
-        register_agent(self)
+        self._agent: ActorBaseAgent = ActorBaseAgent.remote()
 
         # Set initial state. Small challenge is that a child agent might have been
         # provided in tools. But we need to initialize ourselve
-        asys.ask(
-            self._actor,
+        obj_ref = self._agent.set_state.remote(
             SetState(
                 self.name,
                 {
                     "name": self.name,
-                    "logger": logger,
                     "instructions": self.instructions,
                     "functions": self._get_funcs(self._tools),
                     "model": self.model,
@@ -621,21 +687,25 @@ class ActorAgent(AgentBase):
                 },
             ),
         )
+        ray.get(obj_ref)
+
+    def __repr__(self) -> str:
+        return f"<Agent: {self.name}>"
 
     def shutdown(self):
-        asys, logger = create_actor_system()
-        asys.tell(self._actor, ActorExitRequest())
+        pass
+
+    def list_tools(self) -> list[str]:
+        """Gets the current tool list from the running agent"""
+        return ray.get(self._agent.list_tools.remote())
 
     def add_tool(self, tool: Any):
         self._tools.append(tool)
         self._update_state({"functions": self._get_funcs(self._tools)})
 
     def _update_state(self, state: dict):
-        asys, logger = create_actor_system()
-        asys.ask(
-            self._actor,
-            SetState(self.name, state),
-        )
+        obj_ref = self._agent.set_state.remote(SetState(self.name, state))
+        ray.get(obj_ref)
 
     def _get_funcs(self, thefuncs: list):
         useable = []
@@ -643,40 +713,30 @@ class ActorAgent(AgentBase):
             if callable(func):
                 tool_registry.ensure_dependencies(func)
                 useable.append(func)
-            elif isinstance(func, AgentBase):
+            elif isinstance(func, RayFacadeAgent):
                 # add a child agent as a tool
                 useable.append(
                     AddChild(
                         func.name,
-                        func._actor,
+                        func._agent,
                     )
                 )
             elif isinstance(func, HandoffAgentWrapper):
                 # add a child agent as a tool
                 useable.append(
                     AddChild(
-                        func.agent.name,
-                        func.agent._actor,
+                        func.get_agent().name,
+                        func.get_agent()._agent,
                         handoff=True,
                     )
                 )
             else:
                 tool_registry.ensure_dependencies(func)
-                useable.extend(func.get_tools())
+                useable.append(func)
 
         return useable
 
-    @staticmethod
-    def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
-        return asyncio.run(async_func(*args, **kwargs))
-
-    def add_child(self, child_agent: "ActorAgent"):
-        """
-        Add a child agent to this agent.
-
-        Args:
-            child_agent: Another ActorAgent instance to add as a child
-        """
+    def add_child(self, child_agent):
         self.add_tool(child_agent)
 
     @property
@@ -703,224 +763,36 @@ class ActorAgent(AgentBase):
             if key not in os.environ:
                 os.environ[key] = agentic_secrets.get_secret(key)
 
-    def __repr__(self) -> str:
-        return f"<ActorAgent: {self.name}>"
-
-
-from rich.live import Live
-from rich.markdown import Markdown
-
-
-class ActorAgentRunner:
-    def __init__(self, agent: ActorAgent, debug: bool = False) -> None:
-        self.agent = agent
-        self.asys, _ = create_actor_system()
-        self.debug = debug or os.environ.get("AGENTIC_DEBUG")
-
-    def start(self, request: str):
-        self.asys.tell(
-            self.agent._actor,
-            Prompt(self.agent.name, request, depth=0, debug=self.debug),
-        )
-
-    def turn(self, request: str, debug: bool = False) -> str:
-        """Runs the agent and waits for the turn to finish, then returns the results
-        of all output events as a single string."""
-        if debug:
-            self.debug = True
-        self.start(request)
-        results = []
-        for event in self.next(include_children=False):
-            if self.debug:
-                print(f"{event.debug(True)}")
-
-            if self._should_print(event):
-                results.append(str(event))
-
-        return "".join(results)
-
-    def __lshift__(self, prompt: str):
-        print(self.turn(prompt))
-
-    def _should_print(self, event: Event) -> bool:
-        flag = self.debug or ""
-        if flag == True or flag == "all":
-            return True
-        if event.is_output:
-            return True
-        elif isinstance(event, (ToolCall, ToolResult)):
-            return "tools" in flag
-        elif isinstance(event, PromptStarted):
-            return "llm" in flag or "agents" in flag
-        elif isinstance(event, TurnEnd):
-            return "agents" in flag
-        elif isinstance(event, (StartCompletion, FinishCompletion)):
-            return "llm" in flag
-        else:
-            return False
-
-    def next(
+    def next_turn(
         self,
-        include_children: bool = True,
-        timeout: int = 10,
-        include_completions: bool = False,
+        request: str,
+        continue_result: dict = {},
     ) -> Generator[Event, Any, Any]:
-        agents_running = set([self.agent.name])
-        waiting_final_timestamp = None
-        while True:
-            event: Event = (
-                self.asys.listen(1)
-                if waiting_final_timestamp
-                else self.asys.listen(timeout)
+        """This is the key agent loop generator. It runs the agent for a single turn and
+        emits events as it goes. If a WaitForInput event is emitted, then you should
+        gather human input and call this function again with _continue_result_ to
+        continue the turn."""
+        event: Event
+        if not continue_result:
+            remote_gen = self._agent.handlePromptOrResume.remote(
+                Prompt(
+                    self.name,
+                    request,
+                    depth=0,
+                    debug=self.debug,
+                )
             )
-            if event is None:
-                break
-            if isinstance(event, PoisonMessage):
-                print("Agent unexpected error: ", event)
-                continue
-            if event.agent not in agents_running:
-                agents_running.add(event.agent)
-            if not include_completions and isinstance(
-                event, (StartCompletion, FinishCompletion)
-            ):
-                continue
-            if isinstance(event, TurnEnd):
-                agents_running.remove(event.agent)
-                if len(agents_running) == 0:
-                    # All agents are finished
-                    if waiting_final_timestamp:
-                        yield event
-                        break
-                    else:
-                        waiting_final_timestamp = time.time()
+        else:
+            remote_gen = self._agent.handlePromptOrResume.remote(
+                ResumeWithInput(self.name, continue_result),
+            )
+        for remote_next in remote_gen:
+            event = ray.get(remote_next)
             yield event
 
-    def reset_session(self):
-        """Clears the chat history from the agent"""
-        self.asys.tell(
-            self.agent._actor,
-            ResetHistory(self.agent.name),
-        )
+    def set_debug_level(self, level: DebugLevel):
+        self.debug = level
+        ray.get(self._agent.set_debug_level.remote(self.debug))
 
-    def continue_with(self, response: dict):
-        self.asys.tell(
-            self.agent._actor,
-            ResumeWithInput(self.agent.name, response),
-        )
-
-    def repl_loop(self):
-        hist = os.path.expanduser("~/.agentic_history")
-        if os.path.exists(hist):
-            readline.read_history_file(hist)
-
-        print(self.agent.welcome)
-        print("press <enter> to quit")
-
-        @dataclass
-        class Modelcost:
-            model: str
-            inputs: int
-            calls: int
-            outputs: int
-            cost: float
-            time: float
-
-        def print_stats_report(completions: list[FinishCompletion]):
-            costs = dict[str, Modelcost]()
-            for comp in completions:
-                if comp.metadata["model"] not in costs:
-                    costs[comp.metadata["model"]] = Modelcost(
-                        comp.metadata["model"], 0, 0, 0, 0, 0
-                    )
-                mc = costs[comp.metadata["model"]]
-                mc.calls += 1
-                mc.cost += comp.metadata["cost"] * 100
-                mc.inputs += comp.metadata["input_tokens"]
-                mc.outputs += comp.metadata["output_tokens"]
-                if "elapsed_time" in comp.metadata:
-                    mc.time += comp.metadata["elapsed_time"].total_seconds()
-            for mc in costs.values():
-                yield (
-                    f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s]"
-                )
-
-        saved_completions = []
-        fancy = False
-
-        while fancy:
-            try:
-                # Get input directly from sys.stdin
-                line = console.input("> ")
-
-                if line == "quit" or line == "":
-                    break
-
-                output = ""
-                with console.status("[bold blue]thinking...", spinner="dots") as status:
-                    with Live(
-                        Markdown(output),
-                        refresh_per_second=1,
-                        auto_refresh=not self.debug,
-                    ) as live:
-                        self.start(line)
-
-                        for event in self.next(include_completions=True):
-                            if event is None:
-                                break
-                            elif event.requests_input():
-                                response = input(f"\n{event.request_message}\n>>>> ")
-                                self.continue_with(response)
-                            elif isinstance(event, FinishCompletion):
-                                saved_completions.append(event)
-                            else:
-                                if event.depth == 0:
-                                    output += str(event)
-                                    live.update(Markdown(output))
-                        output += "\n\n"
-                        live.update(Markdown(output))
-                for row in print_stats_report(saved_completions):
-                    console.out(row)
-                readline.write_history_file(hist)
-            except EOFError:
-                print("\nExiting REPL.")
-                break
-            except KeyboardInterrupt:
-                print("\nKeyboardInterrupt. Type 'exit()' to quit.")
-            except Exception as e:
-                traceback.print_exc()
-                print(f"Error: {e}")
-
-        while not fancy:
-            try:
-                # Get input directly from sys.stdin
-                line = console.input("> ")
-
-                if line == "quit" or line == "":
-                    break
-
-                self.start(line)
-
-                for event in self.next(include_completions=True):
-                    if event is None:
-                        break
-                    elif isinstance(event, WaitForInput):
-                        replies = {}
-                        for key, value in event.request_keys.items():
-                            replies[key] = input(f"\n{value}\n:> ")
-                        self.continue_with(replies)
-                    elif isinstance(event, FinishCompletion):
-                        saved_completions.append(event)
-                    if self._should_print(event):
-                        print(str(event), end="")
-                print()
-                for row in print_stats_report(saved_completions):
-                    console.out(row)
-                readline.write_history_file(hist)
-            except EOFError:
-                print("\nExiting REPL.")
-                break
-            except KeyboardInterrupt:
-                print("\nKeyboardInterrupt. Type 'exit()' to quit.")
-            except Exception as e:
-                traceback.print_exc()
-                print(f"Error: {e}")
+    def reset_history(self):
+        ray.get(self._agent.reset_history.remote())

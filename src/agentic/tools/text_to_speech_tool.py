@@ -168,26 +168,26 @@ class TextToSpeechTool(BaseAgenticTool):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"speech_{voice}_{timestamp}.mp3"
             # Define the path where the file will be saved
-            save_path = os.path.join("audio", filename)
+            save_path = filename
             combined.export(save_path, format="mp3")
 
-            raw_url = self.run_context.upload_user_file_to_s3(
-                file_name=filename, original_folder="audio", mime_type="audio/mpeg"
-            )
-            print(
-                f"generate_speech_file_from_text:Speech saved successfully:Raw_url -> {raw_url}"
-            )
-            # Get the correct URL
-            audio_url = self.run_context.get_file_url(filename, "audio")
-            print(f"generate_speech_file_from_text: correct URL -> {audio_url}")
+            # raw_url = self.run_context.upload_user_file_to_s3(
+            #     file_name=filename, original_folder="audio", mime_type="audio/mpeg"
+            # )
+            # print(
+            #     f"generate_speech_file_from_text:Speech saved successfully:Raw_url -> {raw_url}"
+            # )
+            # # Get the correct URL
+            # audio_url = self.run_context.get_file_url(filename, "audio")
+            # print(f"generate_speech_file_from_text: correct URL -> {audio_url}")
 
-            # Clean up the local file after successful upload
-            os.remove(save_path)
-            print(f"generate_speech_file_from_text:Local file removed -> {save_path}")
+            # # Clean up the local file after successful upload
+            # os.remove(save_path)
+            # print(f"generate_speech_file_from_text:Local file removed -> {save_path}")
 
             # Return the URL as a JSON string
             return json.dumps(
-                {"content_type": "audio/mpeg", "audio_url": audio_url.get("url")}
+                {"content_type": "audio/mpeg", "audio_url": f"file:///{save_path}"}
             )
         except Exception as e:
             traceback.print_exc()

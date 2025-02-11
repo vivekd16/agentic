@@ -11,36 +11,25 @@ from .base import BaseAgenticTool
 
 
 class GoogleNewsTool(BaseAgenticTool):
+    """Functions for accessing Google News."""
+
     browser_tool: ScaleSerpBrowserTool = None
 
     def __init__(self):
-        #         super().__init__(
-        #             id = "google_news_connector",
-        #             system_name = "Google News",
-        #             logo_url=super().logo_from_domain("google.com"),
-        #             category=ToolCategory.CATEGORY_INTERNET,
-        #             auth_config = { },
-        #             help="""
-        # Pull articles from Google News RSS feed
-        # """,
-        #         )
-
         self.browser_tool = ScaleSerpBrowserTool()
 
     def get_tools(self) -> list[Callable]:
-        return self.wrap_tool_functions(
-            [
-                self.get_top_headlines,
-                self.query_topic,
-                self.query_news,
-                self.get_category_news,
-                self.get_location_news,
-                self.get_local_topics,
-                self.get_trending_topics,
-                self.explain_search_syntax,
-                self.download_news_article,
-            ]
-        )
+        return [
+            self.get_top_headlines,
+            self.query_topic,
+            self.query_news,
+            self.get_category_news,
+            self.get_location_news,
+            self.get_local_topics,
+            self.get_trending_topics,
+            self.explain_search_syntax,
+            self.download_news_article,
+        ]
 
     def _news_items_to_df(self, news_items: List[NewsItem]) -> dict:
         df = pd.DataFrame([item.__dict__ for item in news_items])

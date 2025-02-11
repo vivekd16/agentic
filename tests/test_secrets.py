@@ -88,17 +88,6 @@ def test_generate_fernet_key_no_machine_id():
 
 
 # Tests for SecretManager
-def test_secret_manager_init(secret_manager, temp_db_path):
-    """Test SecretManager initialization creates database and table."""
-    assert os.path.exists(temp_db_path)
-    conn = sqlite3.connect(temp_db_path)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='secrets'"
-    )
-    assert cursor.fetchone() is not None
-    conn.close()
-
 
 def test_set_and_get_secret(secret_manager):
     """Test setting and retrieving a secret."""

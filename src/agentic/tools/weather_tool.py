@@ -32,6 +32,8 @@ Create this in the app under tools-.options->API key and set the value here."
     config_requirements=[],
 )
 class WeatherTool(BaseAgenticTool):
+    """Functions for getting weather information."""
+
     def __init__(self):
         pass
 

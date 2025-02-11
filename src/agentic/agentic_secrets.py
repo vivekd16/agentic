@@ -41,34 +41,53 @@ def generate_fernet_key():
 
 class SecretManager:
     def __init__(self, db_path=".agentsdb", cache_dir="~/.agentic", key=None):
+        self.db_path = Path(cache_dir).expanduser() / db_path
         self.cache_dir = Path(cache_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        db_path = Path(cache_dir).expanduser() / db_path
-
-        self.conn = sqlite3.connect(db_path)
-        self.cursor = self.conn.cursor()
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS secrets (name TEXT PRIMARY KEY, value TEXT)"
-        )
-        self.conn.commit()
+        self.key = key
         self.cipher = Fernet(key)
 
-    def set_secret(self, name, value):
-        encrypted_value = self.cipher.encrypt(value.encode()).decode()
-        self.cursor.execute(
-            "INSERT OR REPLACE INTO secrets (name, value) VALUES (?, ?)",
-            (name, encrypted_value),
+    def _get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS secrets (name TEXT PRIMARY KEY, value TEXT)"
         )
-        self.conn.commit()
+        conn.commit()
+        return conn, cursor
+
+    def set_secret(self, name, value):
+        conn, cursor = self._get_connection()
+        try:
+            encrypted_value = self.cipher.encrypt(value.encode()).decode()
+            cursor.execute(
+                "INSERT OR REPLACE INTO secrets (name, value) VALUES (?, ?)",
+                (name, encrypted_value),
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
     def get_secret(self, name, default_value: Optional[str] = None):
-        self.cursor.execute("SELECT value FROM secrets WHERE name=?", (name,))
-        result = self.cursor.fetchone()
-        return (
-            self.cipher.decrypt(result[0].encode()).decode()
-            if result
-            else default_value
-        )
+        conn, cursor = self._get_connection()
+        try:
+            cursor.execute("SELECT value FROM secrets WHERE name=?", (name,))
+            result = cursor.fetchone()
+            return (
+                self.cipher.decrypt(result[0].encode()).decode()
+                if result
+                else default_value
+            )
+        finally:
+            conn.close()
+
+    def list_secrets(self):
+        conn, cursor = self._get_connection()
+        try:
+            cursor.execute("SELECT name FROM secrets")
+            return [row[0] for row in cursor.fetchall()]
+        finally:
+            conn.close()
 
     def get_required_secret(self, name) -> str:
         val = self.get_secret(name)
@@ -76,13 +95,13 @@ class SecretManager:
             raise ValueError(f"Secret '{name}' is not set")
         return val
 
-    def list_secrets(self):
-        self.cursor.execute("SELECT name FROM secrets")
-        return [row[0] for row in self.cursor.fetchall()]
-
     def delete_secret(self, name):
-        self.cursor.execute("DELETE FROM secrets WHERE name=?", (name,))
-        self.conn.commit()
+        conn, cursor = self._get_connection()
+        try:
+            cursor.execute("DELETE FROM secrets WHERE name=?", (name,))
+            conn.commit()
+        finally:
+            conn.close()
 
 
 agentic_secrets = SecretManager(key=generate_fernet_key())

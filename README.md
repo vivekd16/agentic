@@ -16,19 +16,18 @@ A new, easy to use AI Agents framework. Agentic offers these features:
 ```python
 % agentic set OPENAI_API_KEY $OPENAI_API_KEY # or wherever you have this key
 
-% agentic repl
-> .load examples/basic_agent.py
+% python examples/basic_agent.py
 I am a simple agent here to help. I have a single weather function.
-> what is the weather in San Francisco?
+[Basic Agent]> what is the weather in San Francisco?
 The current weather in San Francisco is as follows:
 
 - **Temperature:** 48.2°F
 - **Feels Like:** 46.3°F
 - **Wind Speed:** 9.8 km/h
 ...
-> .load examples\database_agent.py
+% python examples/database_agent.py
 Hi! I can help you run SQL queries on any standard database.
-> show me the tables in the db
+[Database Agent]> show me the tables in the db
 ...
 please enter the DATBASE URL :> sqlite:///examples/chinook.db
 > list the tables
@@ -44,25 +43,6 @@ The tables in the database are as follows:
 There are a total of 412 invoices in the database.
 > what is the total amount?
 The total amount of all invoices is $2,328.60.
-```
-
-
-% python examples/basic_agent.py
-I am a simple agent here to help. I have a single weather function.
-press <enter> to quit
-
-> hi there
-Hello! How can I assist you today?
-
-> get the weather in toronto
-The current weather in Toronto is as follows:
-
-- **Temperature**: -9.9°C
-- **Feels Like**: -5.6°C
-...
-If you need more information or a forecast, just let me know!
-
-[openai/gpt-4o-mini: 3 calls, tokens: 168 -> 143, 0.02 cents, time: 15.92s]
 ```
 
 **Start the streamlit UI**
@@ -93,7 +73,7 @@ agent = Agent(
     welcome="I am a simple agent here to help. I have a single weather function.",
     instructions="You are a helpful assistant.",
     model="openai/gpt-4o-mini",
-    functions=[WeatherTool()],
+    functions=[weather_tool],
 )
 
 AgentRunner(agent).repl_loop()

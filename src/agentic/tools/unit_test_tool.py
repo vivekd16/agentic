@@ -10,12 +10,16 @@ STATE_FILE = "test_state.txt"
 
 
 class UnitTestingTool(BaseAgenticTool):
+    def __init__(self, story_log: str):
+        self.story_log = story_log
+
     def get_tools(self) -> list[Callable]:
         return [
             self.cleanup_state_file,
             self.sleep_for_time,
             self.read_state_file,
             self.test_using_async_call,
+            self.read_story_log,
         ]
 
     def sleep_for_time(self, seconds: int):
@@ -46,3 +50,8 @@ class UnitTestingTool(BaseAgenticTool):
 
     async def test_using_async_call(self):
         await asyncio.sleep(1)
+
+    async def read_story_log(self) -> str:
+        """ Reads and returns the story log content."""
+        await asyncio.sleep(0.2)
+        return self.story_log

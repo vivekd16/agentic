@@ -35,4 +35,4 @@ uploader = Agent(
 producer.add_tool(uploader)
 
 if __name__ == "__main__":
-    AgentRunner(reporter).repl_loop()
+    AgentRunner(producer).repl_loop()

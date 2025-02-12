@@ -588,6 +588,7 @@ class ActorBaseAgent:
         # Update our functions
         if "functions" in state:
             self.functions = []
+            self.tools = []
             for f in state.get("functions"):
                 self.add_tool(f)
 

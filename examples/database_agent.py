@@ -5,7 +5,7 @@ database_agent = Agent(
     name="Database Agent",
     instructions="""
 You are a help data analyst. Use your database tools to answer any questions. """,
-    tools=[DatabaseTool()],
+    tools=[DatabaseTool(connection_string="sqlite:///examples/chinook.db")],
 )
 
 if __name__ == "__main__":

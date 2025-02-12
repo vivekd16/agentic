@@ -7,12 +7,16 @@ from typing import Any, Dict, List, Type
 import importlib.util
 import inspect
 import sys
+from .fix_console import ConsoleWithInputBackspaceFixed
 
 from rich.live import Live
 from rich.markdown import Markdown
 
+# Global console for Rich
+console = ConsoleWithInputBackspaceFixed()
 
-from .actor_agents import RayFacadeAgent, console, _AGENT_REGISTRY
+
+from .actor_agents import RayFacadeAgent, _AGENT_REGISTRY
 from agentic.events import (
     DebugLevel,
     Event,
@@ -228,6 +232,18 @@ class RayAgentRunner:
             print("tools:")
             for tool in self.facade.list_tools():
                 print(f"  {tool}")
+
+        elif line == ".tools":
+            print(self.facade.name)
+            print("tools:")
+            for tool in self.facade.list_tools():
+                print(f"  {tool}")
+
+        elif line == ".functions":
+            print(self.facade.name)
+            print("functions:")
+            for func in self.facade.list_functions():
+                print(f"  {func}")
 
         elif line == ".reset":
             self.facade.reset_history()

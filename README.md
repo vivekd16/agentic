@@ -1,20 +1,49 @@
 # Agentic
 
-A new, easy to use AI Agents framework. Agentic offers these features:
+Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
+and can use tools to do work on your behalf.
+
+Agentic is in the tradition of _opinionated frameworks_. We've tried to encode lots of sensisible
+defaults and best practices into the design, testing and deployment of agents. 
+
+Some key features:
 
 - Approachable and simple to use
-- Supports agents swarms
-- Support Human-in-the-loop
+- Supports teams of cooperating agents
+- Supports Human-in-the-loop
 - Easy definition and use of tools
+
+But there is much more. The rest of this guide will go over getting started with the framework. You can find some more background
+info in these docs:
+
+    - What is an AI agent?
+    - Why does this framework exist?
+
+
 
 ## Install
 
-    uv pip install -e . 
+    pip install aaagentic
+
+Wait - why **aaagentic**?? Cause we wanted to be listed first! Haha, actually there's a bunch of empty projects
+squatting on most of the obvious 'agentic' names in pypi. 
+
+Now setup an area to build and manage your agents:
+
+    mkdir myagents
+    cd myagents
+    agentic init .
+
+This will install some examples and a basic file structure into the directory `myagents`. You can name
+or rename this folder however you like.
 
 ## Try it!
+The easiest way to start is by configuring your OpenAI API key and running some example agents.
+Visits the [models](./MODELS.md) documentation for information on using other models.
+
 
 ```python
-% agentic set OPENAI_API_KEY $OPENAI_API_KEY # or wherever you have this key
+% agentic set-secret OPENAI_API_KEY <your OpenAI API key>
 
 % python examples/basic_agent.py
 I am a simple agent here to help. I have a single weather function.
@@ -25,12 +54,12 @@ The current weather in San Francisco is as follows:
 - **Feels Like:** 46.3°F
 - **Wind Speed:** 9.8 km/h
 ...
+```
+
+```python
 % python examples/database_agent.py
 Hi! I can help you run SQL queries on any standard database.
 [Database Agent]> show me the tables in the db
-...
-please enter the DATBASE URL :> sqlite:///examples/chinook.db
-> list the tables
 INFO: Connecting to database: sqlite:///examples/chinook.db
 The tables in the database are as follows:
 

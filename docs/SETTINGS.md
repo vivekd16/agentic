@@ -1,0 +1,3 @@
+AGENTIC_DEBUG=agents,tools,llm,all
+
+AGENTIC_OVERRIDE_MODEL=xx

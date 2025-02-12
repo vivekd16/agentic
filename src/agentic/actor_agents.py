@@ -1,37 +1,24 @@
-import atexit
 import asyncio
-from thespian.actors import (
-    Actor,
-    ActorSystem,
-    PoisonMessage,
-    ActorAddress,
-    ActorExitRequest,
-)
 from typing import Any, Optional, Generator
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
 from pathlib import Path
-from functools import partial
 import inspect
 import json
 import os
-import time
 from copy import deepcopy
 from pprint import pprint
-from datetime import datetime
 from agentic.agentic_secrets import agentic_secrets
 from pathlib import Path
 import os
 import yaml
 from jinja2 import Template
-from .fix_console import ConsoleWithInputBackspaceFixed
 import ray
 
 import yaml
 from typing import Callable, Any, List
 from pydantic import Field
-from .swarm import Swarm
 from .swarm.types import (
     AgentFunction,
     Response,
@@ -68,7 +55,6 @@ from .events import (
     Event,
     Prompt,
     PromptStarted,
-    ResetHistory,
     Output,
     ChatOutput,
     ToolCall,
@@ -81,15 +67,12 @@ from .events import (
     AddChild,
     WaitForInput,
     PauseForInputResult,
-    PauseForChildResult,
     ResumeWithInput,
     DebugLevel,
 )
 from agentic.tools.registry import tool_registry
 
 
-# Global console for Rich
-console = ConsoleWithInputBackspaceFixed()
 
 __CTX_VARS_NAME__ = "run_context"
 
@@ -604,7 +587,16 @@ class ActorBaseAgent:
 
     def list_tools(self) -> list[str]:
         return self.tools
-
+    
+    def list_functions(self) -> list[str]:
+        def get_name(f):
+            if hasattr(f, '__name__'):
+                return f.__name__
+            elif isinstance(f, dict):
+                return f['name']
+            else:
+                return str(f)
+        return [get_name(f) for f in self.functions]
 
 class HandoffAgentWrapper:
     def __init__(self, agent):
@@ -624,6 +616,10 @@ _AGENT_REGISTRY: list = []
 
 
 class RayFacadeAgent:
+    """ The facade agent is the object directly instantiated in code. It holds a reference to the remote
+        Ray agent object and proxies calls to it. The intention is that we should be able to build
+        other 'agent' implementations that don't require Ray, for example are based on threads in a single process. 
+        """
     def __init__(
         self,
         name: str,
@@ -699,6 +695,10 @@ class RayFacadeAgent:
     def list_tools(self) -> list[str]:
         """Gets the current tool list from the running agent"""
         return ray.get(self._agent.list_tools.remote())
+
+    def list_functions(self) -> list[str]:
+        """Gets the current list of functions from the running agent"""
+        return ray.get(self._agent.list_functions.remote())
 
     def add_tool(self, tool: Any):
         self._tools.append(tool)

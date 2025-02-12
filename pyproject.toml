@@ -1,7 +1,7 @@
 [project]
-name = "agentic"
+name = "aaagentic"
 version = "0.1.0"
-description = "Add your description here"
+description = "An opinionated framework for building AI Agents"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -33,9 +33,20 @@ dev = [
     "black",
 ]
 
-[tool.uv.sources]
-swarm = { git = "https://github.com/scottpersinger/swarm.git" }
-
-
 [project.scripts]
 agentic = "agentic.cli:app"
+
+
+[tool.hatch.version]
+path = "agentic/__init__.py"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src", "examples" = "examples"}
+packages = ["agentic", "examples"]
+
+[tool.setuptools.package-data]
+agentic = ["examples/*", "examples/**/*"]

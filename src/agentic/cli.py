@@ -14,6 +14,13 @@ from agentic.agentic_secrets import agentic_secrets as secrets
 from agentic.settings import settings
 
 
+import shutil
+from pathlib import Path
+from importlib import resources
+from typing import Optional
+from rich.status import Status
+
+
 # Create a state class to hold global options
 class State:
     def __init__(self):
@@ -184,6 +191,69 @@ def repl(filename: str = typer.Argument(default="", show_default=False)):
         cmd.append(filename)
     os.execvp("python", cmd)
 
+
+def copy_examples(src_path: Path, dest_path: Path, console: Console) -> None:
+    """Copy example files from source to destination, maintaining directory structure."""
+    try:
+        if not dest_path.exists():
+            dest_path.mkdir(parents=True)
+        
+        # Copy all files and directories
+        for item in src_path.iterdir():
+            target = dest_path / item.name
+            
+            if item.is_file():
+                shutil.copy2(item, target)
+                console.print(f"✓ Copied: {item.name}", style="green")
+            elif item.is_dir():
+                shutil.copytree(item, target, dirs_exist_ok=True)
+                console.print(f"✓ Copied directory: {item.name}", style="green")
+                
+    except Exception as e:
+        console.print(f"Error copying examples: {str(e)}", style="red")
+        raise typer.Exit(1)
+
+@app.command()
+def init(
+    path: str = typer.Argument(
+        ".", help="Directory to initial your project (defaults to current directory)"
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Overwrite existing files in the destination directory"
+    )
+):
+    """Initialize a new project by copying example files from the package."""
+    console = Console()
+    dest_path = Path(path).resolve()
+    
+    # Check if destination exists and is not empty
+    if dest_path.exists() and any(dest_path.iterdir()) and not force:
+        console.print(
+            "⚠️  Destination directory is not empty. Use --force to overwrite existing files.",
+            style="yellow"
+        )
+        raise typer.Exit(1)
+    
+    with Status("[bold green]Copying example files...", console=console):
+        try:
+            # Get the package's examples directory using importlib.resources
+            # Replace 'your_package_name' with your actual package name
+            with resources.path('aaagentic', 'examples') as examples_path:
+                copy_examples(examples_path, dest_path, console)
+            
+            console.print("\n✨ Examples copied successfully!", style="bold green")
+            console.print(f"📁 Location: {dest_path}", style="blue")
+            
+        except ModuleNotFoundError:
+            console.print("Error: Could not find examples directory in package.", style="red")
+            raise typer.Exit(1)
+        except Exception as e:
+            console.print(f"Error initializing project: {str(e)}", style="red")
+            raise typer.Exit(1)
+        
 
 if __name__ == "__main__":
     app()

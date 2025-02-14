@@ -1,0 +1,5 @@
+site_name: Agentic Docs
+site_url: https://supercog.ai/agentic
+theme:
+  name: material
+  

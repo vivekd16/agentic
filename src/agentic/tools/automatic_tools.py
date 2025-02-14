@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import pandas as pd
 
 from agentic.llm import llm_generate_with_format
-from agentic import RunContext
+from agentic.common import RunContext
 
 
 from .file_download import FileDownloadTool

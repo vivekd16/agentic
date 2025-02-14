@@ -5,7 +5,31 @@ from pathlib import Path
 import base64
 import hashlib
 from typing import Optional
-from cryptography.fernet import Fernet
+
+# from cryptography.fernet import Fernet
+
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+from os import urandom
+
+
+class FastEncryptor:
+    def __init__(self, key):
+        self.cipher = ChaCha20Poly1305(key)
+
+    def encrypt(self, data):
+        if isinstance(data, str):
+            data = data.encode()
+        nonce = urandom(12)
+        return nonce + self.cipher.encrypt(nonce, data, None)
+
+    def decrypt(self, data):
+        try:
+            nonce = data[:12]
+            ciphertext = data[12:]
+            return self.cipher.decrypt(nonce, ciphertext, None).decode()
+        except Exception as e:
+            # print(f"Error decrypting data: {e}")
+            return None
 
 
 def get_machine_id():
@@ -36,16 +60,16 @@ def generate_fernet_key():
     # Base64 encode to make it a valid Fernet key
     fernet_key = base64.urlsafe_b64encode(hashed_id)
 
-    return fernet_key
+    return hashed_id
 
 
 class SecretManager:
-    def __init__(self, db_path=".agentsdb", cache_dir="~/.agentic", key=None):
+    def __init__(self, db_path="agentsdb", cache_dir="~/.agentic", key=None):
         self.db_path = Path(cache_dir).expanduser() / db_path
         self.cache_dir = Path(cache_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.key = key
-        self.cipher = Fernet(key)
+        self.encrypter = FastEncryptor(key)
 
     def _get_connection(self):
         conn = sqlite3.connect(self.db_path)
@@ -59,7 +83,7 @@ class SecretManager:
     def set_secret(self, name, value):
         conn, cursor = self._get_connection()
         try:
-            encrypted_value = self.cipher.encrypt(value.encode()).decode()
+            encrypted_value = self.encrypter.encrypt(value.encode())
             cursor.execute(
                 "INSERT OR REPLACE INTO secrets (name, value) VALUES (?, ?)",
                 (name, encrypted_value),
@@ -73,13 +97,15 @@ class SecretManager:
         try:
             cursor.execute("SELECT value FROM secrets WHERE name=?", (name,))
             result = cursor.fetchone()
-            return (
-                self.cipher.decrypt(result[0].encode()).decode()
-                if result
-                else default_value
-            )
+            return self.encrypter.decrypt(result[0]) if result else default_value
         finally:
             conn.close()
+
+    def get_all_secrets(self) -> list[tuple[str, str]]:
+        res = []
+        for secret in self.list_secrets():
+            res.append((secret, self.get_secret(secret)))
+        return res
 
     def list_secrets(self):
         conn, cursor = self._get_connection()
@@ -102,6 +128,12 @@ class SecretManager:
             conn.commit()
         finally:
             conn.close()
+
+    def copy_secrets_to_env(self):
+        for secret in self.list_secrets():
+            value = self.get_secret(secret)
+            if value:
+                os.environ[secret] = value
 
 
 agentic_secrets = SecretManager(key=generate_fernet_key())

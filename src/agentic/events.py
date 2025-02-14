@@ -5,7 +5,7 @@ warnings.filterwarnings("ignore", message="Valid config keys have changed in V2:
 
 from dataclasses import dataclass
 from typing import Any
-from .swarm.types import Result
+from .swarm.types import Result, DebugLevel
 import json
 
 from litellm.types.utils import ModelResponse, Message
@@ -38,33 +38,6 @@ class Event:
     @property
     def is_output(self):
         return False
-
-
-class DebugLevel:
-    OFF: str = ""
-
-    def __init__(self, level: str | bool):
-        if isinstance(level, bool):
-            if level == True:
-                level = "tools,llm"
-            else:
-                level = ""
-        self.level = str(level)
-
-    def debug_tools(self):
-        return self.level == "all" or "tools" in self.level
-
-    def debug_llm(self):
-        return self.level == "all" or "llm" in self.level
-
-    def debug_agents(self):
-        return self.level == "all" or "agents" in self.level
-
-    def debug_all(self):
-        return self.level == "all"
-
-    def __str__(self) -> str:
-        return str(self.level)
 
 
 class Prompt(Event):
@@ -136,7 +109,7 @@ class ToolCall(Event):
 
     def __str__(self):
         name = self.payload
-        return "--" * (self.depth + 1) + f"> {name}({self.args})\n"
+        return "  " * (self.depth + 1) + f"[TOOL: {name} >> ({self.args})]\n"
 
 
 class ToolResult(Event):
@@ -146,7 +119,20 @@ class ToolResult(Event):
 
     def __str__(self):
         name = self.payload
-        return "<" + "--" * (self.depth + 1) + f"{name}: {self.result}\n"
+        return "  " * (self.depth + 1) + f"[TOOL: {name}] <<\n{self.result}]\n"
+
+
+class ToolError(Event):
+    def __init__(self, agent: str, func_name: str, error: str, depth: int = 0):
+        super().__init__(agent, "tool_error", func_name, depth=depth)
+        self._error = error
+
+    @property
+    def error(self):
+        return self._error
+
+    def print(self, debug_level: str):
+        return str(self._error)
 
 
 class StartCompletion(Event):

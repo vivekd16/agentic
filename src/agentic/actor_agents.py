@@ -9,12 +9,14 @@ import json
 import os
 from copy import deepcopy
 from pprint import pprint
-from agentic.agentic_secrets import agentic_secrets
 from pathlib import Path
 import os
 import yaml
 from jinja2 import Template
 import ray
+import traceback
+from datetime import timedelta
+from .swarm.types import agent_secret_key, tool_name
 
 import yaml
 from typing import Callable, Any, List
@@ -28,8 +30,9 @@ from .swarm.types import (
     Function,
 )
 from .swarm.util import (
-    merge_chunk,
     debug_print,
+    debug_completion_start,
+    debug_completion_end,
     function_to_json,
     looks_like_langchain_tool,
     langchain_function_to_json,
@@ -69,9 +72,9 @@ from .events import (
     PauseForInputResult,
     ResumeWithInput,
     DebugLevel,
+    ToolError,
 )
 from agentic.tools.registry import tool_registry
-
 
 
 __CTX_VARS_NAME__ = "run_context"
@@ -109,12 +112,13 @@ class ActorBaseAgent:
     class Config:
         arbitrary_types_allowed = True
 
-    def __init__(self):
+    def __init__(self, name: str):
         super().__init__()
+        self.name = name
         self.history: list = []
 
     def __repr__(self):
-        return f"Agent({self.name})"
+        return self.name
 
     def _get_llm_completion(
         self,
@@ -150,19 +154,20 @@ class ActorBaseAgent:
         if tools:
             create_params["parallel_tool_calls"] = self.parallel_tool_calls
 
-        debug_version = create_params.copy()
-        if debug_version.get("tools"):
-            debug_version["tools"] = [
-                f["function"]["name"] for f in debug_version["tools"]
+        debug_params = create_params.copy()
+        if debug_params.get("tools"):
+            debug_params["tools"] = [
+                f["function"]["name"] for f in debug_params["tools"]
             ]
 
-        debug_print(
-            self.debug.debug_llm(),
-            f"[{self.name}] Generating completion for:\n",
-            debug_version,
-        )
+        debug_completion_start(self.debug, self.model, debug_params)
+
         # Use LiteLLM's completion instead of OpenAI's client
-        return litellm.completion(**create_params)
+        try:
+            return litellm.completion(**create_params)
+        except Exception as e:
+            traceback.print_exc()
+            raise RuntimeError("Error calling LLM: " + str(e))
 
     def _execute_tool_calls(
         self,
@@ -206,10 +211,10 @@ class ActorBaseAgent:
                 )
                 args = {}
 
-            debug_print(
-                self.debug.debug_tools(),
-                f"Processing tool call: {name} with arguments {args}",
-            )
+            # debug_print(
+            #    self.debug.debug_tools(),
+            #    f"Processing tool call: ", name, " with arguments:\n", args,
+            # )
 
             func = function_map[name]
             # pass context_variables to agent functions
@@ -239,8 +244,17 @@ class ActorBaseAgent:
                 else:
                     raw_result = function_map[name](**args)
             except Exception as e:
-                raw_result = f"{name} - Error: {e}"
-                run_context.error(raw_result)
+                tb_list = traceback.format_exception(type(e), e, e.__traceback__)
+                # Join all lines and split them to get individual lines
+                full_traceback = "".join(tb_list).strip().split("\n")
+                # Get the last 3 lines (or all if less than 3)
+                last_three = (
+                    full_traceback[-3:] if len(full_traceback) >= 3 else full_traceback
+                )
+                raw_result = f"Tool error: {name}: {last_three}"
+
+                events.append(ToolError(self.name, name, raw_result, self.depth))
+                # run_context.error(raw_result)
 
             result: Result = (
                 raw_result
@@ -310,12 +324,25 @@ class ActorBaseAgent:
         litellm.success_callback = [custom_callback]
 
         # litellm._turn_on_debug()
-        completion = self._get_llm_completion(
-            history=self.history,
-            run_context=run_context,
-            model_override=None,
-            stream=True,
-        )
+        completion = None
+        try:
+            completion = self._get_llm_completion(
+                history=self.history,
+                run_context=run_context,
+                model_override=None,
+                stream=True,
+            )
+        except RuntimeError as e:
+            yield FinishCompletion.create(
+                self.name,
+                Message(content=str(e), role="assistant"),
+                self.model,
+                0,
+                0,
+                timedelta(0),
+                self.depth,
+            )
+            return
 
         # With 'streaming' we get the response back in chunks. For the output text
         # we want to emit events progressively with that output, but for tool calls
@@ -345,12 +372,6 @@ class ActorBaseAgent:
             self._callback_params["output_tokens"] = token_counter(
                 self.model, text=llm_message.choices[0].message.content
             )
-        # Have to calc cost after we have seen all the chunks
-        debug_print(
-            self.debug.debug_llm(),
-            f"[{self.name}] Completion cost: ",
-            self._callback_params,
-        )
 
         yield FinishCompletion.create(
             self.name,
@@ -366,7 +387,9 @@ class ActorBaseAgent:
     def handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput):
         if isinstance(actor_message, Prompt):
             self.run_context = (
-                RunContext(agent_name=self.name, agent=self)
+                RunContext(
+                    agent_name=self.name, agent=self, debug_level=actor_message.debug
+                )
                 if self.run_context is None
                 else self.run_context
             )
@@ -423,9 +446,10 @@ class ActorBaseAgent:
 
             response: Message = event.response
 
-            debug_print(
-                self.debug.debug_llm(), f"[{self.name}] Completion finished:", response
-            )
+            debug_completion_end(self.debug, response)
+            # debug_print(
+            #    self.debug.debug_llm(), f"Completion finished:\n", response
+            # )
 
             self.history.append(response)
             if not response.tool_calls:
@@ -533,11 +557,18 @@ class ActorBaseAgent:
     def reset_history(self):
         self.history = []
 
+    def get_history(self):
+        return self.history
+
     def inject_secrets_into_env(self):
         """Ensure the appropriate API key is set for the given model."""
+        from agentic.agentic_secrets import agentic_secrets
+
         for key in agentic_secrets.list_secrets():
             if key not in os.environ:
-                os.environ[key] = agentic_secrets.get_secret(key)
+                value = agentic_secrets.get_secret(key)
+                if value:
+                    os.environ[key] = value
 
     def get_instructions(self, context: RunContext):
         prompt = self.instructions_str
@@ -587,16 +618,18 @@ class ActorBaseAgent:
 
     def list_tools(self) -> list[str]:
         return self.tools
-    
+
     def list_functions(self) -> list[str]:
         def get_name(f):
-            if hasattr(f, '__name__'):
+            if hasattr(f, "__name__"):
                 return f.__name__
             elif isinstance(f, dict):
-                return f['name']
+                return f["name"]
             else:
                 return str(f)
+
         return [get_name(f) for f in self.functions]
+
 
 class HandoffAgentWrapper:
     def __init__(self, agent):
@@ -616,10 +649,11 @@ _AGENT_REGISTRY: list = []
 
 
 class RayFacadeAgent:
-    """ The facade agent is the object directly instantiated in code. It holds a reference to the remote
-        Ray agent object and proxies calls to it. The intention is that we should be able to build
-        other 'agent' implementations that don't require Ray, for example are based on threads in a single process. 
-        """
+    """The facade agent is the object directly instantiated in code. It holds a reference to the remote
+    Ray agent object and proxies calls to it. The intention is that we should be able to build
+    other 'agent' implementations that don't require Ray, for example are based on threads in a single process.
+    """
+
     def __init__(
         self,
         name: str,
@@ -652,22 +686,29 @@ class RayFacadeAgent:
         self.memories = memories
         self.debug = debug
 
+        # Check we have all the secrets
+        self._ensure_tool_secrets()
+
         # Initialize the base actor
-        self._init_base_actor(instructions)
+        self._init_base_actor(instructions or "")
 
         # Ensure API key is set
         self.ensure_api_key_for_model(self.model)
         _AGENT_REGISTRY.append(self)
 
-    def _init_base_actor(self, instructions: str | None):
+    def _init_base_actor(self, instructions: str):
         # Process instructions if provided
-        if instructions:
+        if instructions.strip():
             template = Template(instructions)
             self.instructions = template.render(**self.prompt_variables)
+            if self.instructions.strip() == "":
+                raise ValueError(
+                    f"Instructions are required for {self.name}. Maybe interpolation failed from: {instructions}"
+                )
         else:
-            self.instructions = "You are a helpful assistant."
+            raise ValueError("Instructions are required")
 
-        self._agent: ActorBaseAgent = ActorBaseAgent.remote()
+        self._agent: ActorBaseAgent = ActorBaseAgent.remote(name=self.name)
 
         # Set initial state. Small challenge is that a child agent might have been
         # provided in tools. But we need to initialize ourselve
@@ -686,8 +727,26 @@ class RayFacadeAgent:
         )
         ray.get(obj_ref)
 
-    def __repr__(self) -> str:
-        return f"<Agent: {self.name}>"
+    def _ensure_tool_secrets(self):
+        from agentic.agentic_secrets import agentic_secrets
+
+        for tool in self._tools:
+            if hasattr(tool, "required_secrets"):
+                for key, help in tool.required_secrets().items():
+                    value = agentic_secrets.get_secret(
+                        agent_secret_key(self.name, key),
+                        agentic_secrets.get_secret(key, os.environ.get(key)),
+                    )
+                    if not value:
+                        value = input(f"{tool_name(tool)} requires {help}: ")
+                        if value:
+                            agentic_secrets.set_secret(
+                                agent_secret_key(self.name, key), value
+                            )
+                        else:
+                            raise ValueError(
+                                f"Secret {key} is required for tool {tool_name(tool)}"
+                            )
 
     def shutdown(self):
         pass
@@ -760,19 +819,25 @@ class RayFacadeAgent:
 
     def ensure_api_key_for_model(self, model: str):
         """Ensure the appropriate API key is set for the given model."""
+        from agentic.agentic_secrets import agentic_secrets
+
         for key in agentic_secrets.list_secrets():
             if key not in os.environ:
-                os.environ[key] = agentic_secrets.get_secret(key)
+                value = agentic_secrets.get_secret(key)
+                if value:
+                    os.environ[key] = value
 
     def next_turn(
         self,
         request: str,
         continue_result: dict = {},
+        debug: DebugLevel = DebugLevel(DebugLevel.OFF),
     ) -> Generator[Event, Any, Any]:
         """This is the key agent loop generator. It runs the agent for a single turn and
         emits events as it goes. If a WaitForInput event is emitted, then you should
         gather human input and call this function again with _continue_result_ to
         continue the turn."""
+        self.debug = debug
         event: Event
         if not continue_result:
             remote_gen = self._agent.handlePromptOrResume.remote(
@@ -797,3 +862,6 @@ class RayFacadeAgent:
 
     def reset_history(self):
         ray.get(self._agent.reset_history.remote())
+
+    def get_history(self):
+        return ray.get(self._agent.get_history.remote())

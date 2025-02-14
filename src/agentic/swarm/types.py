@@ -13,11 +13,58 @@ from pydantic import BaseModel
 AgentFunction = Callable[[], Union[str, "SwarmAgent", dict]] | dict
 
 
+def agent_secret_key(agent_name: str, key: str) -> str:
+    return f"{agent_name}/{key}"
+
+
+def tool_name(tool) -> str:
+    if hasattr(tool, "__name__"):
+        return tool.__name__
+    elif hasattr(tool, "__class__"):
+        return tool.__class__.__name__
+    else:
+        return str(tool)
+
+
+class DebugLevel:
+    OFF: str = ""
+
+    def __init__(self, level: str | bool):
+        if isinstance(level, bool):
+            if level == True:
+                level = "tools,llm"
+            else:
+                level = ""
+        self.level = str(level)
+
+    def debug_tools(self):
+        return self.level == "all" or "tools" in self.level
+
+    def debug_llm(self):
+        return self.level == "all" or "llm" in self.level
+
+    def debug_agents(self):
+        return self.level == "all" or "agents" in self.level
+
+    def debug_all(self):
+        return self.level == "all"
+
+    def __str__(self) -> str:
+        return str(self.level)
+
+
 class RunContext:
-    def __init__(self, agent, context: dict = {}, agent_name: str = ""):
+    def __init__(
+        self,
+        agent,
+        context: dict = {},
+        agent_name: str = "",
+        debug_level: DebugLevel = DebugLevel(DebugLevel.OFF),
+    ):
         self._context = context
         self.agent_name = agent_name
         self.agent = agent
+        self.debug_level = debug_level
 
     def __getitem__(self, key):
         return self._context.get(key, None)
@@ -44,8 +91,14 @@ class RunContext:
 
     def get_secret(self, key, default=None):
         return agentic_secrets.get_secret(
-            self.agent_name + "/" + key,
+            agent_secret_key(self.agent_name, key),
             agentic_secrets.get_secret(key, self.get(key, default)),
+        )
+
+    def set_secret(self, key, value):
+        return agentic_secrets.set_secret(
+            self.agent_name + "/" + key,
+            value,
         )
 
     def get_context(self) -> dict:
@@ -56,6 +109,10 @@ class RunContext:
 
     def info(self, *args):
         print("INFO:", *args)
+
+    def debug(self, *args):
+        if self.debug_level.debug_all():
+            print("DEBUG:", *args)
 
     def warn(self, *args):
         print("WARNING:", *args)

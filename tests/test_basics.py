@@ -1,8 +1,7 @@
 import pytest
-from agentic import Agent, AgentRunner
+from agentic.common import Agent, AgentRunner
 
 
-@pytest.mark.skip(reason="This test is not working")
 def test_agent():
     agent = Agent(
         name="Basic Agent",
@@ -18,22 +17,25 @@ def test_agent():
     response = agent_runnner.turn("please tell me hello")
     assert "hello" in response.lower(), response
 
-@pytest.mark.skip(reason="This test is not working")
 def test_agent_as_tool():
     agent = Agent(
         name="Agent A",
-        instructions="Print this 'I am agent 1'. \nThen call agent B",
+        instructions="""
+Print this 'I am agent 1'.
+Then call agent once with the request 'run'
+""",
         tools=[
             Agent(
                 name="Agent B",
-                instructions="Print 'I am agent 2'.",
+                instructions="Only print 'I am agent B. My secret number is 99'.",
             )
         ],
+        model="openai/gpt-4o",
     )
 
     agent_runnner = AgentRunner(agent)
     response = agent_runnner.turn("run your instructions")
-    assert "agent 2" in response.lower(), response
+    assert "99" in response.lower(), response
 
 
 
@@ -46,7 +48,7 @@ def test_simple_tool_use():
     global read_file_was_called
 
     agent = Agent(
-        name="Agent A",
+        name="Agent Simple Tool Use",
         instructions="You are helpful assistant.",
         tools=[read_file],
     )

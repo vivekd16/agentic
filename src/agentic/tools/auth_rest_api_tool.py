@@ -2,7 +2,7 @@ from typing import Callable
 
 from .rest_tool_v2 import RESTAPIToolV2
 from agentic.agentic_secrets import agentic_secrets as secrets
-from agentic import RunContext
+from agentic.common import RunContext
 
 
 class AuthorizedRESTAPITool(RESTAPIToolV2):

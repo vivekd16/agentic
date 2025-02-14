@@ -3,14 +3,42 @@ from datetime import datetime
 from pprint import pformat
 from typing import Union, Type, Callable
 from functools import partial
+from agentic.colors import Colors
+from litellm.types.utils import ModelResponse, Message
 
 
 def debug_print(debug: bool, *args: str) -> None:
     if not debug:
         return
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    message = " ".join(map(pformat, args))
-    print(f"\033[97m[\033[90m{timestamp}\033[97m]\033[90m {message}\033[0m")
+
+    def format_part(part):
+        if isinstance(part, str):
+            return part
+        return pformat(part)
+
+    message = " ".join(map(format_part, args))
+    print(message)
+    # print(f"\033[97m]\033[90m {message}\033[0m")
+
+
+def debug_completion_start(debug: "DebugLevel", model: str, params: dict) -> None:
+    if debug.debug_llm():
+        if "messages" in params:
+            print(f"{Colors.GREEN}>> {model}:{Colors.ENDC}")
+            msgs = [
+                f"{Colors.GREEN}{m['role']}: {m['content']}{Colors.ENDC}"
+                for m in params["messages"]
+            ]
+            print("\n".join(msgs))
+
+
+def debug_completion_end(debug: "DebugLevel", message: Message) -> None:
+    if debug.debug_llm():
+        print(f"{Colors.GREEN}<< {Colors.ENDC}")
+        for line in (message.content or "").split("\n"):
+            print(f"{Colors.FOREST_GREEN}{line}{Colors.ENDC}")
+        if message.tool_calls:
+            print(Colors.GREEN + pformat(message.tool_calls) + Colors.ENDC)
 
 
 def merge_fields(target, source):

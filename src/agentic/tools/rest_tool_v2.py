@@ -22,7 +22,7 @@ from typing import Dict, Optional, Any
 
 from .base import BaseAgenticTool
 from agentic.tools.registry import tool_registry, Dependency
-from agentic import RunContext
+from agentic.common import RunContext
 
 with tool_registry.safe_imports():
     from httpx import BasicAuth

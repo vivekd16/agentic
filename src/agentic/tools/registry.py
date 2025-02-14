@@ -26,6 +26,22 @@ class ConfigRequirement:
     default: Any = None
 
 
+def check_package(package_name):
+    try:
+        # Method 1: Try importing the module directly
+        __import__(package_name)
+        return True
+    except ImportError:
+        # If direct import fails, we can try using pkg_resources
+        try:
+            import pkg_resources
+
+            pkg_resources.require(package_name)
+            return True
+        except (ImportError, pkg_resources.DistributionNotFound):
+            return False
+
+
 @dataclass
 class Tool:
     name: str
@@ -39,6 +55,8 @@ class Tool:
 
 
 class ToolRegistry:
+    Dependency = Dependency
+
     def __init__(self, auto_install: bool = False):
         self.tools: Dict[Type, Tool] = {}
         self.auto_install = auto_install
@@ -95,8 +113,7 @@ class ToolRegistry:
             return False
 
     def is_package_installed(self, package_name):
-        spec = importlib.util.find_spec(package_name)
-        return spec is not None
+        return check_package(package_name)
 
     def check_system_dependency(self, dep: Dependency) -> bool:
         """Check if a system binary is available."""
@@ -146,7 +163,7 @@ class ToolRegistry:
         all_satisfied = True
         for dep in tool_spec.dependencies:
             if dep.type == "pip":
-                if not self.check_pip_dependency(dep):
+                if not self.is_package_installed(dep.name):
                     if self.auto_install:
                         choice = input(f"Install {dep.name}? (y/n)")
                         if choice == "y":
@@ -212,7 +229,9 @@ class ToolRegistry:
         config = config or {}
         processed_config = self.validate_config(tool_spec, config)
 
-    def load_tool(self, tool_name: str, requires: List[str] = None, always_install: bool = False) -> Tool:
+    def load_tool(
+        self, tool_name: str, requires: List[str] = None, always_install: bool = False
+    ) -> Tool:
         for req in requires:
             dep = Dependency(name=req, type="pip")
             if not self.is_package_installed(dep.name):

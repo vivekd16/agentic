@@ -1,5 +1,11 @@
 # Event system
 
+Events have a `depth` attribute which indicates how deep is the agent that is
+generating the event. So the top agent generates `depth=0`, the first level 
+sub-agent generates at `depth=1` and so forth. 
+
+
+
 Agents publish events whenever they are asked to do something. For a single
 agent this mechanism is simple:
 

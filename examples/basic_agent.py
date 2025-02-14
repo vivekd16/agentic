@@ -1,7 +1,7 @@
-from typing import Callable, Any
+from typing import Any
 from agentic.tools.weather_tool import WeatherTool
 
-from agentic import Agent, AgentRunner
+from agentic.common import Agent, AgentRunner
 
 
 def weather_tool():
@@ -10,9 +10,9 @@ def weather_tool():
 
 agent = Agent(
     name="Basic Agent",
-    welcome="I am a simple agent here to help. I have a single weather function.",
+    welcome="I am a simple agent here to help answer your weather questions.",
     instructions="You are a helpful assistant.",
-    model="openai/gpt-4o-mini",  # anthropic/claude-3-5-haiku-20241022", #claude-3-5-sonnet-20240620",
+    model="openai/gpt-4o-mini",
     tools=[WeatherTool()],
 )
 

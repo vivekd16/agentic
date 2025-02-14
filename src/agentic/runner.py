@@ -1,3 +1,4 @@
+import asyncio
 import time
 import os
 import readline
@@ -8,6 +9,8 @@ import importlib.util
 import inspect
 import sys
 from .fix_console import ConsoleWithInputBackspaceFixed
+from fastapi import FastAPI, Request
+from ray import serve
 
 from rich.live import Live
 from rich.markdown import Markdown
@@ -29,6 +32,7 @@ from agentic.events import (
     ToolResult,
     TurnEnd,
     WaitForInput,
+    ToolError,
 )
 
 
@@ -46,6 +50,35 @@ def print_italic(*args):
     print(*args)
 
 
+@dataclass
+class Aggregator:
+    total_cost: float = 0.0
+    context_size: int = 0
+
+
+fast_app = FastAPI()
+
+
+@serve.deployment
+@serve.ingress(fast_app)
+class FastAPIDeployment:
+    def __init__(self):
+        # Store route handlers
+        self.route_handlers = {}
+
+    async def add_route(self, path: str, handler, methods=None):
+        if methods is None:
+            methods = ["GET"]
+        # Add route to FastAPI app
+        fast_app.router.add_api_route(path, handler, methods=methods)
+        # Important: Need to rebuild the router
+        fast_app.router.resolve()
+
+
+async def hello_handler(name: str) -> str:
+    return f"Hello {name}!"
+
+
 class RayAgentRunner:
     def __init__(self, agent: RayFacadeAgent, debug: str | bool = False) -> None:
         self.facade = agent
@@ -58,7 +91,7 @@ class RayAgentRunner:
         """Runs the agent and waits for the turn to finish, then returns the results
         of all output events as a single string."""
         results = []
-        for event in self.facade.next_turn(request):
+        for event in self.facade.next_turn(request, debug=self.debug):
             if self._should_print(event):
                 results.append(str(event))
 
@@ -67,11 +100,20 @@ class RayAgentRunner:
     def __lshift__(self, prompt: str):
         print(self.turn(prompt))
 
+    def start_web_server(self):
+        return
+        deployment = FastAPIDeployment.bind()
+        serve.run(deployment, route_prefix="/")
+        deployment_ref = serve.get_app_handle("FastAPIDeployment")
+        asyncio.run(deployment_ref.add_route.remote("/hello", hello_handler))
+
     def _should_print(self, event: Event) -> bool:
         if self.debug.debug_all():
             return True
         if event.is_output and event.depth == 0:
             return True
+        elif isinstance(event, ToolError):
+            return self.debug != ""
         elif isinstance(event, (ToolCall, ToolResult)):
             return self.debug.debug_tools()
         elif isinstance(event, PromptStarted):
@@ -88,6 +130,7 @@ class RayAgentRunner:
         self.facade.set_debug_level(self.debug)
 
     def repl_loop(self):
+        self.start_web_server()
         hist = os.path.expanduser("~/.agentic_history")
         if os.path.exists(hist):
             readline.read_history_file(hist)
@@ -96,6 +139,7 @@ class RayAgentRunner:
         print("press <enter> to quit")
 
         fancy = False
+        aggregator = Aggregator()
 
         while fancy:
             try:
@@ -158,7 +202,9 @@ class RayAgentRunner:
                     time.sleep(0.3)  # in case log messages are gonna come
                     continue
 
-                for event in self.facade.next_turn(line, continue_result):
+                for event in self.facade.next_turn(
+                    line, continue_result, debug=self.debug
+                ):
                     continue_result = {}
                     if event is None:
                         break
@@ -174,7 +220,7 @@ class RayAgentRunner:
                 print()
                 time.sleep(0.3)
                 if not continue_result:
-                    for row in self.print_stats_report(saved_completions):
+                    for row in self.print_stats_report(saved_completions, aggregator):
                         console.out(row)
                 readline.write_history_file(hist)
             except EOFError:
@@ -186,7 +232,9 @@ class RayAgentRunner:
                 traceback.print_exc()
                 print(f"Error: {e}")
 
-    def print_stats_report(self, completions: list[FinishCompletion]):
+    def print_stats_report(
+        self, completions: list[FinishCompletion], aggregator: Aggregator
+    ):
         costs = dict[str, Modelcost]()
         for comp in completions:
             if comp.metadata["model"] not in costs:
@@ -196,36 +244,41 @@ class RayAgentRunner:
             mc = costs[comp.metadata["model"]]
             mc.calls += 1
             mc.cost += comp.metadata["cost"] * 100
+            aggregator.total_cost += comp.metadata["cost"] * 100
             mc.inputs += comp.metadata["input_tokens"]
             mc.outputs += comp.metadata["output_tokens"]
-            if "elapsed_time" in comp.metadata:
-                mc.time += comp.metadata["elapsed_time"].total_seconds()
-        for mc in costs.values():
-            yield (
-                f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s]"
+            aggregator.context_size += (
+                comp.metadata["input_tokens"] + comp.metadata["output_tokens"]
             )
+            if "elapsed_time" in comp.metadata:
+                try:
+                    mc.time += comp.metadata["elapsed_time"].total_seconds()
+                except:
+                    pass
+        values_list = list(costs.values())
+        for mc in values_list:
+            if mc == values_list[-1]:
+                yield (
+                    f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s tc: {aggregator.total_cost:.2f} c, ctx: {aggregator.context_size:,}]"
+                )
+            else:
+                yield (
+                    f"[{mc.model}: {mc.calls} calls, tokens: {mc.inputs} -> {mc.outputs}, {mc.cost:.2f} cents, time: {mc.time:.2f}s]"
+                )
 
     def run_dot_commands(self, line: str):
-        global CURRENT_RUNNER, CURRENT_DEBUG_LEVEL
+        global CURRENT_DEBUG_LEVEL
 
-        if line.startswith(".load"):
-            agent_file = line.split()[1]
-            # if not os.path.exists(agent_file):
-            #     print(f"File {agent_file} does not exist")
-            #     return
-            # for agent in find_agent_objects(load_agent(agent_file), Agent):
-            #     runner = AgentRunner(agent)
-            #     ACTIVE_AGENTS.append(runner)
-            #     CURRENT_RUNNER = runner
-            #     print(runner.facade.welcome)
+        if line.startswith(".history"):
+            print(self.facade.get_history())
         elif line.startswith(".run"):
             agent_name = line.split()[1].lower()
-            # for agent in ACTIVE_AGENTS:
-            #     if agent_name in agent.facade.name.lower():
-            #         CURRENT_RUNNER = agent
-            #         print(f"Switched to {agent_name}")
-            #         print(f"  {CURRENT_self.facade.welcome}")
-            #         break
+            for agent in _AGENT_REGISTRY:
+                if agent_name in agent.name.lower():
+                    self.facade = agent
+                    print(f"Switched to {agent_name}")
+                    print(f"  {self.facade.welcome}")
+                    break
         elif line == ".agent":
             print(self.facade.name)
             print_italic(self.facade.instructions)

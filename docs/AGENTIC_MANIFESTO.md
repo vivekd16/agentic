@@ -1,4 +1,6 @@
-# Trustworthy Agents
+# Agentic Design Principles
+
+Trustworthy Agents
 
 ## 1. An agent must be trusted by humans, or it will have no value
 

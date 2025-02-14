@@ -52,6 +52,6 @@ class UnitTestingTool(BaseAgenticTool):
         await asyncio.sleep(1)
 
     async def read_story_log(self) -> str:
-        """ Reads and returns the story log content."""
+        """Reads and returns the story log content."""
         await asyncio.sleep(0.2)
         return self.story_log

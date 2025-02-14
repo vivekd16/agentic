@@ -1,7 +1,7 @@
 [project]
-name = "aaagentic"
-version = "0.1.0"
-description = "An opinionated framework for building AI Agents"
+name = "agents-kit"
+version = "0.1.2"
+description = "An opinionated framework for building sophisticated AI Agents"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -20,11 +20,17 @@ dependencies = [
     "psycopg2-binary>=2.9.9",
     "sqlalchemy>=2.0.26",
     "ray>=2.42.0",
+    "ray[serve]>=2.42.0",
     "debugpy>=1.8.0",
     "aiofiles>=24.1.0",
     "pytest-asyncio>=0.25.3",
+    "pydantic>=2.10.6",
+    "boto3>=1.36.19",
+    "pandas>=2.2.3",
+    "mkdocs-material>=9.6.4",
+    "fastapi>=0.115.8",
+    "setuptools>=75.8.0",
 ]
-
 
 [project.optional-dependencies]
 
@@ -45,8 +51,11 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"" = "src", "examples" = "examples"}
-packages = ["agentic", "examples"]
-
-[tool.setuptools.package-data]
-agentic = ["examples/*", "examples/**/*"]
+package-dir = {"" = "src", "agentic_examples" = "examples"}
+packages = [
+    "agentic", 
+    "agentic.tools",
+    "agentic.swarm",
+    "agentic.ui",
+    "agentic_examples"
+]

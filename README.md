@@ -1,5 +1,7 @@
 # Agentic
 
+(Checkout the [latest version](https://github.com/scottpersinger/agentic/blob/main/README.md) of this README).
+
 Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
 and can use tools to do work on your behalf.
 
@@ -8,10 +10,11 @@ defaults and best practices into the design, testing and deployment of agents.
 
 Some key features:
 
-- Approachable and simple to use
+- Approachable and simple to use, but flexible enough to support the most complex agents
 - Supports teams of cooperating agents
 - Supports Human-in-the-loop
 - Easy definition and use of tools
+- Built in library of production-tested tools
 
 But there is much more. The rest of this guide will go over getting started with the framework. You can find some more background
 info in these docs:
@@ -23,62 +26,86 @@ info in these docs:
 
 ## Install
 
-    pip install aaagentic
-
-Wait - why **aaagentic**?? Cause we wanted to be listed first! Haha, actually there's a bunch of empty projects
-squatting on most of the obvious 'agentic' names in pypi. 
-
-Now setup an area to build and manage your agents:
+Using a virtual environmment:
 
     mkdir myagents
     cd myagents
+    python -m venv .venv
+    source .venv/bin/activate
+
+    pip install agents-kit
     agentic init .
 
-This will install some examples and a basic file structure into the directory `myagents`. You can name
+
+(Lots of the obvious 'agentic' packages names have empty squatters on them.) 
+
+The install will copy examples and a basic file structure into the directory `myagents`. You can name
 or rename this folder however you like.
 
-## Try it!
-The easiest way to start is by configuring your OpenAI API key and running some example agents.
-Visits the [models](./MODELS.md) documentation for information on using other models.
+## Intro Tutorial
 
+Let's build our first agent. We'll start with the "Hello World" of agents, and agent which can
+give us a weather report.
 
-```python
-% agentic set-secret OPENAI_API_KEY <your OpenAI API key>
-
-% python examples/basic_agent.py
-I am a simple agent here to help. I have a single weather function.
-[Basic Agent]> what is the weather in San Francisco?
-The current weather in San Francisco is as follows:
-
-- **Temperature:** 48.2°F
-- **Feels Like:** 46.3°F
-- **Wind Speed:** 9.8 km/h
-...
-```
+Create a new file `./agents/weather.py`, and add this code:
 
 ```python
-% python examples/database_agent.py
-Hi! I can help you run SQL queries on any standard database.
-[Database Agent]> show me the tables in the db
-INFO: Connecting to database: sqlite:///examples/chinook.db
-The tables in the database are as follows:
+from agentic.common import Agent, AgentRunner
+from agentic.tools.weather_tool import WeatherTool
 
-1. albums
-2. artists
-3. customers
-6. invoices
-...
-> how many invoices do we have?
-There are a total of 412 invoices in the database.
-> what is the total amount?
-The total amount of all invoices is $2,328.60.
+weather_agent = Agent(
+    name="Weather Agent",
+    welcome="I can give you some weather reports! Just tell me which city.",
+    instructions="You are a helpful assistant.",
+    tools=[WeatherTool()],
+    model="openai/gpt-4o-mini"
+)
+
+if __name__ == "__main__":
+    AgentRunner(weather_agent).repl_loop()
 ```
 
-**Start the streamlit UI**
+Now let's run our agent. Note that you will need to configure your OpenAI API key. If you
+want to use a different LLM, including running a model locally, see the intstructions
+at [models](./docs/Models.md).
 
-    agentic ui
+```sh
+    agentic set-secret OPENAI_API_KEY <your key>
+```
 
-# Building Agents
+```sh
+(.venv) % python agents/weather.py 
+I can give you some weather reports! Just tell me which city.
+press <enter> to quit
+[Weather Agent]> what is the weather like in NYC?
+The current weather in New York City is as follows:
+
+- **Temperature:** 0.5°C
+- **Feels Like:** -4.9°C
+- **Wind Speed:** 22.9 km/h
+- **Wind Direction:** 278° (from the west)
+- **Wind Gusts:** 45.0 km/h
+- **Precipitation:** 0.0 mm
+- **Cloud Cover:** 0%
+- **Relative Humidity:** 53%
+- **Visibility:** 37,000 m
+- **UV Index:** 0.0
+- **Daylight:** No (its currently dark)
+
+It seems to be quite cold with a significant wind chill factor.
+[openai/gpt-4o-mini: 2 calls, tokens: 162 -> 144, 0.02 cents, time: 3.81s tc: 0.02 c, ctx: 306]
+[Weather Agent]> 
+```
+
+That's it. We've created an agent, powered by the GPT-4o-mini LLM, and given it a tool which
+it can use to retrieve weather reports. (The weather info is provided by https://open-meteo.com.)
+
+Try running some of the other example agents to get a feel for the framework.
+
+Try `examples/database_agent.py` for a basic Text-to-SQL agent.
+
+
+# Understanding Agents
 
 Agentic agents by default use the LLM **ReAct** pattern. This means:
 
@@ -90,38 +117,6 @@ Agentic agents by default use the LLM **ReAct** pattern. This means:
     - generate text completion or tool call
         (platform executes tool call)
     - observe tool call results
-
-Here is the "Hello World" example of ReAct agents:
-
-```
-def weather_tool():
-    return "The weather is nice today."
-
-agent = Agent(
-    name="Basic Agent",
-    welcome="I am a simple agent here to help. I have a single weather function.",
-    instructions="You are a helpful assistant.",
-    model="openai/gpt-4o-mini",
-    functions=[weather_tool],
-)
-
-AgentRunner(agent).repl_loop()
-```
-This will start a command prompt where you can interact with your agent. Each time you
-send a request the agent will run and process your request in a single **turn** and
-print the result:
-
-```
-    python examples/basic_agent.py
-    I am a simple agent here to help. I have a single weather function.
-    > hi there
-    Hello! How can I assist you today?
-    > what is the weather in SF?
-    ...
-    [openai/gpt-4o-mini: 3 calls, tokens: 168 -> 143, 0.02 cents, time: 15.92s]
-```
-We can see at the end that our converstation made 3 calls to the OpenAI API, those
-calls took 15.92secs, and cost us 0.02 cents (2 hundredths of a penny).
 
 ## Components of an agent
 
@@ -388,6 +383,11 @@ return a reference to that block in its call response to agent A.
 ### Examples
 
 Look in the [examples](./examples/) folder.
+
+## Try the web UI (using streamlit)
+
+    agentic ui
+
 
 
 

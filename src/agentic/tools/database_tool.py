@@ -8,7 +8,7 @@ from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 from sqlalchemy import create_engine, text, Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from agentic import RunContext, PauseForInputResult
+from agentic.common import RunContext, PauseForInputResult
 
 
 class DatabaseConnectionError(Exception):

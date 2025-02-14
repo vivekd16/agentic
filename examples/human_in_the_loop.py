@@ -1,5 +1,6 @@
-from agentic import Agent, AgentRunner, PauseForInputResult, RunContext
+from agentic.common import Agent, AgentRunner, PauseForInputResult, RunContext
 from agentic.tools.google_news import GoogleNewsTool
+from agentic.tools.human_interrupt import HumanInterruptTool
 
 gnt = GoogleNewsTool()
 
@@ -20,7 +21,7 @@ newsAgent = Agent(
 You do news research. If you dont know the topic, then
 stop for human input on the topic. Then query the news for that topic. 
 """,
-    tools=[query_news, get_human_input],
+    tools=[query_news, HumanInterruptTool()],
 )
 
 if __name__ == "__main__":

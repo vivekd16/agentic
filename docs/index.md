@@ -325,31 +325,6 @@ calls our "Person Report Writer" agent which retrieves the full LinkedIn
 profile and creates the person report.
 
 
-### Things to note
-
-We have used the convenience `repl_loop` in `AgentRunner` to interface to our agent.
-But we can write our own loop (or API or whatever) to run our agent:
-
-```python
-
-runner = AgentRunner(agent)
-while True:
-    request = input("prompt> ")
-    for event in runner.next_turn(request):
-        print("Agent event: ", event)
-```
-
-The `next_turn` function will keep emitting events until the current turn of the agent is
-complete. We can loop again and let the user request another task from the agent.
-
-Because you are getting fine-grained events as the agent runs, you can
-choose to do other things in the middle, including things like modifying the agent
-by giving it more tools. Even though this interface looks like the agent is
-"running" some thread (like in Langchain), in fact the agent runs step by step, generating
-events along the way, but it can stop at any time.
-
-See more about [events](./Events.md).
-
 ## Tools
 
 Tools can be functions, instance methods, or other agents. See [Tools](Tools.md) for the

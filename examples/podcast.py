@@ -2,6 +2,8 @@ from agentic.common import Agent, AgentRunner
 from agentic.tools.text_to_speech_tool import TextToSpeechTool
 from agentic.tools.auth_rest_api_tool import AuthorizedRESTAPITool
 from agentic.tools.google_news import GoogleNewsTool
+from agentic.tools.tavily_search_tool import TavilySearchTool
+
 from agentic.models import CLAUDE, GPT_4O_MINI, GPT_4O
 
 #model = "groq/llama-3.3-70b-versatile"
@@ -18,7 +20,7 @@ for topic in [
         name=f"{topic} Reporter",
         instructions="{{" + prompt_key + "}}",
         model=CLAUDE,
-        tools=[GoogleNewsTool()],
+        tools=[GoogleNewsTool(), TavilySearchTool()],
         max_tokens=8192,
     )
     reporter_agents.append(reporter)

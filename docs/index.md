@@ -1,5 +1,3 @@
-# Agentic
-
 Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
 and can use tools to do work on your behalf.
 
@@ -8,86 +6,102 @@ defaults and best practices into the design, testing and deployment of agents.
 
 Some key features:
 
-- Approachable and simple to use
+- Approachable and simple to use, but flexible enough to support the most complex agents
 - Supports teams of cooperating agents
 - Supports Human-in-the-loop
-- Easy definition and use of lots of tools
+- Easy definition and use of tools
+- Built in library of production-tested tools
 
-But there is much more.
+But there is much more. The rest of this guide will go over getting started with the framework. You can find some more background
+info in these docs:
+
 
 
 ## Install
 
-    pip install agent-kit
+`pip install agents-kit`
 
-Note the package name: **agent-kit**.
+Or using a virtual environmment:
 
-Now setup an area to build and manage your agents:
+```sh
+mkdir myagents
+cd myagents
+python -m venv .venv
+source .venv/bin/activate
 
-    mkdir myagents
-    cd myagents
-    agentic init .
+pip install agents-kit
+agentic init .
+```
 
-This will install some examples and a basic file structure into the directory `myagents`. You can name
+(Lots of the obvious 'agentic' packages names have empty squatters on them.) 
+
+The install will copy examples and a basic file structure into the directory `myagents`. You can name
 or rename this folder however you like.
 
-## Try it!
-The easiest way to start is by configuring your OpenAI API key and running some example agents.
-Visits the [models](./Models.md) documentation for information on using other models.
+## Intro Tutorial
 
-Set your OpenAI key:
+Let's build our first agent. We'll start with the "Hello World" of agents, and agent which can
+give us a weather report.
 
-    agentic set-secret OPENAI_API_KEY <your OpenAI API key>
-
-(You can also just use OPENAI_API_KEY env var if you have it set.)
-
-and now:
+Create a new file `./agents/weather.py`, and add this code:
 
 ```python
+from agentic.common import Agent, AgentRunner
+from agentic.tools.weather_tool import WeatherTool
 
-% python examples/basic_agent.py
-I am a simple agent here to help. I have a single weather function.
-[Basic Agent]> what is the weather in San Francisco?
-The current weather in San Francisco is as follows:
+weather_agent = Agent(
+    name="Weather Agent",
+    welcome="I can give you some weather reports! Just tell me which city.",
+    instructions="You are a helpful assistant.",
+    tools=[WeatherTool()],
+    model="openai/gpt-4o-mini"
+)
 
-- **Temperature:** 48.2°F
-- **Feels Like:** 46.3°F
-- **Wind Speed:** 9.8 km/h
-...
+if __name__ == "__main__":
+    AgentRunner(weather_agent).repl_loop()
 ```
 
-```python
-% python examples/database_agent.py
-Hi! I can help you run SQL queries on any standard database.
-[Database Agent]> show me the tables in the db
-INFO: Connecting to database: sqlite:///examples/chinook.db
-The tables in the database are as follows:
+Now let's run our agent. Note that you will need to configure your OpenAI API key. If you
+want to use a different LLM, including running a model locally, see the intstructions
+at [models](./docs/Models.md).
 
-1. albums
-2. artists
-3. customers
-6. invoices
-...
-> how many invoices do we have?
-There are a total of 412 invoices in the database.
-> what is the total amount?
-The total amount of all invoices is $2,328.60.
+```sh
+    agentic set-secret OPENAI_API_KEY <your key>
 ```
 
-## What is an "AI Agent"?
+```sh
+(.venv) % python agents/weather.py 
+I can give you some weather reports! Just tell me which city.
+press <enter> to quit
+[Weather Agent]> what is the weather like in NYC?
+The current weather in New York City is as follows:
 
-An Agent is a semi-autonmous program powered by an LLM plus 
-a set of "tools" which it uses to complete tasks or answer questions on your behalf.
+- **Temperature:** 0.5°C
+- **Feels Like:** -4.9°C
+- **Wind Speed:** 22.9 km/h
+- **Wind Direction:** 278° (from the west)
+- **Wind Gusts:** 45.0 km/h
+- **Precipitation:** 0.0 mm
+- **Cloud Cover:** 0%
+- **Relative Humidity:** 53%
+- **Visibility:** 37,000 m
+- **UV Index:** 0.0
+- **Daylight:** No (its currently dark)
 
-### Types of agents
+It seems to be quite cold with a significant wind chill factor.
+[openai/gpt-4o-mini: 2 calls, tokens: 162 -> 144, 0.02 cents, time: 3.81s tc: 0.02 c, ctx: 306]
+[Weather Agent]> 
+```
 
-Some common types of agents include:
+That's it. We've created an agent, powered by the GPT-4o-mini LLM, and given it a tool which
+it can use to retrieve weather reports. (The weather info is provided by https://open-meteo.com.)
 
-- Conversational agents
-- Workflow automations
-- Deep reasoning agents
+Try running some of the other example agents to get a feel for the framework.
 
-## Building Agents
+Try `examples/database_agent.py` for a basic Text-to-SQL agent.
+
+
+# Understanding Agents
 
 Agentic agents by default use the LLM **ReAct** pattern. This means:
 
@@ -99,39 +113,6 @@ Agentic agents by default use the LLM **ReAct** pattern. This means:
     - generate text completion or tool call
         (platform executes tool call)
     - observe tool call results
-
-Here is the "Hello World" example of ReAct agents:
-
-```
-def weather_tool():
-    """ Returns the weather report """
-    return "The weather is nice today."
-
-agent = Agent(
-    name="Basic Agent",
-    welcome="I am a simple agent here to help. I have a single weather function.",
-    instructions="You are a helpful assistant.",
-    model="openai/gpt-4o-mini",
-    functions=[weather_tool],
-)
-
-AgentRunner(agent).repl_loop()
-```
-This will start a command prompt where you can interact with your agent. Each time you
-send a request the agent will run and process your request in a single **turn** and
-print the result:
-
-```python
-$ python examples/basic_agent.py
-I am a simple agent here to help. I have a single weather function.
-[Basic Agent]> hi there
-Hello! How can I assist you today?
-> what is the weather in SF?
-...
-[openai/gpt-4o-mini: 3 calls, tokens: 168 -> 143, 0.02 cents, time: 15.92s]
-```
-We can see at the end that our converstation made 3 calls to the OpenAI API, those
-calls took 15.92secs, and cost us 0.02 cents (2 hundredths of a penny).
 
 ## Components of an agent
 
@@ -174,42 +155,42 @@ producer = Agent(
 
 Treating agents as a `subroutine` is useful, but sometimes we want `pipeline` semantics
 where we want to invoke the next agent by "handing off" execution to that agent and
-not waiting for it to return. We can use a `Pipeline` construct to support this
-pattern:
+not waiting for it to return. We can just use the `handoff` property to do so:
 
 
 ```python
-from agentic import Pipeline
+from agentic import handoff
 
-pipeline = Pipeline(
-    Agent(
-        name="Producer",
-        welcome="This is the pipeline demo.",
-        instructions="Print the message 'I am A'",
-    ),
-    Agent(
-        name="Agent B",
-        instructions="Print the message 'and I am B'",
-    )
+agentA = Agent(
+    name="Producer",
+    welcome="This is the handoff demo.",
+    instructions="Print the message 'I am A', then call agent B. Afterwards print 'WARNING!'",
+    tools=[
+        handoff(Agent(
+            name="Agent B",
+            instructions="Print the msssage 'and I am B'",
+        ))
+    ],
 )
-AgentRunner(pipeline).run()
-```
 
-```
-$ python examples/handoff_demo.py
+python examples/handoff_demo.py
 This is the handoff demo.
 > run
 I am A
 and I am B
 > 
 ```
+Without using `handoff` we would have seen the WARNING message printed from the root agent.
+Handoff can be useful if your sub-agent generates a lot of output, because normally that
+output when be fed back into AgentA as the `observation` step, which means both another
+inference call to pay for, and means that AgentA may summarize or alter the results.
 
-## The _Actor Model_
+
+## The problem with function calling
 
 Since the introduction of "function calling" by OpenAI, most frameworks have built around
-the idea of agent "tools" as functions. The function calling model works very well with
-web framework technologies which are designed around the synchronous request-response
-model of the HTTP protocol.
+the idea of agent "tools" as functions. Many have extended this idea to include calling
+agents calling other _agents as tools_. 
 
 The problem is that function calling generally assumes synchronous semantics and strictly 
 typed parameters and return values. Both of these make poor assumptions when dealing with
@@ -218,13 +199,9 @@ model (sending messages, and waiting for events) than a synchronous one. Strict 
 is useful in compiled code, but LLMs are really best with text and language, not strict
 compiler types.
 
-Agentic uses the [Actor Model](https://en.wikipedia.org/wiki/Actor_model) which is a software
-architecture that long pre-dates (from 1973!) the rise of GenAI. The model was created as
-an architecture for building concurrent systems.
-
 As you start building more complex agents, you want them to run longer, be decomposable
-into multiple units, and have flexible behavior like stopping for human input. The actor
-model on which Agentic is built make these more complex use cases easy.
+into multiple units, and have flexible behavior like stopping for human input. Agentic
+is designed to make these more complex use cases easy.
 
 ## Tools as Agents
 
@@ -245,11 +222,14 @@ from agentic.tools import LinkedinTool, HumanInterruptTool
 
 researcher = Agent(
     name="Person Researcher",
+    welcome="I am your People Researcher. Who would you like to know more about?",
     instructions="""
 You do research on people. Given a name and a company:
 1. Search for matching profiles on linkedin.
-2. If you find multiple matches, then ask stop and ask the user for clarification. 
-3. Once you have a single match, then prepare a background report on that person.
+2. If you find a single strong match, then prepare a background report on that person. Make sure
+to print the full report.
+3. If you find multiple matches, then ask stop and ask the user for clarification. Then go back to step 1.
+If you are missing info, then seek clarification from the user.
 """,
     model="openai://gpt-4o-mini",
     tools=[
@@ -257,7 +237,11 @@ You do research on people. Given a name and a company:
         HumanInterruptTool(),
         Agent(
             name = "Person Report Writer",
-            instructions="""...""",
+            instructions="""
+        You will receive the URL to a linkedin profile. Retrieve the profile and
+        write a background report on the person, focusing on their career progression
+        and current role.
+            """,
             tools=[LinkedinTool()],
             model="anthropic://claude-sonnet-3.5",
         )
@@ -316,23 +300,81 @@ Marc Benioff is the Chair and CEO of Salesforce, a leading cloud-based software 
 ...
 ```
 
-Our agent starts by calling the `search_profiles` function on the
-`LinkedInTool`. When it finds multiple results it calls the `HumanInterruptTool`
-to request input.
+We call `start` to start our agent.
+Now we iteratively grab events from the agent until the turn is finished.
 
-Once the user answers the interrupt, then the agent resumes operating. It
-calls our "Person Report Writer" agent which retrieves the full LinkedIn
-profile and creates the person report.
+- The initial user prompt is passed to our Researcher agent. It considers
+its instructions and the user input. Based on this it generates 
+a tool call to `LinkedinTool.search_profiles`. 
+- The `search_profiles` function is called, and the result is returned
+to the agent, which "observes" this result and generates the next
+event (the "observation" event.)
+- The agent "loops" and determines that multiple profiles were returned,
+so it prints the list (emits output events with the text), and then
+creates a tool call to `get_human_input`.
+- The runner returns the interrupt event, return True from `event.requests_input()`
+to be the agent request. We print that request message, collect input from the user,
+and then call `continue_with` on the runner with the response. The human response
+will be returned as the value of the `get_human_input` tool call.
+- On `runner.next` the agent considers that we specified to check the first
+returned profile, so it generates
+a tool call to `call_person_report_writer` to create the report. If the user had
+responded "I don't know", then the agent could decide it can't go any further
+and just finish the turn.
+- The `call_person_report_writer` function now activates our "Person Report Writer"
+agent, with the profile URL as input, but in a new LLM context. This agent calls
+`get_profile` to get the full Linkedin profile, then writes the research report.
+- Finally the report is returned to the parent agent, which prints the results.
 
+### Things to note
 
-## Tools
+We have used the convenience `repl_loop` in `AgentRunner` to interface to our agent.
+But we can write our own loop (or API or whatever) to run our agent:
 
-Tools can be functions, instance methods, or other agents. See [Tools](Tools.md) for the
-overview of how to use tools with your agents.
+```python
 
-## Guide to building agents
+runner.start(command)
+for event in self.next():
+    print("Agent event: ", event)
+```
 
-Visit [Building Agents](./Building_Agents.md) for details on building your own agents.
+The `next` function will keep emitting events until the current turn of the agent is
+complete. Because you are getting fine-grained events as the agent runs, you can
+choose to do other things in the middle, including things like modifying the agent
+by giving it more tools. Even though this interface looks like the agent is
+"running" some thread (like in Langchain), in fact the agent runs step by step, generating
+events along the way, but it can stop at any time.
+
+Events have a `depth` attribute which indicates how deep is the agent that is
+generating the event. So the top agent generates `depth=0`, the first level 
+sub-agent generates at `depth=1` and so forth. 
+
+The list of tools on an agent should be modifiable at any time:
+
+    agent.add_tool(tool)
+    agent.remove_tool(tool)
+
+However, tools probably shouldn't modify the running agent directly. Safer that
+they publish events like `EnableTool` which can be handled properly by the
+framework (there might be security controls or what not).
+
+**RunContext**
+
+PydanticAI uses this object, and I have the same (same name!) in Supercog. Real tools
+will often want to retrieve bits of context like the current agent name, or running
+user, etc... An example of where we use this in SC is an "email_user" function which looks
+up the current user email in the RunContext.
+
+**Run state**
+
+Langgraph has a `state` notion, a dict that is passed between nodes. I have a feeling
+that this is poor encapsulation and probably leads to poor code. Letta has "memory blocks"
+which can be shared between agents, and this feels like probably a better design choice where
+you very explicitly decide to share state rather than just using tool inputs and outputs.
+
+A good example of this is if agent B needs to return a large chunk of info to agent A
+(like the contents of a file), then it could put the file to a memory block and 
+return a reference to that block in its call response to agent A. 
 
 ### Examples
 

@@ -11,10 +11,10 @@ import sys
 from .fix_console import ConsoleWithInputBackspaceFixed
 from fastapi import FastAPI, Request
 from ray import serve
-
+from threading import Thread
 from rich.live import Live
 from rich.markdown import Markdown
-
+import uvicorn
 # Global console for Rich
 console = ConsoleWithInputBackspaceFixed()
 
@@ -56,29 +56,6 @@ class Aggregator:
     context_size: int = 0
 
 
-fast_app = FastAPI()
-
-
-@serve.deployment
-@serve.ingress(fast_app)
-class FastAPIDeployment:
-    def __init__(self):
-        # Store route handlers
-        self.route_handlers = {}
-
-    async def add_route(self, path: str, handler, methods=None):
-        if methods is None:
-            methods = ["GET"]
-        # Add route to FastAPI app
-        fast_app.router.add_api_route(path, handler, methods=methods)
-        # Important: Need to rebuild the router
-        fast_app.router.resolve()
-
-
-async def hello_handler(name: str) -> str:
-    return f"Hello {name}!"
-
-
 class RayAgentRunner:
     def __init__(self, agent: RayFacadeAgent, debug: str | bool = False) -> None:
         self.facade = agent
@@ -86,6 +63,29 @@ class RayAgentRunner:
             self.debug = DebugLevel(debug)
         else:
             self.debug = DebugLevel(os.environ.get("AGENTIC_DEBUG") or "")
+        self.app = FastAPI()
+        self.app.get("/next_turn")(self.web_request)
+
+    def web_request(self, prompt: str):
+        return self.turn(prompt)
+    
+    def run_web_server(self):
+        config = uvicorn.Config(self.app, host="0.0.0.0", port=8000, log_level="info")
+        self.server = uvicorn.Server(config)
+        self.server.run()
+
+    def start_server_thread(self):
+        self.server_thread = Thread(target=self.run_web_server)
+        self.server_thread.start()
+        return self.server_thread
+    
+    def stop_server(self):
+        if self.server_thread:
+            # Signal the server to exit
+            self.server.should_exit = True
+            # Wait for the thread to complete
+            self.server_thread.join()
+            self.server_thread = None
 
     def turn(self, request: str) -> str:
         """Runs the agent and waits for the turn to finish, then returns the results
@@ -99,13 +99,6 @@ class RayAgentRunner:
 
     def __lshift__(self, prompt: str):
         print(self.turn(prompt))
-
-    def start_web_server(self):
-        return
-        deployment = FastAPIDeployment.bind()
-        serve.run(deployment, route_prefix="/")
-        deployment_ref = serve.get_app_handle("FastAPIDeployment")
-        asyncio.run(deployment_ref.add_route.remote("/hello", hello_handler))
 
     def _should_print(self, event: Event) -> bool:
         if self.debug.debug_all():
@@ -130,7 +123,7 @@ class RayAgentRunner:
         self.facade.set_debug_level(self.debug)
 
     def repl_loop(self):
-        self.start_web_server()
+        #self.web_server = self.start_server_thread()
         hist = os.path.expanduser("~/.agentic_history")
         if os.path.exists(hist):
             readline.read_history_file(hist)
@@ -231,6 +224,8 @@ class RayAgentRunner:
             except Exception as e:
                 traceback.print_exc()
                 print(f"Error: {e}")
+
+        self.stop_server()    
 
     def print_stats_report(
         self, completions: list[FinishCompletion], aggregator: Aggregator

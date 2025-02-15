@@ -72,7 +72,7 @@ but it is recommended to get values from the `RunContext` using `get_config` and
 One nice feature is that secrets can be stored in a `namespace` named after your agent, so
 that you can manage multiple values across different agents.
 
-## Using _AgentRunner_
+## Using _AgentRunner_ and the REPL
 
 The `AgentRunner` class is a convenience utility for running a **repl** to interact with your
 agent:
@@ -89,6 +89,17 @@ if __name__ == 'main':
 By default it maintains a persistent session with your agent, so that each turn is appending
 to the active session. 
 
+```sh
+% python examples/basic_agent.py 
+I am a simple agent here to help answer your weather questions.
+press <enter> to quit
+[Basic Agent]> my name is scott
+Hello, Scott! How can I assist you today?
+[Basic Agent]> what is my name ?
+Your name is Scott.
+[openai/gpt-4o-mini: 1 calls, tokens: 12 -> 5, 0.00 cents, time: 0.73s tc: 0.00 c, ctx: 40]
+```
+
 The runner repl includes a set of "dot" system commands:
 
 ```
@@ -103,6 +114,16 @@ The runner repl includes a set of "dot" system commands:
     .quit - Quit the REPL
 ```
 
+Examples:
+
+```
+[Basic Agent]> .agent
+Basic Agent
+You are a helpful assistant.
+tools:
+  WeatherTool
+```
+
 The **.debug** command is especially helpful to activate different kinds of tracing:
 
     .debug tools    - Shows logging for tool start/finish events
@@ -110,6 +131,7 @@ The **.debug** command is especially helpful to activate different kinds of trac
     .debug agents   - Only log events where an agent starts a turn
     .debug all      - Logs everything
 
+We often run with `.debug tools` to track what our agents are doing.
 
 ### Things to note
 
@@ -135,4 +157,27 @@ by giving it more tools. Even though this interface looks like the agent is
 events along the way, but it can stop at any time.
 
 See more about [events](./Events.md).
+
+# Agentic CLI
+
+Commands:
+
+    --help          - Get help
+
+    models          - list some popular LLM models
+    list            - List all settings.
+    set             - Set a config value.
+    get             - Get a config value.
+    delete          - Delete a config value.
+
+    list-secrets    List all secrets.
+    set-secret      Set a secret.
+    get-secret      Get a secret.
+    delete-secret   Delete a secret.
+
+    ollama          - List the latest popular models from Ollama. Use "ollama pull <model> to download.
+    ui              - Runs the agentic UI
+    claude          - Runs a completion with Anthropic's Claude sonnet model
+    gpt             - Runs a completion with OpenAI's GPT-4o-mini model. Use --model to override.
+
 

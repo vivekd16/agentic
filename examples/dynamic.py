@@ -6,6 +6,7 @@ from agentic.tools.linkedin_tool import LinkedinDataTool
 from agentic.tools.tavily_search_tool import TavilySearchTool
 from agentic.tools.image_generator import OpenAIImageGenerator
 from agentic.tools.imap_tool import IMAPTool
+from agentic.tools.browser_use import BrowserUseTool
 
 from agentic.common import Agent, AgentRunner
 from agentic.tools.registry import tool_registry
@@ -22,11 +23,18 @@ agent = Agent(
     model="openai/gpt-4o-mini",
     tools=[
         AutomaticTools(
-            tool_classes=[GoogleNewsTool, WeatherTool, DatabaseTool, LinkedinDataTool, OpenAIImageGenerator],
+            tool_classes=[
+                GoogleNewsTool, 
+                WeatherTool, 
+                DatabaseTool, 
+                LinkedinDataTool, 
+                OpenAIImageGenerator,
+                TavilySearchTool,
+                IMAPTool,
+            ],
             tool_functions=[get_the_current_date],
         ),
-        TavilySearchTool(),
-        IMAPTool(),
+        BrowserUseTool(),
         # tool_registry.load_tool(
         #     "langchain_community.tools.DuckDuckGoSearchRun",
         #     requires=["duckduckgo-search", "langchain-community"]

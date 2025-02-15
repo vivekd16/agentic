@@ -30,10 +30,13 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install agents-kit
-agentic init .
 ```
 
-(Lots of the obvious 'agentic' packages names have empty squatters on them.) 
+Now setup your folder to hold your agents:
+
+```sh
+agentic init .
+```
 
 The install will copy examples and a basic file structure into the directory `myagents`. You can name
 or rename this folder however you like.

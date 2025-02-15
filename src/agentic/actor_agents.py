@@ -228,7 +228,6 @@ class ActorBaseAgent:
                 if asyncio.iscoroutinefunction(function_map[name]):
                     # Wrap async functions in asyncio.run
                     raw_result = asyncio.run(function_map[name](**args))
-                    # else if function is a generator, iterate over it
                 elif inspect.isgeneratorfunction(function_map[name]):
                     # We use our generator for our call_child function. I guess we could let user's
                     # write generate functions as long as they yield events. Or we could catch
@@ -256,6 +255,18 @@ class ActorBaseAgent:
                 events.append(ToolError(self.name, name, raw_result, self.depth))
                 # run_context.error(raw_result)
 
+            # Let tools return additional events to publish
+            if isinstance(raw_result, list):
+                for result in raw_result:
+                    if isinstance(result, Event):
+                        events.append(result)
+                raw_result = [result for result in raw_result if not isinstance(result, Event)]
+                if raw_result:
+                    # Would be good to allow multiple results and merge them
+                    raw_result = raw_result[0]
+                else:
+                    raw_result = ""
+                
             result: Result = (
                 raw_result
                 if isinstance(raw_result, Result)
@@ -553,6 +564,8 @@ class ActorBaseAgent:
                 if hasattr(tool_func_or_cls, "get_tools"):
                     self.functions.extend(tool_func_or_cls.get_tools())
                     self.tools.append(tool_func_or_cls.__class__.__name__)
+                else:
+                    print("ERROR: ", f"Tool {tool_func_or_cls} is not a callable, nor has 'get_tools' method")
 
     def reset_history(self):
         self.history = []

@@ -81,12 +81,12 @@ class RunContext:
     def get_agent(self) -> "Agent":
         return self.agent
 
-    def get_config(self, key, default=None):
+    def get_setting(self, key, default=None):
         return settings.get(
             self.agent_name + "/" + key, settings.get(key, self.get(key, default))
         )
 
-    def set_config(self, key, value):
+    def set_setting(self, key, value):
         settings.set(self.agent_name + "/" + key, value)
 
     def get_secret(self, key, default=None):

@@ -122,6 +122,15 @@ class ToolResult(Event):
         return "  " * (self.depth + 1) + f"[TOOL: {name}] <<\n{self.result}]\n"
 
 
+class ToolOutput(Event):
+    def __init__(self, agent: str, name: str, result: Any, depth: int = 0):
+        super().__init__(agent, "tool_result", name, depth=depth)
+        self.result = result
+
+    def __str__(self):
+        name = self.payload
+        return "  " * (self.depth + 1) + f"[TOOL: {name}] <<\n{self.result}]\n"
+
 class ToolError(Event):
     def __init__(self, agent: str, func_name: str, error: str, depth: int = 0):
         super().__init__(agent, "tool_error", func_name, depth=depth)
@@ -157,7 +166,7 @@ class FinishCompletion(Event):
     def create(
         cls,
         agent: str,
-        llm_message: Message,
+        llm_message: Message|str,
         model: str,
         cost: float,
         input_tokens: int | None,
@@ -172,6 +181,9 @@ class FinishCompletion(Event):
             cls.OUTPUT_TOKENS_KEY: output_tokens or 0,
             cls.ELAPSED_TIME_KEY: elapsed_time or 0,
         }
+
+        if isinstance(llm_message, str):
+            llm_message = Message(content=llm_message, role="assistant")
 
         return cls(agent, llm_message, meta, depth)
 
@@ -254,16 +266,6 @@ class PauseForInputResult(Result):
     @staticmethod
     def matches_sentinel(value) -> bool:
         return value == PAUSE_FOR_INPUT_SENTINEL
-
-
-# Gonna snuggle this through the Swarm tool call
-class PauseForChildResult(Result):
-    def __init__(self, values: dict):
-        super().__init__(value=PAUSE_FOR_CHILD_SENTINEL, context_variables=values)
-
-    @staticmethod
-    def matches_sentinel(value) -> bool:
-        return value == PAUSE_FOR_CHILD_SENTINEL
 
 
 # Special result which aborts any further processing by the agent.

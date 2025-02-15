@@ -4,7 +4,7 @@ from typing import Callable, Any
 from agentic.tools.linkedin_tool import LinkedinDataTool
 from agentic.tools.google_news import GoogleNewsTool
 
-from agentic import Agent, AgentRunner, PauseForInputResult, RunContext
+from agentic.common import Agent, AgentRunner, PauseForInputResult, RunContext
 
 
 def invoke_async(async_func: Callable, *args, **kwargs) -> Any:

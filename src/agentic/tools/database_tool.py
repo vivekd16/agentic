@@ -219,7 +219,7 @@ class DatabaseTool:
         self, run_context: RunContext
     ) -> PauseForInputResult | None:
         if not self.engine:
-            connection_string = self.connection_string or run_context.get_config(
+            connection_string = self.connection_string or run_context.get_setting(
                 "database_url"
             )
             if not connection_string:
@@ -238,7 +238,7 @@ class DatabaseTool:
                     {"database_url": "Corrected database connection string"}
                 )
 
-            run_context.set_config("database_url", connection_string)
+            run_context.set_setting("database_url", connection_string)
             run_context.info(f"Connecting to database: {connection_string}")
             self.engine = self.create_engine(connection_string)
         return None

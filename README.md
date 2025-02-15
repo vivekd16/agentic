@@ -16,7 +16,23 @@ Some key features:
 
 Visits the docs: https://supercog-ai.github.io/agentic/
 
+## Checkout these demos
 
+### Agent Operator
+
+...full browser automation, including using authenticated sessions...
+
+### Podcast Producer
+
+...an agent team which produces a daily, multi-segment podcast show
+
+
+### My Jeeves
+
+.. your personal assistant. Connects to your calendar and email, reads your LinkedIn
+messages, and manages your life.
+
+### Personal Data Analyst
 
 ## Install
 
@@ -70,5 +86,14 @@ or get notification from any channel like an email or webhook.
 - Context length, token usage, and timing usage data is emitted in a standard form.
 - Tools are designed to support configuration and authentication, not just run on a sea of random env vars.
 - Use tools from almost any framework, including MCP and Composio.
+- "Tools are agents". You can use tools and agents interchangeably. This is where the world is heading, that 
+whatever "service" your agent uses it will be indistinguishable whether that service is "hard-coded" or
+implemented by another agent.
+- Agents can add or remove tools dynamically while they are running.
+(coming soon...)
+- "Batteries included". Easy RAG support. Every agent has an API interface. UI tools for quickly
+building a UI for your agents. "Agent contracts" for testing.
+- Automatic context management keeps your agent within context length limits.
+
 
 

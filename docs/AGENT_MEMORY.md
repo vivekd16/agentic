@@ -1,25 +1,30 @@
 # Agent Memory
 
-_Memory_ for your agent is a large topic. Let's start with just "session history" because it
-is the easiest thing to understand.
+Agents support multiple types of _memory_:
 
-By default your agents have "persistent session memory", which just means that if you send
-them multiple inputs, they will by default remember the message history across those
-prompts:
+- Short term memory in "run history" (the chat session) of the agent. Run history consumes
+much of the LLM context that the LLM operates on. Agents include this memory type by default.
 
-```
-    agent = Agent(...)
-    runner = AgentRunner(agent)
-    runner.run_sync("My name is Scott")
-    > nice to meet you, Scott
-    runner.run_sync("what is my name?")
-    > your name is Scott
-```
+You can clear your agent's short term memory:
 
-You can delete the previous history to "clear" a session with `reset_memory`.
+`runner.reset_session()`
+
+- Persistent facts. Facts and data can be stored anywhere, and applied to the agent context
+when it runs. Agents expose a `memories` attribute to make loading memories easy:
 
 ```
-    runner.reset_session();
-    runner.run_sync("what is my name?")
-    > sorry, I do not know your name. Can you tell me what it is?
+uploader = Agent(
+    name="TransistorFM",
+    memories=["Default show ID is 60214"],
+)
 ```
+but you can also use a `ContextManager` to inject information into the agent context.
+
+- Run history. Agents can persist their "run histories" (chat sessions) so that those
+runs can be reviewed later.
+
+- Larger-than-context memory. There are multiple systems for storing memories for your agent
+that exceed the context window limits. The most popular is RAG - retrieval augmented generation.
+This system allows your agent to store lots and lots of data and intelligently "retrieve" only
+part of it to help it answer ("generate") a question.
+

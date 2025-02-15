@@ -65,6 +65,7 @@ class RayAgentRunner:
             self.debug = DebugLevel(os.environ.get("AGENTIC_DEBUG") or "")
         self.app = FastAPI()
         self.app.get("/next_turn")(self.web_request)
+        self.server_thread = None
 
     def web_request(self, prompt: str):
         return self.turn(prompt)

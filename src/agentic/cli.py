@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from rich.markdown import Markdown
 from rich.console import Console
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from .file_cache import file_cache
 from .colors import Colors
@@ -18,6 +18,19 @@ from pathlib import Path
 from importlib import resources
 from typing import Optional
 from rich.status import Status
+
+from weaviate import WeaviateClient
+from weaviate.embedded import EmbeddedOptions
+from chonkie import SemanticChunker
+from fastembed import TextEmbedding
+import pypdf
+import tempfile
+from weaviate.classes.config import (
+    DataType,
+    Property,
+    Configure,
+    VectorDistances
+)
 
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
@@ -52,7 +65,7 @@ def main(
 
 
 @app.command()
-def list():
+def list_settings():
     """List all settings."""
     typer.echo("\n".join(sorted(settings.list_settings())))
 
@@ -281,6 +294,134 @@ def run(args: List[str]):
     """Copies secrets into the Environment and Runs a shell command"""
     secrets.copy_secrets_to_env()
     os.execvp("sh", ["sh", "-c", " ".join(args)])
+
+
+@app.command()
+def index_file(
+    index_name: str,
+    file_path: str,
+    embedding_model: str = typer.Option(
+        "BAAI/bge-small-en-v1.5",
+        help="FastEmbed model name for text embedding"
+    ),
+    chunk_threshold: float = typer.Option(
+        0.5,
+        min=0.1,
+        max=1.0,
+        help="Semantic similarity threshold for chunking"
+    ),
+    chunk_delimiters: str = typer.Option(
+        ". ,! ,? ,\n",
+        help="Comma-separated delimiters for fallback chunk splitting"
+    ),
+    distance_metric: VectorDistances = typer.Option(
+        VectorDistances.COSINE,
+        help="Distance metric for vector comparison"
+    )
+):
+    """Index a file using configurable Weaviate Embedded and chunking parameters"""
+    console = Console()
+    
+    try:
+        with Status("[bold green]Initializing Weaviate..."):
+            client = WeaviateClient(
+                embedded_options=EmbeddedOptions(
+                    persistence_data_path=str(Path.home() / ".cache/weaviate"),
+                    additional_env_vars={
+                        "LOG_LEVEL": "error"
+                    }
+                )
+            )
+            client.connect()
+            
+        if not client.collections.exists(index_name):
+            client.collections.create(
+                name=index_name,
+                properties=[
+                    Property(name="content", data_type=DataType.TEXT,
+                            index_searchable=True,  # Enable BM25 text search
+                            index_filterable=False),
+                    Property(name="chunk_index", data_type=DataType.INT,
+                            index_filterable=True,  # Enable numeric filtering
+                            index_range_filter=True)  # Enable range queries
+                ],
+                vectorizer_config=Configure.Vectorizer.none(),
+                vector_index_config=Configure.VectorIndex.hnsw(
+                    distance_metric=distance_metric,
+                    vector_cache_max_objects=10_000,
+                    ef_construction=128,  # Balance build speed vs recall
+                    max_connections=16,   # Memory/performance tradeoff
+                    dynamic_indexing=True # Auto-optimize index type
+                ),
+                inverted_index_config=Configure.inverted_index(
+                    async_indexing=True,   # Faster imports
+                    bm25_b=0.75,          # BM25 ranking parameters
+                    bm25_k1=1.2
+                )
+            )
+            
+        with Status("[bold green]Initializing FastEmbed..."):
+            embed_model = TextEmbedding(model_name=embedding_model)
+            
+        with Status("[bold green]Initializing Chonkie..."):
+            chunker = SemanticChunker(
+                threshold=chunk_threshold,
+                delim=chunk_delimiters.split(",")
+            )
+            
+        file_path = Path(file_path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} not found")
+            
+        with Status(f"[bold green]Processing {file_path}..."):
+            text = ""
+            if file_path.suffix == ".pdf":
+                with open(file_path, "rb") as f:
+                    reader = pypdf.PdfReader(f)
+                    text = "\n".join(
+                        page.extract_text() 
+                        for page in reader.pages 
+                        if page.extract_text()
+                    )
+            else:
+                text = file_path.read_text(encoding="utf-8")
+                
+        chunks = chunker(text)
+        
+        chunks_text = [chunk.text for chunk in chunks]
+        if not chunks_text:
+            raise ValueError("No text chunks generated from document")
+        
+        batch_size = 128  # Optimal for FastEmbed
+        embeddings = []
+        with Status("[bold green]Generating embeddings..."):
+            for i in range(0, len(chunks_text), batch_size):
+                batch = chunks_text[i:i+batch_size]
+                embeddings.extend(list(embed_model.embed(batch)))  # Explicit conversion
+        
+        collection = client.collections.get(index_name)
+        with Status("[bold green]Indexing chunks..."), collection.batch.dynamic() as batch:
+            for i, chunk in enumerate(chunks):
+                vector = embeddings[i].tolist()
+                batch.add_object(
+                    properties={
+                        "content": chunk.text,
+                        "chunk_index": i
+                    },
+                    vector=vector
+                )
+                
+        console.print(f"[bold green]✅ Indexed {len(chunks)} chunks in {index_name}")
+        
+    except Exception as e:
+        console.print(f"[bold red]Error: {str(e)}")
+    finally:
+        if 'client' in locals():
+            client.close()
+            if hasattr(client, '_embedded_db'):
+                client._embedded_db.stop()
+            tempfile.tempdir = None
+            import gc; gc.collect()
 
 
 if __name__ == "__main__":

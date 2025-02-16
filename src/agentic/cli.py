@@ -34,6 +34,8 @@ from weaviate.classes.config import (
 import hashlib
 from weaviate.classes.query import Filter
 
+from agentic.utils.file_reader import read_file
+
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 
@@ -371,22 +373,15 @@ def index_file(
                 delim=chunk_delimiters.split(",")
             )
             
-        file_path = Path(file_path)
-        if not file_path.exists():
-            raise FileNotFoundError(f"File {file_path} not found")
-            
         with Status(f"[bold green]Processing {file_path}..."):
-            text = ""
-            if file_path.suffix == ".pdf":
-                with open(file_path, "rb") as f:
-                    reader = pypdf.PdfReader(f)
-                    text = "\n".join(
-                        page.extract_text() 
-                        for page in reader.pages 
-                        if page.extract_text()
-                    )
-            else:
-                text = file_path.read_text(encoding="utf-8")
+            try:
+                text, _ = read_file(str(file_path))
+            except FileNotFoundError as e:
+                console.print(f"[bold red]{str(e)}")
+                return
+            except ValueError as e:
+                console.print(f"[bold red]Error reading file: {str(e)}")
+                return
                 
         chunks = chunker(text)
         
@@ -402,7 +397,10 @@ def index_file(
                 embeddings.extend(list(embed_model.embed(batch)))  # Explicit conversion
         
         # Generate unique document ID using file path hash
-        document_id = hashlib.sha256(str(file_path.resolve()).encode()).hexdigest()
+        document_id = hashlib.sha256(
+            str(file_path).encode() if file_path.startswith("http") 
+            else str(Path(file_path).resolve()).encode()
+        ).hexdigest()
         
         # Delete existing chunks for this document
         collection = client.collections.get(index_name)

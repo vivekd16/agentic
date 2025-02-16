@@ -6,7 +6,7 @@ import pandas as pd
 
 from agentic.llm import llm_generate_with_format
 from agentic.common import RunContext
-
+from .rag_tool import RAGTool
 
 from .file_download import FileDownloadTool
 

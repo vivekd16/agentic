@@ -5,45 +5,65 @@ from agentic.tools.google_news import GoogleNewsTool
 from agentic.tools.tavily_search_tool import TavilySearchTool
 
 from agentic.models import CLAUDE, GPT_4O_MINI, GPT_4O
+from agentic.common import Agent, Pipeline, RunContext, make_prompt
+from agentic.events import Prompt, Event
 
 #model = "groq/llama-3.3-70b-versatile"
 model = GPT_4O
 
-reporter_agents = []
-for topic in [
-    "AI News",
-    "Sports",
-    "Finance"
-]:
-    prompt_key = topic.replace(" ", "_").upper() + "_REPORTER"
-    reporter = Agent(
-        name=f"{topic} Reporter",
-        instructions="{{" + prompt_key + "}}",
+def collect_audio_streams(prompt: Prompt, run_context: RunContext) -> Event:
+    prompt.set_message(make_prompt(
+        """
+        {{AI News Reporter}}
+        {{Sports Reporter}}
+        {{Finance Reporter}}
+        """,
+        run_context,
+    ))
+
+pipeline = Pipeline(
+    Agent(
+        name=f"AI News Reporter",
+        instructions="{{AI_NEWS_REPORTER}}",
         model=CLAUDE,
         tools=[GoogleNewsTool(), TavilySearchTool()],
         max_tokens=8192,
-    )
-    reporter_agents.append(reporter)
-
-producer = Agent(
-    name="Podcast Producer",
-    welcome="I am a podcast producer. I can produce a daily news podcast.",
-    instructions="{{FULL_PRODUCER}}",
-    model=model,
-    max_tokens=16 * 1000,
-    tools=[TextToSpeechTool()] + reporter_agents,
+    ),
+    Agent(
+        name=f"Sports Reporter",
+        instructions="{{SPORTS_REPORTER}}",
+        model=CLAUDE,
+        tools=[GoogleNewsTool(), TavilySearchTool()],
+        max_tokens=8192,
+        handle_turn_start=lambda prompt, run_context: prompt.set_message("run"),
+    ),
+    Agent(
+        name=f"Finance Reporter",
+        instructions="{{FINANCE_REPORTER}}",
+        handle_turn_start=lambda prompt, run_context: prompt.set_message("run"),
+        model=CLAUDE,
+        tools=[GoogleNewsTool(), TavilySearchTool()],
+        max_tokens=8192,
+    ),
+    Agent(
+        name="Podcast Producer",
+        welcome="I am a podcast producer. I can produce a daily news podcast.",
+        instructions="{{FULL_PRODUCER}}",
+        model=model,
+        max_tokens=16 * 1000,
+        tools=[
+            TextToSpeechTool(),
+            Agent(
+                name="TransistorFM",
+                welcome="I can work with podcast episodes via the Transistor.fm API.",
+                instructions="{{TRANSISTOR_FM}}",
+                tools=[AuthorizedRESTAPITool("header", "TRANSISTOR_API_KEY", "x-api-key")],
+                memories=["Default show ID is 60214"],
+                model=model,
+            )
+        ]
+    ),
 )
-
-uploader = Agent(
-    name="TransistorFM",
-    welcome="I can work with podcast episodes via the Transistor.fm API.",
-    instructions="{{TRANSISTOR_FM}}",
-    tools=[AuthorizedRESTAPITool("header", "TRANSISTOR_API_KEY", "x-api-key")],
-    memories=["Default show ID is 60214"],
-    model=model,
-)
-
-producer.add_tool(uploader)
 
 if __name__ == "__main__":
-    AgentRunner(producer).repl_loop()
+    AgentRunner(pipeline).repl_loop()

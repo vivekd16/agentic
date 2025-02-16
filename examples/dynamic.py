@@ -12,10 +12,6 @@ from agentic.common import Agent, AgentRunner
 from agentic.tools.registry import tool_registry
 from datetime import datetime
 
-def get_the_current_date() -> str:
-    """ Writes a nice peoem """
-    return datetime.now().strftime("%Y-%m-%d")
-
 agent = Agent(
     name="Dynamic Agent",
     welcome="I have a list of tools which I can enable and use on-demand. Query the list of tools to start.",
@@ -32,7 +28,6 @@ agent = Agent(
                 TavilySearchTool,
                 IMAPTool,
             ],
-            tool_functions=[get_the_current_date],
         ),
         BrowserUseTool(),
         # tool_registry.load_tool(

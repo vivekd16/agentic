@@ -124,8 +124,14 @@ class ToolRegistry:
     def install_pip_dependency(self, dep: Dependency) -> bool:
         """Install a Python package using pip."""
         try:
-            version_spec = f"{dep.name}=={dep.version}" if dep.version else dep.name
-            subprocess.check_call(["uv", "pip", "install", version_spec])
+            if dep.version and dep.version.startswith("https://"):
+                subprocess.check_call(["uv", "pip", "install", dep.version])
+            else:
+                if dep.version and dep.version.startswith("^"):
+                    version_spec = f"{dep.name}>={dep.version[1:]}"
+                else:
+                    version_spec = dep.name
+                subprocess.check_call(["uv", "pip", "install", version_spec])
             return True
         except subprocess.CalledProcessError:
             return False
@@ -144,7 +150,10 @@ class ToolRegistry:
                 status[dep.name] = self.check_system_dependency(dep)
         return status
 
-    def ensure_dependencies(self, tool) -> bool:
+    def ensure_dependencies(
+            self, tool,
+            always_install: bool = False
+        ) -> bool:
         """Check and optionally install missing dependencies."""
         if hasattr(tool, "__class__"):
             toolcls = tool.__class__
@@ -167,7 +176,7 @@ class ToolRegistry:
             if dep.type == "pip":
                 if not self.is_package_installed(dep.name):
                     if self.auto_install:
-                        choice = input(f"Install {dep.name}? (y/n)")
+                        choice = "y" if always_install else input(f"Install {dep.name}? (y/n)")
                         if choice == "y":
                             success = self.install_pip_dependency(dep)
                             if not success:

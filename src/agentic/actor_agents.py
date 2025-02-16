@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Optional, Generator
+from typing import Any, Optional, Generator, Literal
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
@@ -81,6 +81,11 @@ from agentic.tools.registry import tool_registry
 
 __CTX_VARS_NAME__ = "run_context"
 
+# define a CallbackType Enum with values: "handle_turn_start", "handle_turn_end"
+CallbackType = Literal["handle_turn_start", "handle_turn_end"]
+
+# make a Callable type that expects a Prompt and RunContext
+CallbackFunc = Callable[[Prompt, RunContext], None]
 
 @dataclass
 class AgentPauseContext:
@@ -110,7 +115,7 @@ class ActorBaseAgent:
     max_tokens: int = None
     run_context: RunContext = None
     _prompter = None
-
+    _callbacks: dict[CallbackType, CallbackFunc] = {}
     class Config:
         arbitrary_types_allowed = True
 
@@ -399,6 +404,7 @@ class ActorBaseAgent:
 
     def handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput):
         if isinstance(actor_message, Prompt):
+            # Middleware to modify the input prompt (or change agent context)
             self.run_context = (
                 RunContext(
                     agent_name=self.name, agent=self, debug_level=actor_message.debug
@@ -406,6 +412,8 @@ class ActorBaseAgent:
                 if self.run_context is None
                 else self.run_context
             )
+            if self._callbacks.get('handle_turn_start') is not None:
+                self._callbacks['handle_turn_start'](actor_message, self.run_context)
             self.debug = actor_message.debug
             self.depth = actor_message.depth
             init_len = len(self.history)
@@ -416,15 +424,15 @@ class ActorBaseAgent:
         elif isinstance(actor_message, ResumeWithInput):
             # Call resuming us with user input after wait. We re-call our tool function after merging the human results
             if not self.paused_context:
-                self.log(
+                self.run_context.debug(
                     "Ignoring ResumeWithInput event, parent not paused: ",
                     actor_message,
                 )
                 return
             init_len = self.paused_context.orig_history_length
             # Copy human input into our context
-            context_variables = actor_message.request_keys.copy()
-            self.run_context.update(context_variables)
+            #context_variables = actor_message.request_keys.copy()
+            self.run_context.update(actor_message.request_keys.copy())
             # Re-call our tool function
             tool_function = self.paused_context.tool_function
             if tool_function is None:
@@ -443,7 +451,7 @@ class ActorBaseAgent:
             )
             yield from events
             self.history.extend(partial_response.messages)
-            context_variables.update(partial_response.context_variables)
+            #context_variables.update(partial_response.context_variables)
 
         # MAIN TURN LOOP
         # Critically, if a "wait_for_human" tool is requested, then we save our
@@ -481,7 +489,7 @@ class ActorBaseAgent:
 
             last_tool_result: Result | None = partial_response.last_tool_result
             if last_tool_result:
-                if PauseForInputResult.matches_sentinel(last_tool_result.value):
+                if isinstance(last_tool_result, PauseForInputResult):
                     # tool function has request user input. We save the tool function so we can re-call it when
                     # we get the response back
                     self.paused_context = AgentPauseContext(
@@ -489,7 +497,7 @@ class ActorBaseAgent:
                         tool_partial_response=partial_response,
                         tool_function=last_tool_result.tool_function,
                     )
-                    yield WaitForInput(self.name, last_tool_result.context_variables)
+                    yield WaitForInput(self.name, last_tool_result.request_keys)
                     return
                 elif FinishAgentResult.matches_sentinel(
                     partial_response.messages[-1]["content"]
@@ -502,7 +510,7 @@ class ActorBaseAgent:
                     break
 
             self.history.extend(partial_response.messages)
-            context_variables.update(partial_response.context_variables)
+            #context_variables.update(partial_response.context_variables)
             # end of turn loop
 
         # Altough we emit interim events, we also publish all the messages from this 'turn'
@@ -510,7 +518,7 @@ class ActorBaseAgent:
         yield TurnEnd(
             self.name,
             self.history[init_len:],
-            context_variables,
+            self.run_context,
             self.depth,
         )
         self.paused_context = None
@@ -614,6 +622,9 @@ class ActorBaseAgent:
             if key in state:
                 setattr(self, remap.get(key, key), state[key])
 
+        if "handle_turn_start" in state:
+            self._callbacks["handle_turn_start"] = state["handle_turn_start"]
+
         # Update our functions
         if "functions" in state:
             self.functions = []
@@ -627,9 +638,8 @@ class ActorBaseAgent:
         self.debug = debug
         print("agent set new debug level: ", debug)
 
-    def log(self, *args):
-        message = " ".join([str(a) for a in args])
-        print(f"({self.name}) {message}")
+    def set_callback(self, key: CallbackType, callback: Callable):
+        self._callbacks[key] = callback
 
     def list_tools(self) -> list[str]:
         return self.tools
@@ -737,6 +747,7 @@ class RayFacadeAgent:
         template_path: str | Path = None,
         max_tokens: int = None,
         memories: list[str] = [],
+        handle_turn_start: Callable[[Prompt, RunContext], None] = None,
         debug: DebugLevel = DebugLevel(DebugLevel.OFF),
     ):
         self.name = name
@@ -758,6 +769,7 @@ class RayFacadeAgent:
         self.max_tokens = max_tokens
         self.memories = memories
         self.debug = debug
+        self._handle_turn_start = handle_turn_start
 
         # Check we have all the secrets
         self._ensure_tool_secrets()
@@ -795,6 +807,7 @@ class RayFacadeAgent:
                     "model": self.model,
                     "max_tokens": self.max_tokens,
                     "memories": self.memories,
+                    "handle_turn_start": self._handle_turn_start,
                 },
             ),
         )

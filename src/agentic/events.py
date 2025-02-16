@@ -7,7 +7,7 @@ warnings.filterwarnings("ignore", message="Valid config keys have changed in V2:
 from dataclasses import dataclass
 from typing import Any
 from pydantic import BaseModel
-from .swarm.types import Result, DebugLevel
+from .swarm.types import Result, DebugLevel, RunContext
 import json
 
 from litellm.types.utils import ModelResponse, Message
@@ -73,6 +73,10 @@ class Prompt(Event):
         }
         # Use Pydantic's model initialization directly
         BaseModel.__init__(self, **data)
+
+    # Make a set method for 'message'
+    def set_message(self, message: str):
+        self.payload = message
 
 class PromptStarted(Event):
     def __init__(self, agent: str, message: str, depth: int = 0):
@@ -215,10 +219,10 @@ class FinishCompletion(Event):
 
 class TurnEnd(Event):
     def __init__(
-        self, agent: str, messages: list, context_variables: dict = {}, depth: int = 0
+        self, agent: str, messages: list, run_context: RunContext, depth: int = 0
     ):
         super().__init__(
-            agent=agent, type="turn_end", payload={"messages": messages, "vars": context_variables}, depth=depth
+            agent=agent, type="turn_end", payload={"messages": messages, "run_context": run_context}, depth=depth
         )
 
     @property
@@ -230,8 +234,8 @@ class TurnEnd(Event):
         return self.messages[-1]["content"]
 
     @property
-    def context_variables(self):
-        return self.payload["vars"]
+    def run_context(self):
+        return self.payload["run_context"]
 
     def print(self, debug_level: str):
         if debug_level == "agents":
@@ -263,8 +267,8 @@ FINISH_AGENT_SENTINEL = "__FINISH__"
 class WaitForInput(Event):
     # Whenenever the agent needs to pause, either to wait for human input or a response from
     # another agent, we emit this event.
-    def __init__(self, agent, request_keys: dict):
-        super().__init__(agent, "wait_for_input", request_keys)
+    def __init__(self, agent: str, request_keys: dict):
+        super().__init__(agent=agent, type="wait_for_input", payload=request_keys)
 
     @property
     def request_keys(self) -> dict:
@@ -274,7 +278,7 @@ class WaitForInput(Event):
 # Sent by the caller with human input
 class ResumeWithInput(Event):
     def __init__(self, agent, request_keys: dict):
-        super().__init__(agent, "resume_with_input", request_keys)
+        super().__init__(agent=agent, type="resume_with_input", payload=request_keys)
 
     @property
     def request_keys(self):
@@ -289,6 +293,9 @@ class PauseForInputResult(Result):
     def matches_sentinel(value) -> bool:
         return value == PAUSE_FOR_INPUT_SENTINEL
 
+    @property
+    def request_keys(self):
+        return self.context_variables
 
 # Special result which aborts any further processing by the agent.
 class FinishAgentResult(Result):

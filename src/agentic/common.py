@@ -6,6 +6,12 @@ from .actor_agents import (
     handoff,
 )
 from .swarm.types import RunContext
+from .workflow import Pipeline
+from jinja2 import Template
 
 Agent = RayFacadeAgent
 AgentRunner = RayAgentRunner
+
+def make_prompt(template: str, run_context: RunContext, **kwargs) -> str:
+    context = run_context._context.copy() | kwargs
+    return Template(template).render(context)

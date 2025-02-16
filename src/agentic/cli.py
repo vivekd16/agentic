@@ -31,6 +31,8 @@ from weaviate.classes.config import (
     Configure,
     VectorDistances
 )
+import hashlib
+from weaviate.classes.query import Filter
 
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
@@ -338,6 +340,8 @@ def index_file(
             client.collections.create(
                 name=index_name,
                 properties=[
+                    Property(name="document_id", data_type=DataType.TEXT,
+                            index_filterable=True),  # For efficient deletion
                     Property(name="content", data_type=DataType.TEXT,
                             index_searchable=True,  # Enable BM25 text search
                             index_filterable=False),
@@ -349,12 +353,10 @@ def index_file(
                 vector_index_config=Configure.VectorIndex.hnsw(
                     distance_metric=distance_metric,
                     vector_cache_max_objects=10_000,
-                    ef_construction=128,  # Balance build speed vs recall
-                    max_connections=16,   # Memory/performance tradeoff
-                    dynamic_indexing=True # Auto-optimize index type
+                    ef_construction=128,
+                    max_connections=16,
                 ),
                 inverted_index_config=Configure.inverted_index(
-                    async_indexing=True,   # Faster imports
                     bm25_b=0.75,          # BM25 ranking parameters
                     bm25_k1=1.2
                 )
@@ -399,12 +401,29 @@ def index_file(
                 batch = chunks_text[i:i+batch_size]
                 embeddings.extend(list(embed_model.embed(batch)))  # Explicit conversion
         
+        # Generate unique document ID using file path hash
+        document_id = hashlib.sha256(str(file_path.resolve()).encode()).hexdigest()
+        
+        # Delete existing chunks for this document
         collection = client.collections.get(index_name)
+        with Status("[bold green]Checking for existing document..."):
+            response = collection.query.fetch_objects(
+                limit=1,
+                return_properties=["document_id"],
+                filters=Filter.by_property("document_id").equal(document_id)
+            )
+            if response.objects:
+                collection.data.delete_many(
+                    where=Filter.by_property("document_id").equal(document_id)
+                    )
+
+        # Index in Weaviate with batch optimization
         with Status("[bold green]Indexing chunks..."), collection.batch.dynamic() as batch:
             for i, chunk in enumerate(chunks):
                 vector = embeddings[i].tolist()
                 batch.add_object(
                     properties={
+                        "document_id": document_id,  # Add document ID to each chunk
                         "content": chunk.text,
                         "chunk_index": i
                     },

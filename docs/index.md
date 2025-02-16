@@ -1,7 +1,7 @@
 Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
 and can use tools to do work on your behalf.
 
-Agentic is in the tradition of _opinionated frameworks_. We've tried to encode lots of sensisible
+Agentic is in the tradition of _opinionated frameworks_. We've tried to encode lots of sensible
 defaults and best practices into the design, testing and deployment of agents. 
 
 Some key features:

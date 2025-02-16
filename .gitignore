@@ -10,3 +10,6 @@ __pycache__
 
 .vscode
 site/
+
+venv/
+env/

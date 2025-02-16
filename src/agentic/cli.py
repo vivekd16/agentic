@@ -408,7 +408,7 @@ def index_file(
         collection = client.collections.get(index_name)
         with Status("[bold green]Checking for existing document..."):
             response = collection.query.fetch_objects(
-                limit=1,
+                limit=300,
                 return_properties=["document_id"],
                 filters=Filter.by_property("document_id").equal(document_id)
             )

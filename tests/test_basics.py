@@ -22,7 +22,7 @@ def test_agent_as_tool():
         name="Agent A",
         instructions="""
 Print this 'I am agent 1'.
-Then call agent once with the request 'run'
+Then call agent B once with the request 'run'
 """,
         tools=[
             Agent(

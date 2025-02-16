@@ -17,6 +17,8 @@ import ray
 import traceback
 from datetime import timedelta
 from .swarm.types import agent_secret_key, tool_name
+from ray import serve
+from starlette.requests import Request
 
 import yaml
 from typing import Callable, Any, List
@@ -643,6 +645,8 @@ class ActorBaseAgent:
 
         return [get_name(f) for f in self.functions]
 
+    def handle_request(self, method: str, data: dict):
+        return f"Actor {self.name} processed {method} request with data: {data}"
 
 class HandoffAgentWrapper:
     def __init__(self, agent):
@@ -660,6 +664,62 @@ def handoff(agent, **kwargs):
 
 _AGENT_REGISTRY: list = []
 
+
+class DynamicHandler:
+    def __init__(self, actor_ref: ray.actor.ActorHandle):
+        self._agent = actor_ref
+        self.debug = DebugLevel(DebugLevel.OFF)
+        self.name = "Web agent"
+
+    async def __call__(self, request: Request):
+        data = await request.json() if request.method in ["POST", "PUT"] else {}
+        results = []
+        for event in self.next_turn(data['prompt'], debug=self.debug):
+            results.append(event.model_dump_json())
+
+        return "".join(results)
+        return await self._agent.handle_request.remote(request.method, data)
+
+    def next_turn(
+        self,
+        request: str,
+        continue_result: dict = {},
+        debug: DebugLevel = DebugLevel(DebugLevel.OFF),
+    ) -> Generator[Event, Any, Any]:
+        """This is the key agent loop generator. It runs the agent for a single turn and
+        emits events as it goes. If a WaitForInput event is emitted, then you should
+        gather human input and call this function again with _continue_result_ to
+        continue the turn."""
+        self.debug = debug
+        event: Event
+        if not continue_result:
+            remote_gen = self._agent.handlePromptOrResume.remote(
+                Prompt(
+                    self.name,
+                    request,
+                    depth=0,
+                    debug=self.debug,
+                )
+            )
+        else:
+            remote_gen = self._agent.handlePromptOrResume.remote(
+                ResumeWithInput(self.name, continue_result),
+            )
+        for remote_next in remote_gen:
+            event = ray.get(remote_next)
+            yield event
+
+
+def create_endpoint(actor_id: str, actor_ref: ray.actor.ActorHandle):
+    HandlerDeployment = serve.deployment(
+        name=f"handler-{actor_id}",
+    )(DynamicHandler)
+    
+    serve.run(
+        HandlerDeployment.bind(actor_ref), 
+        route_prefix=f"/{actor_id}",
+    )
+    return HandlerDeployment
 
 class RayFacadeAgent:
     """The facade agent is the object directly instantiated in code. It holds a reference to the remote
@@ -739,6 +799,8 @@ class RayFacadeAgent:
             ),
         )
         ray.get(obj_ref)
+
+        #create_endpoint(self.safe_name, self._agent)
 
     def _ensure_tool_secrets(self):
         from agentic.agentic_secrets import agentic_secrets
@@ -857,8 +919,8 @@ class RayFacadeAgent:
                 Prompt(
                     self.name,
                     request,
-                    depth=0,
                     debug=self.debug,
+                    depth=0,
                 )
             )
         else:

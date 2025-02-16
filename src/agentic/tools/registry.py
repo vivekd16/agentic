@@ -40,6 +40,8 @@ def check_package(package_name):
             return True
         except (ImportError, pkg_resources.DistributionNotFound):
             return False
+        except pkg_resources.ContextualVersionConflict:
+            return True
 
 
 @dataclass

@@ -40,12 +40,11 @@ The easiest thing is to install the package from pypi:
 
 `pip install agents-kit`
 
-For latest and greating you can install directly from the repo:
+For the latest and greatest you can install directly from the repo:
 
-`pip install https://github.com/supercog-ai/agentic`
+`pip install git+ssh://git@github.com/supercog-ai/agentic.git`
 
 We recommend installing into a virtual env.
-
 
 After you install, setup a folder to hold your agents, like "myagents", and then run:
 
@@ -55,8 +54,8 @@ This will initialize the directory that you are in and create these folders:
 
     examples/   - The example agents from this repo
     agents/     - A folder to put your own agents
-    runtime/    - Agents execute in here by default, will store files here
-    
+    runtime/    - Agents execute in here by default, and will store files here
+
 The CLI will setup the current directory to contain your agents.
 
 The install will copy examples and a basic file structure into the directory `myagents`. You can name

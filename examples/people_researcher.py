@@ -29,8 +29,6 @@ def get_human_input(request_message: str):
     return PauseForInputResult({"input": request_message})
 
 
-from agentic import Agent
-
 person_report_writer = Agent(
     name="Person Report Writer",
     instructions="""

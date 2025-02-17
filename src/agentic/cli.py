@@ -245,7 +245,8 @@ def init(
     dest_path = Path(path + "/examples").resolve()
     os.mkdir("agents")
     os.mkdir("tools")
-    os.mkdir("evals")
+    os.mkdir("tests")
+    os.mkdir("runtime")
 
     # Check if destination exists and is not empty
     if dest_path.exists() and any(dest_path.iterdir()) and not force:

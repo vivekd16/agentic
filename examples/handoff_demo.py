@@ -1,4 +1,4 @@
-from agentic import Agent, AgentRunner, handoff
+from agentic.common import Agent, AgentRunner, handoff
 
 agentA = Agent(
     name="Producer",

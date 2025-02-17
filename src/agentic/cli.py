@@ -522,6 +522,11 @@ def delete_document(
             )
             client.connect()
             
+        # Check if index exists
+        if not client.collections.exists(index_name):
+            console.print(f"[yellow]⚠️ Index '{index_name}' does not exist[/yellow]")
+            raise typer.Exit(0)
+            
         collection = client.collections.get(index_name)
         
         # Generate document ID same as indexing
@@ -529,6 +534,15 @@ def delete_document(
         filename = Path(file_path).name if not is_url else get_last_path_component(file_path)
         document_id = hashlib.sha256(filename.encode()).hexdigest()
         
+        # Check if document exists
+        existing = collection.query.fetch_objects(
+            limit=1,
+            filters=Filter.by_property("document_id").equal(document_id)
+        )
+        if not existing.objects:
+            console.print(f"[yellow]⚠️ Document '{filename}' not found in index[/yellow]")
+            raise typer.Exit(0)
+            
         if not confirm:
             console.print(f"[red]⚠️ Will delete ALL chunks for document '{filename}'[/red]")
             typer.confirm("Are you sure?", abort=True)
@@ -564,6 +578,11 @@ def delete_index(
                 )
             )
             client.connect()
+            
+        # Check if index exists
+        if not client.collections.exists(index_name):
+            console.print(f"[yellow]⚠️ Index '{index_name}' does not exist[/yellow]")
+            raise typer.Exit(0)
             
         if not confirm:
             console.print(f"[red]⚠️ Will delete ENTIRE index '{index_name}'[/red]")

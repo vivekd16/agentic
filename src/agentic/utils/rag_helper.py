@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 import hashlib
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 from weaviate import WeaviateClient
 from weaviate.embedded import EmbeddedOptions
@@ -142,9 +142,22 @@ def delete_document_from_index(
     filename: str
 ) -> int:
     """Delete document and its chunks from index, return number of deleted chunks"""
+    # Get count before deletion for accurate reporting
+    original_count = collection.aggregate.over_all(
+        filters=Filter.by_property("document_id").equal(document_id),
+        total_count=True
+    ).total_count
+    
     result = collection.data.delete_many(
         where=Filter.by_property("document_id").equal(document_id)
     )
+    
+    # Verify deletion count matches
+    if result.successful != original_count:
+        raise RuntimeError(
+            f"Deleted {result.successful} chunks but expected {original_count}"
+        )
+    
     return result.successful
 
 def check_document_in_index(
@@ -163,4 +176,105 @@ def get_document_id_from_path(file_path: str) -> tuple[str, str]:
     is_url = file_path.startswith(("http://", "https://"))
     filename = Path(file_path).name if not is_url else get_last_path_component(file_path)
     document_id = hashlib.sha256(filename.encode()).hexdigest()
-    return document_id, filename 
+    return document_id, filename
+
+def list_collections(client: WeaviateClient) -> List[str]:
+    """List all available indexes/collections"""
+    return [col for col in client.collections.list_all()]
+
+def rename_collection(
+    client: WeaviateClient,
+    source_name: str,
+    target_name: str,
+    overwrite: bool = False
+) -> bool:
+    """Rename a Weaviate collection by creating copy and deleting original"""
+    # Check if source exists
+    if not client.collections.exists(source_name):
+        return False
+    
+    if client.collections.exists(target_name):
+        if not overwrite:
+            return False
+        # Delete existing target collection if overwrite is enabled
+        client.collections.delete(target_name)
+    
+    source_col = client.collections.get(source_name)
+    create_collection(client, target_name)
+    target_col = client.collections.get(target_name)
+    
+    # Copy all objects
+    with target_col.batch.dynamic() as batch:
+        for obj in source_col.iterator(include_vector=True):
+            batch.add_object(
+                properties=obj.properties,
+                vector=obj.vector
+            )
+    
+    # Delete original if copy successful
+    client.collections.delete(source_name)
+    return True
+
+def list_documents_in_collection(collection: Any) -> List[Dict]:
+    """List all unique documents in a collection with basic metadata"""
+    result = collection.query.fetch_objects(
+        limit=1000,
+        return_properties=["document_id", "filename", "timestamp", "fingerprint"],
+        include_vector=False
+    )
+    
+    seen = set()
+    documents = []
+    for obj in result.objects:
+        if obj.properties["document_id"] not in seen:
+            seen.add(obj.properties["document_id"])
+            chunk_count = collection.aggregate.over_all(
+                filters=Filter.by_property("document_id").equal(
+                    obj.properties["document_id"]
+                ),
+                total_count=True
+            ).total_count
+            
+            documents.append({
+                "document_id": obj.properties["document_id"],
+                "filename": obj.properties["filename"],
+                "timestamp": obj.properties["timestamp"],
+                "chunk_count": chunk_count
+            })
+    
+    return documents
+
+def get_document_metadata(collection: Any, document_id: str) -> Optional[Dict]:
+    """Get full metadata for a specific document"""
+    result = collection.query.fetch_objects(
+        limit=1,
+        filters=Filter.by_property("document_id").equal(document_id),
+        return_properties=[
+            "document_id", 
+            "filename", 
+            "timestamp", 
+            "source_url",
+            "mime_type",
+            "fingerprint",
+            "summary"
+        ],
+        include_vector=False
+    )
+    
+    if not result.objects:
+        return None
+    
+    first_chunk = result.objects[0]
+    return {
+        "document_id": document_id,
+        "filename": first_chunk.properties["filename"],
+        "timestamp": first_chunk.properties["timestamp"],
+        "source_url": first_chunk.properties.get("source_url", ""),
+        "mime_type": first_chunk.properties["mime_type"],
+        "fingerprint": first_chunk.properties["fingerprint"],
+        "summary": first_chunk.properties.get("summary", ""),
+        "total_chunks":  collection.aggregate.over_all(
+            filters=Filter.by_property("document_id").equal(document_id),
+            total_count=True
+        ).total_count
+    } 

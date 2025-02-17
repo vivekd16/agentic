@@ -34,7 +34,10 @@ from weaviate.classes.config import (
 import hashlib
 from weaviate.classes.query import Filter
 
-from agentic.utils.file_reader import read_file
+from agentic.utils.file_reader import read_file, get_last_path_component
+from datetime import datetime
+
+from agentic.utils.summarizer import generate_document_summary
 
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
@@ -349,7 +352,19 @@ def index_file(
                             index_filterable=False),
                     Property(name="chunk_index", data_type=DataType.INT,
                             index_filterable=True,  # Enable numeric filtering
-                            index_range_filter=True)  # Enable range queries
+                            index_range_filter=True),  # Enable range queries
+                    # Add metadata properties
+                    Property(name="filename", data_type=DataType.TEXT,
+                            index_filterable=True),
+                    Property(name="timestamp", data_type=DataType.DATE,
+                            index_filterable=True),
+                    Property(name="mime_type", data_type=DataType.TEXT,
+                            index_filterable=True),
+                    Property(name="source_url", data_type=DataType.TEXT,
+                            index_filterable=True),
+                    Property(name="summary", data_type=DataType.TEXT,
+                            index_searchable=True,
+                            index_filterable=True),
                 ],
                 vectorizer_config=Configure.Vectorizer.none(),
                 vector_index_config=Configure.VectorIndex.hnsw(
@@ -373,16 +388,31 @@ def index_file(
                 delim=chunk_delimiters.split(",")
             )
             
-        with Status(f"[bold green]Processing {file_path}..."):
+        with Status(f"[bold green]Processing {file_path}...", console=console):
             try:
-                text, _ = read_file(str(file_path))
-            except FileNotFoundError as e:
-                console.print(f"[bold red]{str(e)}")
-                return
-            except ValueError as e:
-                console.print(f"[bold red]Error reading file: {str(e)}")
-                return
+                text, mime_type = read_file(str(file_path))
+                is_url = file_path.startswith(("http://", "https://"))
                 
+            except Exception as e:
+                console.print(f"Error reading file: {str(e)}", style="red")
+                raise typer.Exit(1)
+
+        with Status("[bold green]Generating document summary...", console=console):
+            summary = generate_document_summary(
+                text=text[:12000], 
+                mime_type=mime_type,
+                model=GPT_DEFAULT_MODEL
+            )
+
+        # Continue with processing
+        metadata = {
+            "filename": Path(file_path).name if not is_url else get_last_path_component(file_path),
+            "timestamp": datetime.now().isoformat(),
+            "mime_type": mime_type,
+            "source_url": file_path if is_url else "None",
+            "summary": summary
+        }
+        
         chunks = chunker(text)
         
         chunks_text = [chunk.text for chunk in chunks]
@@ -421,9 +451,15 @@ def index_file(
                 vector = embeddings[i].tolist()
                 batch.add_object(
                     properties={
-                        "document_id": document_id,  # Add document ID to each chunk
+                        "document_id": document_id,
                         "content": chunk.text,
-                        "chunk_index": i
+                        "chunk_index": i,
+                        # Add metadata
+                        "filename": metadata["filename"],
+                        "timestamp": metadata["timestamp"],
+                        "mime_type": metadata["mime_type"],
+                        "source_url": metadata["source_url"],
+                        "summary": metadata["summary"],
                     },
                     vector=vector
                 )

@@ -2,7 +2,7 @@ from typing import Callable, Any
 import asyncio
 from agentic.tools.linkedin_tool import LinkedinDataTool
 
-from agentic import Agent, AgentRunner, handoff, PauseForInputResult
+from agentic.common import Agent, AgentRunner, handoff, PauseForInputResult
 
 
 def invoke_async(async_func: Callable, *args, **kwargs) -> Any:

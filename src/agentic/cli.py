@@ -16,29 +16,27 @@ from agentic.settings import settings
 import shutil
 from pathlib import Path
 from importlib import resources
-from typing import Optional
 from rich.status import Status
 
-from weaviate import WeaviateClient
-from weaviate.embedded import EmbeddedOptions
-from chonkie import SemanticChunker
-from fastembed import TextEmbedding
-import pypdf
-import tempfile
 from weaviate.classes.config import (
-    DataType,
-    Property,
-    Configure,
     VectorDistances
 )
-import hashlib
 from weaviate.classes.query import Filter
 
-from agentic.utils.file_reader import read_file, get_last_path_component
-from datetime import datetime
+from agentic.utils.file_reader import read_file
 
 from agentic.utils.summarizer import generate_document_summary
-from agentic.utils.fingerprint import generate_fingerprint
+from agentic.utils.rag_helper import (
+    init_weaviate,
+    create_collection,
+    prepare_document_metadata,
+    check_document_exists,
+    init_embedding_model,
+    init_chunker,
+    delete_document_from_index,
+    check_document_in_index,
+    get_document_id_from_path
+)
 
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
@@ -329,161 +327,67 @@ def index_file(
 ):
     """Index a file using configurable Weaviate Embedded and chunking parameters"""
     console = Console()
+    client = None
     
     try:
         with Status("[bold green]Initializing Weaviate..."):
-            client = WeaviateClient(
-                embedded_options=EmbeddedOptions(
-                    persistence_data_path=str(Path.home() / ".cache/weaviate"),
-                    additional_env_vars={
-                        "LOG_LEVEL": "error"
-                    }
-                )
-            )
-            client.connect()
+            client = init_weaviate()
+            create_collection(client, index_name, distance_metric)
             
-        if not client.collections.exists(index_name):
-            client.collections.create(
-                name=index_name,
-                properties=[
-                    Property(name="document_id", data_type=DataType.TEXT,
-                            index_filterable=True),  # For efficient deletion
-                    Property(name="content", data_type=DataType.TEXT,
-                            index_searchable=True,  # Enable BM25 text search
-                            index_filterable=False),
-                    Property(name="chunk_index", data_type=DataType.INT,
-                            index_filterable=True,  # Enable numeric filtering
-                            index_range_filter=True),  # Enable range queries
-                    # Add metadata properties
-                    Property(name="filename", data_type=DataType.TEXT,
-                            index_filterable=True),
-                    Property(name="timestamp", data_type=DataType.DATE,
-                            index_filterable=True),
-                    Property(name="mime_type", data_type=DataType.TEXT,
-                            index_filterable=True),
-                    Property(name="source_url", data_type=DataType.TEXT,
-                            index_filterable=True),
-                    Property(name="summary", data_type=DataType.TEXT,
-                            index_searchable=True,
-                            index_filterable=True),
-                    Property(name="fingerprint", data_type=DataType.TEXT,
-                            index_filterable=True),
-                ],
-                vectorizer_config=Configure.Vectorizer.none(),
-                vector_index_config=Configure.VectorIndex.hnsw(
-                    distance_metric=distance_metric,
-                    vector_cache_max_objects=10_000,
-                    ef_construction=128,
-                    max_connections=16,
-                ),
-                inverted_index_config=Configure.inverted_index(
-                    bm25_b=0.75,          # BM25 ranking parameters
-                    bm25_k1=1.2
-                )
-            )
-            
-        with Status("[bold green]Initializing FastEmbed..."):
-            embed_model = TextEmbedding(model_name=embedding_model)
-            
-        with Status("[bold green]Initializing Chonkie..."):
-            chunker = SemanticChunker(
-                threshold=chunk_threshold,
-                delim=chunk_delimiters.split(",")
-            )
+        with Status("[bold green]Initializing models..."):
+            embed_model = init_embedding_model(embedding_model)
+            chunker = init_chunker(chunk_threshold, chunk_delimiters)
             
         with Status(f"[bold green]Processing {file_path}...", console=console):
-            try:
-                text, mime_type = read_file(str(file_path))
-                is_url = file_path.startswith(("http://", "https://"))
-                
-                # Generate fingerprint from content
-                fingerprint = generate_fingerprint(text)
-                
-                metadata = {
-                    "filename": Path(file_path).name if not is_url else get_last_path_component(file_path),
-                    "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "mime_type": mime_type,
-                    "source_url": file_path if is_url else "None"
-                }
-                
-                document_id = hashlib.sha256(
-                    metadata["filename"].encode()
-                ).hexdigest()
-                
-            except Exception as e:
-                console.print(f"Error reading file: {str(e)}", style="red")
-                raise typer.Exit(1)
+            text, mime_type = read_file(str(file_path))
+            metadata = prepare_document_metadata(file_path, text, mime_type, GPT_DEFAULT_MODEL)
             
         collection = client.collections.get(index_name)
-        # Check for existing fingerprint
-        with Status("[bold green]Checking document version...", console=console):
-            # Check for existing documents with same filename
-            existing_docs = collection.query.fetch_objects(
-                limit=1,
-                filters=Filter.by_property("document_id").equal(document_id)
+        exists, status = check_document_exists(
+            collection, 
+            metadata["document_id"],
+            metadata["fingerprint"]
+        )
+        
+        if status == "unchanged":
+            console.print(f"[yellow]⏩ Document '{metadata['filename']}' unchanged[/yellow]")
+            return
+        elif status == "duplicate":
+            console.print(f"[yellow]⚠️ Content already exists under different filename[/yellow]")
+            return
+        elif status == "changed":
+            console.print(f"[yellow]🔄 Updating changed document '{metadata['filename']}'[/yellow]")
+            collection.data.delete_many(
+                where=Filter.by_property("document_id").equal(metadata["document_id"])
             )
-            if existing_docs.objects:
-                existing_fp = existing_docs.objects[0].properties["fingerprint"]
-                
-                if existing_fp == fingerprint:
-                    # Case 1: Same filename, same content
-                    console.print(f"[yellow]⏩ Document '{metadata['filename']}' unchanged[/yellow]")
-                    client.close()
-                    raise typer.Exit(1)
-                else:
-                    # Case 2: Same filename, changed content
-                    console.print(f"[yellow]🔄 Updating changed document '{metadata['filename']}'[/yellow]")
-                    collection.data.delete_many(
-                        where=Filter.by_property("document_id").equal(document_id)
-                    )
-            else:
-                # Check if content exists under different filename
-                existing_content = collection.query.fetch_objects(
-                    limit=1,
-                    filters=Filter.by_property("fingerprint").equal(fingerprint)
-                )
-                if existing_content.objects:
-                    # Case 3: New filename, same content
-                    console.print(f"[yellow]⚠️ Content already exists under different filename[/yellow]")
-                    client.close()
-                    raise typer.Exit(1)
 
         with Status("[bold green]Generating document summary...", console=console):
-            summary = generate_document_summary(
-                text=text[:12000], 
+            metadata["summary"] = generate_document_summary(
+                text=text[:12000],
                 mime_type=mime_type,
                 model=GPT_DEFAULT_MODEL
             )
         
         chunks = chunker(text)
-        
         chunks_text = [chunk.text for chunk in chunks]
         if not chunks_text:
             raise ValueError("No text chunks generated from document")
         
-        batch_size = 128  # Optimal for FastEmbed
+        batch_size = 128
         embeddings = []
         with Status("[bold green]Generating embeddings..."):
             for i in range(0, len(chunks_text), batch_size):
                 batch = chunks_text[i:i+batch_size]
-                embeddings.extend(list(embed_model.embed(batch)))  # Explicit conversion
+                embeddings.extend(list(embed_model.embed(batch)))
         
-        # Index in Weaviate with batch optimization
         with Status("[bold green]Indexing chunks..."), collection.batch.dynamic() as batch:
             for i, chunk in enumerate(chunks):
                 vector = embeddings[i].tolist()
                 batch.add_object(
                     properties={
-                        "document_id": document_id,
+                        **metadata,
                         "content": chunk.text,
                         "chunk_index": i,
-                        # Add metadata
-                        "filename": metadata["filename"],
-                        "timestamp": metadata["timestamp"],
-                        "mime_type": metadata["mime_type"],
-                        "source_url": metadata["source_url"],
-                        "summary": summary,
-                        "fingerprint": fingerprint,
                     },
                     vector=vector
                 )
@@ -493,12 +397,8 @@ def index_file(
     except Exception as e:
         console.print(f"[bold red]Error: {str(e)}")
     finally:
-        if 'client' in locals():
+        if client:
             client.close()
-            if hasattr(client, '_embedded_db'):
-                client._embedded_db.stop()
-            tempfile.tempdir = None
-            import gc; gc.collect()
 
 
 @app.command()
@@ -512,34 +412,16 @@ def delete_document(
     
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
-            client = WeaviateClient(
-                embedded_options=EmbeddedOptions(
-                    persistence_data_path=str(Path.home() / ".cache/weaviate"),
-                additional_env_vars={
-                     "LOG_LEVEL": "error"
-                     }
-                )
-            )
-            client.connect()
+            client = init_weaviate()
             
-        # Check if index exists
         if not client.collections.exists(index_name):
             console.print(f"[yellow]⚠️ Index '{index_name}' does not exist[/yellow]")
             raise typer.Exit(0)
             
         collection = client.collections.get(index_name)
+        document_id, filename = get_document_id_from_path(file_path)
         
-        # Generate document ID same as indexing
-        is_url = file_path.startswith(("http://", "https://"))
-        filename = Path(file_path).name if not is_url else get_last_path_component(file_path)
-        document_id = hashlib.sha256(filename.encode()).hexdigest()
-        
-        # Check if document exists
-        existing = collection.query.fetch_objects(
-            limit=1,
-            filters=Filter.by_property("document_id").equal(document_id)
-        )
-        if not existing.objects:
+        if not check_document_in_index(collection, document_id):
             console.print(f"[yellow]⚠️ Document '{filename}' not found in index[/yellow]")
             raise typer.Exit(0)
             
@@ -548,16 +430,15 @@ def delete_document(
             typer.confirm("Are you sure?", abort=True)
             
         with Status("[bold green]Deleting document chunks...", console=console):
-            result = collection.data.delete_many(
-                where=Filter.by_property("document_id").equal(document_id)
-            )
+            deleted_count = delete_document_from_index(collection, document_id, filename)
             
-        console.print(f"[green]✅ Deleted {result.successful} chunks for document '{filename}'[/green]")
+        console.print(f"[green]✅ Deleted {deleted_count} chunks for document '{filename}'[/green]")
         
     except Exception as e:
         console.print(f"[bold red]Error: {str(e)}[/bold red]")
     finally:
-        client.close()
+        if client:
+            client.close()
 
 @app.command() 
 def delete_index(
@@ -569,17 +450,8 @@ def delete_index(
     
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
-            client = WeaviateClient(
-                embedded_options=EmbeddedOptions(
-                    persistence_data_path=str(Path.home() / ".cache/weaviate"),
-                additional_env_vars={
-                    "LOG_LEVEL": "error"
-                    }
-                )
-            )
-            client.connect()
+            client = init_weaviate()
             
-        # Check if index exists
         if not client.collections.exists(index_name):
             console.print(f"[yellow]⚠️ Index '{index_name}' does not exist[/yellow]")
             raise typer.Exit(0)
@@ -596,7 +468,8 @@ def delete_index(
     except Exception as e:
         console.print(f"[bold red]Error: {str(e)}[/bold red]")
     finally:
-        client.close()
+        if client:
+            client.close()
 
 
 if __name__ == "__main__":

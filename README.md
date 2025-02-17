@@ -74,6 +74,17 @@ Under the covers, Agentic uses [Ray](https://github.com/ray-project/ray) to host
 run your agents. Ray implements an _actor model_ which implements a much better 
 architecture for running complex agents than a typical web framework.
 
+### API Keys
+
+Agentic requires API keys for the LLM providers you plan to use. Copy the `.env.example` file to `.env` and set the following environment variables:
+
+```
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+
+You only need to set the API keys for the models you plan to use. For example, if you're only using OpenAI models, you only need to set `OPENAI_API_KEY`.
+
 ## Why does this exist?
 
 Yup, there's a lot of agent frameworks. But many of these are "gen 1" frameworks - designed

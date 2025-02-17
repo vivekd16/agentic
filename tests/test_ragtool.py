@@ -1,4 +1,5 @@
 import pytest
+import os
 from agentic.tools.rag_tool import RAGTool
 from agentic.tools.registry import tool_registry
 
@@ -11,7 +12,8 @@ def rag_tool():
 
 @pytest.mark.asyncio
 async def test_universal_read_file(rag_tool):
-    file_name = "tests/data/agentic_reasoning.pdf"
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    file_name = os.path.join(current_dir, "data/agentic_reasoning.pdf")
     result = await rag_tool._universal_read_file(file_name, None)
     assert isinstance(result, tuple)
     assert isinstance(result[0], str)  # Assuming the PDF content is returned as a string
@@ -25,6 +27,7 @@ async def test_universal_read_file_invalid_file(rag_tool):
 
 @pytest.mark.asyncio
 async def test_universal_read_file_image(rag_tool):
-    file_name = "tests/data/omni.png"
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    file_name = os.path.join(current_dir, "data/omni.png")
     with pytest.raises(ValueError, match="Enable the Image Analysis & Recognition tool to read image files."):
         await rag_tool._universal_read_file(file_name, None)

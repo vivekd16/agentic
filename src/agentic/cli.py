@@ -501,5 +501,84 @@ def index_file(
             import gc; gc.collect()
 
 
+@app.command()
+def delete_document(
+    index_name: str,
+    file_path: str,
+    confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
+):
+    """Delete a specific document and all its chunks from Weaviate index"""
+    console = Console()
+    
+    try:
+        with Status("[bold green]Initializing Weaviate...", console=console):
+            client = WeaviateClient(
+                embedded_options=EmbeddedOptions(
+                    persistence_data_path=str(Path.home() / ".cache/weaviate"),
+                additional_env_vars={
+                     "LOG_LEVEL": "error"
+                     }
+                )
+            )
+            client.connect()
+            
+        collection = client.collections.get(index_name)
+        
+        # Generate document ID same as indexing
+        is_url = file_path.startswith(("http://", "https://"))
+        filename = Path(file_path).name if not is_url else get_last_path_component(file_path)
+        document_id = hashlib.sha256(filename.encode()).hexdigest()
+        
+        if not confirm:
+            console.print(f"[red]⚠️ Will delete ALL chunks for document '{filename}'[/red]")
+            typer.confirm("Are you sure?", abort=True)
+            
+        with Status("[bold green]Deleting document chunks...", console=console):
+            result = collection.data.delete_many(
+                where=Filter.by_property("document_id").equal(document_id)
+            )
+            
+        console.print(f"[green]✅ Deleted {result.successful} chunks for document '{filename}'[/green]")
+        
+    except Exception as e:
+        console.print(f"[bold red]Error: {str(e)}[/bold red]")
+    finally:
+        client.close()
+
+@app.command() 
+def delete_index(
+    index_name: str,
+    confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
+):
+    """Delete entire Weaviate index (collection)"""
+    console = Console()
+    
+    try:
+        with Status("[bold green]Initializing Weaviate...", console=console):
+            client = WeaviateClient(
+                embedded_options=EmbeddedOptions(
+                    persistence_data_path=str(Path.home() / ".cache/weaviate"),
+                additional_env_vars={
+                    "LOG_LEVEL": "error"
+                    }
+                )
+            )
+            client.connect()
+            
+        if not confirm:
+            console.print(f"[red]⚠️ Will delete ENTIRE index '{index_name}'[/red]")
+            typer.confirm("Are you sure?", abort=True)
+            
+        with Status("[bold green]Deleting index...", console=console):
+            client.collections.delete(index_name)
+            
+        console.print(f"[green]✅ Successfully deleted index '{index_name}'[/green]")
+        
+    except Exception as e:
+        console.print(f"[bold red]Error: {str(e)}[/bold red]")
+    finally:
+        client.close()
+
+
 if __name__ == "__main__":
     app()

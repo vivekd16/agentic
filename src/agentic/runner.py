@@ -63,30 +63,9 @@ class RayAgentRunner:
             self.debug = DebugLevel(debug)
         else:
             self.debug = DebugLevel(os.environ.get("AGENTIC_DEBUG") or "")
-        self.app = FastAPI()
-        self.app.get("/next_turn")(self.web_request)
-        self.server_thread = None
-
-    def web_request(self, prompt: str):
-        return self.turn(prompt)
-    
-    def run_web_server(self):
-        config = uvicorn.Config(self.app, host="0.0.0.0", port=8000, log_level="info")
-        self.server = uvicorn.Server(config)
-        self.server.run()
-
-    def start_server_thread(self):
-        self.server_thread = Thread(target=self.run_web_server)
-        self.server_thread.start()
-        return self.server_thread
-    
-    def stop_server(self):
-        if self.server_thread:
-            # Signal the server to exit
-            self.server.should_exit = True
-            # Wait for the thread to complete
-            self.server_thread.join()
-            self.server_thread = None
+        if not os.getcwd().endswith("runtime"):
+            os.makedirs("runtime", exist_ok=True)
+            os.chdir("runtime")
 
     def turn(self, request: str) -> str:
         """Runs the agent and waits for the turn to finish, then returns the results
@@ -225,8 +204,6 @@ class RayAgentRunner:
             except Exception as e:
                 traceback.print_exc()
                 print(f"Error: {e}")
-
-        self.stop_server()    
 
     def print_stats_report(
         self, completions: list[FinishCompletion], aggregator: Aggregator

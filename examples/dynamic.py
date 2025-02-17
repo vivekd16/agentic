@@ -7,6 +7,7 @@ from agentic.tools.tavily_search_tool import TavilySearchTool
 from agentic.tools.image_generator import OpenAIImageGenerator
 from agentic.tools.imap_tool import IMAPTool
 from agentic.tools.browser_use import BrowserUseTool
+from agentic.tools.duckduckgo import DuckDuckGoSearchAPIWrapper
 
 from agentic.common import Agent, AgentRunner
 from agentic.tools.registry import tool_registry
@@ -27,9 +28,10 @@ agent = Agent(
                 OpenAIImageGenerator,
                 TavilySearchTool,
                 IMAPTool,
+                DuckDuckGoSearchAPIWrapper,
             ],
         ),
-        BrowserUseTool(),
+        #BrowserUseTool(chrome_instance_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
         # tool_registry.load_tool(
         #     "langchain_community.tools.DuckDuckGoSearchRun",
         #     requires=["duckduckgo-search", "langchain-community"]

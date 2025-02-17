@@ -69,7 +69,7 @@ class BrowserUseTool:
         )
         result = await agent.run()
         return [
-            result.final_result() or "no result",
+            "\n".join(result.extracted_content()),
             FinishCompletion.create(
                 agent=run_context.agent.name,
                 llm_message=f"Tokens used - Input: {token_counter.total_input_tokens}, Output: {token_counter.total_output_tokens}",

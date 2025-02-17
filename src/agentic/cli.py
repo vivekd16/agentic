@@ -38,6 +38,7 @@ from agentic.utils.file_reader import read_file, get_last_path_component
 from datetime import datetime
 
 from agentic.utils.summarizer import generate_document_summary
+from agentic.utils.fingerprint import generate_fingerprint
 
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
@@ -365,6 +366,8 @@ def index_file(
                     Property(name="summary", data_type=DataType.TEXT,
                             index_searchable=True,
                             index_filterable=True),
+                    Property(name="fingerprint", data_type=DataType.TEXT,
+                            index_filterable=True),
                 ],
                 vectorizer_config=Configure.Vectorizer.none(),
                 vector_index_config=Configure.VectorIndex.hnsw(
@@ -393,9 +396,57 @@ def index_file(
                 text, mime_type = read_file(str(file_path))
                 is_url = file_path.startswith(("http://", "https://"))
                 
+                # Generate fingerprint from content
+                fingerprint = generate_fingerprint(text)
+                
+                metadata = {
+                    "filename": Path(file_path).name if not is_url else get_last_path_component(file_path),
+                    "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "mime_type": mime_type,
+                    "source_url": file_path if is_url else "None"
+                }
+                
+                document_id = hashlib.sha256(
+                    metadata["filename"].encode()
+                ).hexdigest()
+                
             except Exception as e:
                 console.print(f"Error reading file: {str(e)}", style="red")
                 raise typer.Exit(1)
+            
+        collection = client.collections.get(index_name)
+        # Check for existing fingerprint
+        with Status("[bold green]Checking document version...", console=console):
+            # Check for existing documents with same filename
+            existing_docs = collection.query.fetch_objects(
+                limit=1,
+                filters=Filter.by_property("document_id").equal(document_id)
+            )
+            if existing_docs.objects:
+                existing_fp = existing_docs.objects[0].properties["fingerprint"]
+                
+                if existing_fp == fingerprint:
+                    # Case 1: Same filename, same content
+                    console.print(f"[yellow]⏩ Document '{metadata['filename']}' unchanged[/yellow]")
+                    client.close()
+                    raise typer.Exit(1)
+                else:
+                    # Case 2: Same filename, changed content
+                    console.print(f"[yellow]🔄 Updating changed document '{metadata['filename']}'[/yellow]")
+                    collection.data.delete_many(
+                        where=Filter.by_property("document_id").equal(document_id)
+                    )
+            else:
+                # Check if content exists under different filename
+                existing_content = collection.query.fetch_objects(
+                    limit=1,
+                    filters=Filter.by_property("fingerprint").equal(fingerprint)
+                )
+                if existing_content.objects:
+                    # Case 3: New filename, same content
+                    console.print(f"[yellow]⚠️ Content already exists under different filename[/yellow]")
+                    client.close()
+                    raise typer.Exit(1)
 
         with Status("[bold green]Generating document summary...", console=console):
             summary = generate_document_summary(
@@ -403,15 +454,6 @@ def index_file(
                 mime_type=mime_type,
                 model=GPT_DEFAULT_MODEL
             )
-
-        # Continue with processing
-        metadata = {
-            "filename": Path(file_path).name if not is_url else get_last_path_component(file_path),
-            "timestamp": datetime.now().isoformat(),
-            "mime_type": mime_type,
-            "source_url": file_path if is_url else "None",
-            "summary": summary
-        }
         
         chunks = chunker(text)
         
@@ -426,25 +468,6 @@ def index_file(
                 batch = chunks_text[i:i+batch_size]
                 embeddings.extend(list(embed_model.embed(batch)))  # Explicit conversion
         
-        # Generate unique document ID using file path hash
-        document_id = hashlib.sha256(
-            str(file_path).encode() if file_path.startswith("http") 
-            else str(Path(file_path).resolve()).encode()
-        ).hexdigest()
-        
-        # Delete existing chunks for this document
-        collection = client.collections.get(index_name)
-        with Status("[bold green]Checking for existing document..."):
-            response = collection.query.fetch_objects(
-                limit=300,
-                return_properties=["document_id"],
-                filters=Filter.by_property("document_id").equal(document_id)
-            )
-            if response.objects:
-                collection.data.delete_many(
-                    where=Filter.by_property("document_id").equal(document_id)
-                    )
-
         # Index in Weaviate with batch optimization
         with Status("[bold green]Indexing chunks..."), collection.batch.dynamic() as batch:
             for i, chunk in enumerate(chunks):
@@ -459,7 +482,8 @@ def index_file(
                         "timestamp": metadata["timestamp"],
                         "mime_type": metadata["mime_type"],
                         "source_url": metadata["source_url"],
-                        "summary": metadata["summary"],
+                        "summary": summary,
+                        "fingerprint": fingerprint,
                     },
                     vector=vector
                 )

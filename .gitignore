@@ -11,3 +11,6 @@ __pycache__
 .vscode
 site/
 runtime/
+
+venv/
+env/

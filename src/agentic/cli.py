@@ -11,7 +11,7 @@ from .colors import Colors
 
 from agentic.agentic_secrets import agentic_secrets as secrets
 from agentic.settings import settings
-
+from agentic.common import AgentRunner
 
 import shutil
 from pathlib import Path
@@ -196,14 +196,40 @@ Popular models:
      """
     )
 
+import importlib.util
+import inspect
+import time
 
 @app.command()
-def repl(filename: str = typer.Argument(default="", show_default=False)):
-    """Runs the agentic REPL"""
-    cmd = ["python", "src/agentic/repl.py"]
-    if filename:
-        cmd.append(filename)
-    os.execvp("python", cmd)
+def serve(filename: str = typer.Argument(default="", show_default=False)):
+    """Runs the FastAPI server for an agent """
+
+    def find_agent_instances(file_path):
+        # Load the module from file path
+        spec = importlib.util.spec_from_file_location("dynamic_module", file_path)
+        if spec:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        
+            # Find all Agent instances in the module
+            agent_instances = []
+            for name, obj in inspect.getmembers(module):
+                # Check if object is an instance of Agent class
+                if isinstance(obj, module.Agent):  # Assumes Agent class is defined in the module
+                    agent_instances.append(obj)
+            return agent_instances
+        else:
+            return []
+        
+    agent_instances = find_agent_instances(filename)
+    for agent in agent_instances:
+        runner = AgentRunner(agent)
+        runner.start_api_server()
+
+    # Busy loop until ctrl-c or ctrl-d
+    while True:
+        time.sleep(1)
+
 
 
 def copy_examples(src_path: Path, dest_path: Path, console: Console) -> None:

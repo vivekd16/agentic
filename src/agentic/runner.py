@@ -102,8 +102,10 @@ class RayAgentRunner:
         self.debug = DebugLevel(level)
         self.facade.set_debug_level(self.debug)
 
+    def start_api_server(self):
+        self.facade.start_api_server()
+
     def repl_loop(self):
-        #self.web_server = self.start_server_thread()
         hist = os.path.expanduser("~/.agentic_history")
         if os.path.exists(hist):
             readline.read_history_file(hist)
@@ -152,7 +154,7 @@ class RayAgentRunner:
                 print("\nExiting REPL.")
                 break
             except KeyboardInterrupt:
-                print("\nKeyboardInterrupt. Type 'exit()' to quit.")
+                print("\nKeyboardInterrupt. Type ctrl-D to quit.")
             except Exception as e:
                 traceback.print_exc()
                 print(f"Error: {e}")
@@ -166,7 +168,7 @@ class RayAgentRunner:
                 if not continue_result:
                     saved_completions = []
                     line = console.input(f"[{self.facade.name}]> ")
-                    if line == "quit" or line == "":
+                    if line == "quit":
                         break
 
                 if line.startswith("."):

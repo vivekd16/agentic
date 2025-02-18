@@ -1,4 +1,4 @@
-from agentic import Agent, AgentRunner
+from agentic.common import Agent, AgentRunner
 from agentic.tools.database_tool import DatabaseTool
 
 

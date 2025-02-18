@@ -57,9 +57,7 @@ class Prompt(Event):
         message: str,
         debug: DebugLevel,
         depth: int = 0,
-        originator=None,
         ignore_result: bool = False,
-        agent_ref_map: dict = {},
     ):
         data = {
             "agent": agent,
@@ -67,9 +65,7 @@ class Prompt(Event):
             "payload": message,
             "depth": depth,
             "debug": debug,
-            "originator": originator,
             "ignore_result": ignore_result,
-            "agent_ref_map": agent_ref_map,
         }
         # Use Pydantic's model initialization directly
         BaseModel.__init__(self, **data)
@@ -305,3 +301,10 @@ class FinishAgentResult(Result):
     @staticmethod
     def matches_sentinel(value) -> bool:
         return value == FINISH_AGENT_SENTINEL
+
+class AgentDescriptor(BaseModel):
+    name: str
+    purpose: str
+    endpoints: list[str]
+    operations: list[str] = ["chat"]
+    tools: list[str] = []

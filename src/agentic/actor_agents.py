@@ -188,7 +188,7 @@ class ActorBaseAgent:
         """
 
         function_map = {f.__name__: f for f in functions}
-        partial_response = Response(messages=[], agent=None, context_variables={})
+        partial_response = Response(messages=[], agent=None)
 
         events = []
 
@@ -225,7 +225,6 @@ class ActorBaseAgent:
             # )
 
             func = function_map[name]
-            # pass context_variables to agent functions
             if __CTX_VARS_NAME__ in func.__code__.co_varnames:
                 args[__CTX_VARS_NAME__] = run_context
 
@@ -299,7 +298,6 @@ class ActorBaseAgent:
                 }
             )
             partial_response.last_tool_result = result
-            partial_response.context_variables.update(result.context_variables)
             # This was the simple way that Swarm did handoff
             if result.agent:
                 partial_response.agent = result.agent
@@ -418,7 +416,6 @@ class ActorBaseAgent:
             self.debug = actor_message.debug
             self.depth = actor_message.depth
             init_len = len(self.history)
-            context_variables = {}
             self.history.append({"role": "user", "content": actor_message.payload})
             yield PromptStarted(self.name, actor_message.payload, self.depth)
 
@@ -432,7 +429,6 @@ class ActorBaseAgent:
                 return
             init_len = self.paused_context.orig_history_length
             # Copy human input into our context
-            #context_variables = actor_message.request_keys.copy()
             self.run_context.update(actor_message.request_keys.copy())
             # Re-call our tool function
             tool_function = self.paused_context.tool_function
@@ -452,7 +448,6 @@ class ActorBaseAgent:
             )
             yield from events
             self.history.extend(partial_response.messages)
-            #context_variables.update(partial_response.context_variables)
 
         # MAIN TURN LOOP
         # Critically, if a "wait_for_human" tool is requested, then we save our
@@ -478,7 +473,7 @@ class ActorBaseAgent:
                 # No more tool calls, so assume this turn is done
                 break
 
-            # handle function calls, updating context_variables, and switching agents
+            # handle function calls
             partial_response, events = self._execute_tool_calls(
                 response.tool_calls,
                 self.functions,
@@ -511,7 +506,6 @@ class ActorBaseAgent:
                     break
 
             self.history.extend(partial_response.messages)
-            #context_variables.update(partial_response.context_variables)
             # end of turn loop
 
         # Altough we emit interim events, we also publish all the messages from this 'turn'
@@ -889,6 +883,10 @@ class RayFacadeAgent:
     def _update_state(self, state: dict):
         obj_ref = self._agent.set_state.remote(SetState(self.name, state))
         ray.get(obj_ref)
+
+    def set_model(self, model: str):
+        self.model = model
+        self._update_state({"model": model})
 
     def _get_funcs(self, thefuncs: list):
         useable = []

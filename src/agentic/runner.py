@@ -257,9 +257,15 @@ class RayAgentRunner:
         elif line == ".agent":
             print(self.facade.name)
             print_italic(self.facade.instructions)
+            print("model: ", self.facade.model)
             print("tools:")
             for tool in self.facade.list_tools():
                 print(f"  {tool}")
+
+        elif line.startswith(".model"):
+            model_name = line.split()[1].lower()
+            self.facade.set_model(model_name)
+            print(f"Model set to {model_name}")
 
         elif line == ".tools":
             print(self.facade.name)

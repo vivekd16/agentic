@@ -282,16 +282,15 @@ class ResumeWithInput(Event):
 
 
 class PauseForInputResult(Result):
+    request_keys: dict = {}
+
     def __init__(self, request_keys: dict):
-        super().__init__(value=PAUSE_FOR_INPUT_SENTINEL, context_variables=request_keys)
+        super().__init__(value=PAUSE_FOR_INPUT_SENTINEL)
+        self.request_keys=request_keys
 
     @staticmethod
     def matches_sentinel(value) -> bool:
         return value == PAUSE_FOR_INPUT_SENTINEL
-
-    @property
-    def request_keys(self):
-        return self.context_variables
 
 # Special result which aborts any further processing by the agent.
 class FinishAgentResult(Result):

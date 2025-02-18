@@ -11,7 +11,7 @@ from weaviate.classes.config import (
     Configure,
     VectorDistances
 )
-from weaviate.classes.query import Filter
+from weaviate.classes.query import Filter, HybridFusion
 from chonkie import SemanticChunker
 from fastembed import TextEmbedding
 from rich.console import Console
@@ -276,14 +276,17 @@ def search_collection(
     query: str,
     embed_model: TextEmbedding,
     limit: int = 10,
-    filters: Optional[Dict] = None
+    filters: Optional[Dict] = None,
+    hybrid: bool = False,
+    alpha: float = 0.5
 ) -> List[Dict]:
-    """Search documents with filter support"""
+    """Search documents with hybrid search support"""
+    # Generate query vector using our embedding model
     query_vector = list(embed_model.embed([query]))[0].tolist()
     
     search_params = {
         "limit": limit,
-        "return_metadata": ["distance"],
+        "return_metadata": ["distance", "score"] if hybrid else ["distance"],
         "return_properties": ["filename", "content", "source_url", "timestamp"]
     }
     
@@ -291,11 +294,19 @@ def search_collection(
         key, value = next(iter(filters.items()))
         search_params["filters"] = Filter.by_property(key).equal(value)
     
-    # Execute search
-    result = collection.query.near_vector(
-        near_vector=query_vector,
-        **search_params
-    )
+    if hybrid:
+        result = collection.query.hybrid(
+            query=query,
+            vector=query_vector,  # Provide pre-computed vector
+            alpha=alpha,
+            fusion_type=HybridFusion.RELATIVE_SCORE,
+            **search_params
+        )
+    else:
+        result = collection.query.near_vector(
+            near_vector=query_vector,
+            **search_params
+        )
     
     return [
         {
@@ -303,7 +314,8 @@ def search_collection(
             "content": obj.properties.get("content", ""),
             "source_url": obj.properties.get("source_url", ""),
             "timestamp": obj.properties.get("timestamp", ""),
-            "distance": obj.metadata.distance
+            "distance": obj.metadata.distance if hasattr(obj.metadata, 'distance') else None,
+            "score": obj.metadata.score if hasattr(obj.metadata, 'score') else None
         }
         for obj in result.objects
     ] 

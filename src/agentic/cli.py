@@ -391,8 +391,8 @@ def index_file(
                 batch.add_object(
                     properties={
                         **metadata,
-                        "content": chunk.text,
-                        "chunk_index": i,
+                    "content": chunk.text,
+                    "chunk_index": i,
                     },
                     vector=vector
                 )
@@ -625,9 +625,11 @@ def search(
         help="FastEmbed model name matching the index's embedding model"
     ),
     limit: int = typer.Option(5, min=1, max=100),
-    filter: Optional[str] = typer.Option(None, help="Filter in key:value format")
+    filter: Optional[str] = typer.Option(None, help="Filter in key:value format"),
+    hybrid: bool = typer.Option(False, "--hybrid", help="Enable hybrid search combining vector and keyword"),
+    alpha: float = typer.Option(0.5, min=0.0, max=1.0, help="Weight between vector (1.0) and keyword (0.0) search")
 ):
-    """Search documents with filter support"""
+    """Search documents with hybrid search support"""
     console = Console()
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
@@ -650,14 +652,23 @@ def search(
             embed_model = init_embedding_model(embedding_model)
             
         with Status("[bold green]Searching...", console=console):
-            results = search_collection(collection, query, embed_model, limit, filters or None)
+            results = search_collection(
+                collection=collection,
+                query=query,
+                embed_model=embed_model,
+                limit=limit,
+                filters=filters,
+                hybrid=hybrid,
+                alpha=alpha
+            )
             
         console.print(Markdown(f"## Search Results ({len(results)})"))
         for idx, result in enumerate(results, 1):
             console.print(Markdown(f"### Result {idx} - {result['filename']}"))
             console.print(f"- Source: {result['source_url']}")
             console.print(f"- Date: {result['timestamp']}")
-            console.print(f"- Distance: {result['distance']:.3f}")
+            console.print(f"- Distance: {result.get('distance', 'N/A') if result.get('distance') is not None else 'N/A'}")
+            console.print(f"- Score: {result.get('score', 'N/A') if result.get('score') is not None else 'N/A'}")
             console.print(Markdown("\n**Content:**\n" + result["content"][:500] + "...\n"))
             
     except Exception as e:

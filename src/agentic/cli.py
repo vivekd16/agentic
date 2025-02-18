@@ -39,7 +39,8 @@ from agentic.utils.rag_helper import (
     list_collections,
     rename_collection,
     list_documents_in_collection,
-    get_document_metadata
+    get_document_metadata,
+    search_collection
 )
 
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
@@ -552,6 +553,9 @@ def list_documents(index_name: str):
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
             client = init_weaviate()
+        if not client.collections.exists(index_name):
+            console.print(f"[yellow]⚠️ Index '{index_name}' does not exist[/yellow]")
+            raise typer.Exit(0)
         collection = client.collections.get(index_name)
         documents = list_documents_in_collection(collection)
         
@@ -606,6 +610,56 @@ def show_document(
         console.print(f"- Total Chunks: {metadata['total_chunks']}")
         console.print(f"- Last Indexed: {metadata['timestamp']}")
         console.print(Markdown("\n## Summary\n" + metadata['summary'] + "\n\n"))
+    except Exception as e:
+        console.print(f"[bold red]Error: {str(e)}[/bold red]")
+    finally:
+        if client:
+            client.close()
+
+@app.command()
+def search(
+    index_name: str,
+    query: str,
+    embedding_model: str = typer.Option(
+        "BAAI/bge-small-en-v1.5",
+        help="FastEmbed model name matching the index's embedding model"
+    ),
+    limit: int = typer.Option(5, min=1, max=100),
+    filter: Optional[str] = typer.Option(None, help="Filter in key:value format")
+):
+    """Search documents with filter support"""
+    console = Console()
+    try:
+        with Status("[bold green]Initializing Weaviate...", console=console):
+            client = init_weaviate()
+            
+        if not client.collections.exists(index_name):
+            console.print(f"[yellow]⚠️ Index '{index_name}' does not exist[/yellow]")
+            raise typer.Exit(0)
+            
+        collection = client.collections.get(index_name)
+        filters = {}
+        if filter:
+            if ":" not in filter:
+                console.print(f"[red]❌ Invalid filter format: '{filter}'. Use key:value[/red]")
+                raise typer.Exit(1)
+            key, value = filter.split(":", 1)
+            filters[key.strip()] = value.strip()
+        
+        with Status("[bold green]Initializing model...", console=console):
+            embed_model = init_embedding_model(embedding_model)
+            
+        with Status("[bold green]Searching...", console=console):
+            results = search_collection(collection, query, embed_model, limit, filters or None)
+            
+        console.print(Markdown(f"## Search Results ({len(results)})"))
+        for idx, result in enumerate(results, 1):
+            console.print(Markdown(f"### Result {idx} - {result['filename']}"))
+            console.print(f"- Source: {result['source_url']}")
+            console.print(f"- Date: {result['timestamp']}")
+            console.print(f"- Distance: {result['distance']:.3f}")
+            console.print(Markdown("\n**Content:**\n" + result["content"][:500] + "...\n"))
+            
     except Exception as e:
         console.print(f"[bold red]Error: {str(e)}[/bold red]")
     finally:

@@ -14,6 +14,7 @@ from weaviate.classes.config import (
 from weaviate.classes.query import Filter
 from chonkie import SemanticChunker
 from fastembed import TextEmbedding
+from rich.console import Console
 
 from agentic.utils.file_reader import get_last_path_component
 from agentic.utils.fingerprint import generate_fingerprint
@@ -39,11 +40,9 @@ def create_collection(
         client.collections.create(
             name=index_name,
             properties=[
+                Property(name="content", data_type=DataType.TEXT),
                 Property(name="document_id", data_type=DataType.TEXT,
                         index_filterable=True),
-                Property(name="content", data_type=DataType.TEXT,
-                        index_searchable=True,
-                        index_filterable=False),
                 Property(name="chunk_index", data_type=DataType.INT,
                         index_filterable=True,
                         index_range_filter=True),
@@ -63,14 +62,7 @@ def create_collection(
             ],
             vectorizer_config=Configure.Vectorizer.none(),
             vector_index_config=Configure.VectorIndex.hnsw(
-                distance_metric=distance_metric,
-                vector_cache_max_objects=10_000,
-                ef_construction=128,
-                max_connections=16,
-            ),
-            inverted_index_config=Configure.inverted_index(
-                bm25_b=0.75,
-                bm25_k1=1.2
+                distance_metric=distance_metric
             )
         )
 
@@ -203,15 +195,15 @@ def rename_collection(
     create_collection(client, target_name)
     target_col = client.collections.get(target_name)
     
-    # Copy all objects
+    # Copy all objects with vectors
     with target_col.batch.dynamic() as batch:
         for obj in source_col.iterator(include_vector=True):
             batch.add_object(
                 properties=obj.properties,
-                vector=obj.vector
+                vector=obj.vector["default"]
             )
     
-    # Delete original if copy successful
+    # Delete original after successful copy
     client.collections.delete(source_name)
     return True
 
@@ -277,4 +269,41 @@ def get_document_metadata(collection: Any, document_id: str) -> Optional[Dict]:
             filters=Filter.by_property("document_id").equal(document_id),
             total_count=True
         ).total_count
-    } 
+    }
+
+def search_collection(
+    collection: Any,
+    query: str,
+    embed_model: TextEmbedding,
+    limit: int = 10,
+    filters: Optional[Dict] = None
+) -> List[Dict]:
+    """Search documents with filter support"""
+    query_vector = list(embed_model.embed([query]))[0].tolist()
+    
+    search_params = {
+        "limit": limit,
+        "return_metadata": ["distance"],
+        "return_properties": ["filename", "content", "source_url", "timestamp"]
+    }
+    
+    if filters and len(filters) == 1:
+        key, value = next(iter(filters.items()))
+        search_params["filters"] = Filter.by_property(key).equal(value)
+    
+    # Execute search
+    result = collection.query.near_vector(
+        near_vector=query_vector,
+        **search_params
+    )
+    
+    return [
+        {
+            "filename": obj.properties.get("filename", "Unknown"),
+            "content": obj.properties.get("content", ""),
+            "source_url": obj.properties.get("source_url", ""),
+            "timestamp": obj.properties.get("timestamp", ""),
+            "distance": obj.metadata.distance
+        }
+        for obj in result.objects
+    ] 

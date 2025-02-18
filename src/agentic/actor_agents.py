@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, Optional, Generator, Literal
+from pydantic import BaseModel
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
@@ -18,8 +19,8 @@ import traceback
 from datetime import timedelta
 from .swarm.types import agent_secret_key, tool_name
 from ray import serve
-from starlette.requests import Request
-
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import yaml
 from typing import Callable, Any, List
 from pydantic import Field
@@ -75,9 +76,9 @@ from .events import (
     ResumeWithInput,
     DebugLevel,
     ToolError,
+    AgentDescriptor,
 )
 from agentic.tools.registry import tool_registry
-
 
 __CTX_VARS_NAME__ = "run_context"
 
@@ -675,20 +676,45 @@ def handoff(agent, **kwargs):
 _AGENT_REGISTRY: list = []
 
 
-class DynamicHandler:
-    def __init__(self, actor_ref: ray.actor.ActorHandle):
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+class ProcessRequest(BaseModel):
+    prompt: str
+
+from sse_starlette.sse import EventSourceResponse
+
+@serve.deployment
+@serve.ingress(app)
+class DynamicFastAPIHandler:
+    def __init__(self, actor_ref: ray.actor.ActorHandle, agent_facade: "RayFacadeAgent"):
         self._agent = actor_ref
-        self.debug = DebugLevel(DebugLevel.OFF)
-        self.name = "Web agent"
+        self.agent_facade = agent_facade
+        self.debug = DebugLevel.OFF
+        self.name = self.agent_facade.name
+        self.prompt: ProcessRequest = None
+    
+    @app.post("/process")
+    async def handle_post(self, prompt: ProcessRequest):
+        self.prompt = prompt
 
-    async def __call__(self, request: Request):
-        data = await request.json() if request.method in ["POST", "PUT"] else {}
-        results = []
-        for event in self.next_turn(data['prompt'], debug=self.debug):
-            results.append(event.model_dump_json())
-
-        return "".join(results)
-        return await self._agent.handle_request.remote(request.method, data)
+    @app.get("/getevents", response_model=None)
+    async def get_events(self, stream: bool = False) -> list[str]|EventSourceResponse:
+        if not stream:
+            results = []
+            for event in self.next_turn(self.prompt.prompt):
+                results.append(str(event))
+            return results
+        else:
+            def render_events():
+                for event in self.next_turn(self.prompt.prompt):
+                    yield (str(event))
+            return EventSourceResponse(render_events())
 
     def next_turn(
         self,
@@ -719,17 +745,17 @@ class DynamicHandler:
             event = ray.get(remote_next)
             yield event
 
-
-def create_endpoint(actor_id: str, actor_ref: ray.actor.ActorHandle):
-    HandlerDeployment = serve.deployment(
-        name=f"handler-{actor_id}",
-    )(DynamicHandler)
+    @app.get("/describe")
+    async def describe(self) -> AgentDescriptor:
+        return AgentDescriptor(
+            name=self.agent_facade.name,
+            purpose=self.agent_facade.welcome,
+            tools=self.agent_facade.list_tools(),
+            endpoints=["/process", "/getevents", "/describe"],
+            operations=["chat"],
+        )
     
-    serve.run(
-        HandlerDeployment.bind(actor_ref), 
-        route_prefix=f"/{actor_id}",
-    )
-    return HandlerDeployment
+
 
 class RayFacadeAgent:
     """The facade agent is the object directly instantiated in code. It holds a reference to the remote
@@ -813,7 +839,16 @@ class RayFacadeAgent:
         )
         ray.get(obj_ref)
 
-        #create_endpoint(self.safe_name, self._agent)
+    def _create_fastapi_endpoint(self):
+        deployment = serve.run(
+            DynamicFastAPIHandler.bind(self._agent, self),
+            route_prefix=f"/{self.safe_name}",
+        )
+        return deployment
+
+
+    def start_api_server(self):
+        self._create_fastapi_endpoint()
 
     def _ensure_tool_secrets(self):
         from agentic.agentic_secrets import agentic_secrets

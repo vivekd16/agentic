@@ -1,10 +1,13 @@
-from agentic import Agent, AgentRunner
+from agentic.common import Agent, AgentRunner
 from agentic.tools.database_tool import DatabaseTool
+
+
+# This is the simplest possible Text-to-SQL agent. It uses a database tool to answer questions.
 
 database_agent = Agent(
     name="Database Agent",
     instructions="""
-You are a help data analyst. Use your database tools to answer any questions. """,
+You are a helpful data analyst. Use your database tools to answer any questions. """,
     tools=[DatabaseTool(connection_string="sqlite:///examples/chinook.db")],
 )
 

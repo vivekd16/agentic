@@ -36,13 +36,25 @@ messages, and manages your life.
 
 ## Install
 
+The easiest thing is to install the package from pypi:
+
 `pip install agents-kit`
+
+For the latest and greatest you can install directly from the repo:
+
+`pip install git+ssh://git@github.com/supercog-ai/agentic.git`
 
 We recommend installing into a virtual env.
 
-After you install, setup a folder to hold your agents, then run:
+After you install, setup a folder to hold your agents, like "myagents", and then run:
 
 `agentic init .`
+
+This will initialize the directory that you are in and create these folders:
+
+    examples/   - The example agents from this repo
+    agents/     - A folder to put your own agents
+    runtime/    - Agents execute in here by default, and will store files here
 
 The CLI will setup the current directory to contain your agents.
 
@@ -61,6 +73,17 @@ Agentic builds on `Litellm` to enable consistent support for many different LLM 
 Under the covers, Agentic uses [Ray](https://github.com/ray-project/ray) to host and
 run your agents. Ray implements an _actor model_ which implements a much better 
 architecture for running complex agents than a typical web framework.
+
+### API Keys
+
+Agentic requires API keys for the LLM providers you plan to use. Copy the `.env.example` file to `.env` and set the following environment variables:
+
+```
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+```
+
+You only need to set the API keys for the models you plan to use. For example, if you're only using OpenAI models, you only need to set `OPENAI_API_KEY`.
 
 ## Why does this exist?
 

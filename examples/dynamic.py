@@ -7,10 +7,20 @@ from agentic.tools.tavily_search_tool import TavilySearchTool
 from agentic.tools.image_generator import OpenAIImageGenerator
 from agentic.tools.imap_tool import IMAPTool
 from agentic.tools.browser_use import BrowserUseTool
+from agentic.tools.duckduckgo import DuckDuckGoSearchAPIWrapper
 
 from agentic.common import Agent, AgentRunner
 from agentic.tools.registry import tool_registry
-from datetime import datetime
+
+# This is a demonstration of dynamic tool use. You can add a tool to an agent at any time. This
+# demo uses a meta tool called "AutomaticTools" which will automatically load tools from the
+# list of tools you configure it with. AutomaticTools exposes a "seach_for_tool" and 
+# "enable_agent_tool" function which your agent can use to automatically enable a tool.
+#
+# Try running this agent and then requesting something that requires a tool to be enabled.
+# Or for simple use just say "please enable <tool name>".
+#
+# You can alway use the system command `.tools` to see which tools are currently active.
 
 agent = Agent(
     name="Dynamic Agent",
@@ -27,9 +37,10 @@ agent = Agent(
                 OpenAIImageGenerator,
                 TavilySearchTool,
                 IMAPTool,
+                DuckDuckGoSearchAPIWrapper,
             ],
         ),
-        BrowserUseTool(),
+        #BrowserUseTool(chrome_instance_path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
         # tool_registry.load_tool(
         #     "langchain_community.tools.DuckDuckGoSearchRun",
         #     requires=["duckduckgo-search", "langchain-community"]

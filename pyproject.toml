@@ -46,6 +46,8 @@ dependencies = [
     "httpx>=0.28.1",
     "unicodedata2>=16.0.0",
     "sse-starlette>=2.2.1",
+    "langchain-openai (>=0.3.6,<0.4.0)",
+    "langchain-chroma (>=0.2.2,<0.3.0)",
 ]
 
 [project.optional-dependencies]

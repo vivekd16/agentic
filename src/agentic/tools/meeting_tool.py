@@ -145,7 +145,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 return {"status": "error", "message": "Meeting not found"}
                 
             if not meeting.transcript:
-                headers = {"Authorization": f"Bearer {self.api_key}"}
+                headers = {"Authorization": f"Bearer {self.meeting_baas_api_key}"}
                 response = requests.get(
                     f"https://api.meetingbaas.com/bots/meeting_data",
                     headers=headers,

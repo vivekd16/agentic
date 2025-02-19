@@ -9,7 +9,7 @@ import inspect
 import json
 import os
 from copy import deepcopy
-from pprint import pprint
+from pprint import pprint, pformat
 from pathlib import Path
 import os
 import yaml
@@ -48,8 +48,6 @@ from litellm.types.utils import ModelResponse, Message
 from litellm import completion_cost
 from litellm import token_counter
 
-#imports for model provider system
-from .model_provider import model_registry, ModelConfig
 
 from .swarm.types import (
     AgentFunction,
@@ -83,6 +81,7 @@ from .events import (
 )
 from agentic.tools.registry import tool_registry
 
+from .models import get_special_model_params 
 
 
 __CTX_VARS_NAME__ = "run_context"
@@ -141,10 +140,6 @@ class ActorBaseAgent:
         stream: bool,
     ) -> ChatCompletionMessage:
         """Call the LLM completion endpoint"""
-
-        print("\nDEBUG: Starting LLM completion")
-        print(f"DEBUG: Model requested = {model_override or self.model}")
-    
         instructions = self.get_instructions(run_context)
         messages = [{"role": "system", "content": instructions}] + history
 
@@ -156,32 +151,29 @@ class ActorBaseAgent:
             if __CTX_VARS_NAME__ in params["required"]:
                 params["required"].remove(__CTX_VARS_NAME__)
 
-        # Create model config object
-        config = ModelConfig(
-            model=model_override or self.model,
-            messages=messages,
-            temperature=0.0,
-            tools=tools or None,
-            tool_choice=self.tool_choice,
-            stream=stream,
-            stream_options={"include_usage": True}
-        )
-        
+        # Create parameters for litellm call
+        create_params = {
+            "model": model_override or self.model,
+            "messages": messages,
+            "temperature": 0.0,
+            "tools": tools or None,
+            "tool_choice": self.tool_choice,
+            "stream": stream,
+            "stream_options": {"include_usage": True},
+        }
+
+        # Add any special parameters needed for specific model types
+        create_params.update(get_special_model_params(create_params["model"]))
 
         if self.max_tokens:
-            config.max_tokens = self.max_tokens
+            create_params["max_tokens"] = self.max_tokens
 
-        # Handle tools config
         if tools:
-            config.parallel_tool_calls = self.parallel_tool_calls
+            create_params["parallel_tool_calls"] = self.parallel_tool_calls
 
-        # Get provider-specific parameters
-        print("\nGetting completion params from registry...")
-        print(f"Config being sent to registry: {config}")
-        create_params = model_registry.get_completion_params(config)
-        print("Final params returned from registry:")
-        pprint.pprint(create_params)
-        
+        #print("\nDEBUG: LiteLLM parameters:")
+        #pprint(create_params)
+            
         # Create simplified version of params for debug logging
         debug_params = create_params.copy()
         if debug_params.get("tools"):
@@ -191,7 +183,7 @@ class ActorBaseAgent:
 
         debug_completion_start(self.debug, self.model, debug_params)
 
-        # Use LiteLLM's completion instead of OpenAI's client
+        # Use LiteLLM's completion
         try:
             return litellm.completion(**create_params)
         except Exception as e:

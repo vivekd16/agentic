@@ -56,6 +56,9 @@ class Aggregator:
     context_size: int = 0
 
 
+import signal
+import threading
+from .colors import Colors
 class RayAgentRunner:
     def __init__(self, agent: RayFacadeAgent, debug: str | bool = False) -> None:
         self.facade = agent
@@ -114,56 +117,19 @@ class RayAgentRunner:
         print(self.facade.welcome)
         print("press <enter> to quit")
 
-        fancy = False
         aggregator = Aggregator()
-
-        while fancy:
-            try:
-                # Get input directly from sys.stdin
-                line = console.input("> ")
-
-                if line == "quit" or line == "":
-                    break
-
-                output = ""
-                with console.status("[bold blue]thinking...", spinner="dots") as status:
-                    with Live(
-                        Markdown(output),
-                        refresh_per_second=1,
-                        auto_refresh=not self.debug,
-                    ) as live:
-                        self.start(line)
-
-                        for event in self.next(include_completions=True):
-                            if event is None:
-                                break
-                            elif event.requests_input():
-                                response = input(f"\n{event.request_message}\n>>>> ")
-                                self.continue_with(response)
-                            elif isinstance(event, FinishCompletion):
-                                saved_completions.append(event)
-                            else:
-                                if event.depth == 0:
-                                    output += str(event)
-                                    live.update(Markdown(output))
-                        output += "\n\n"
-                        live.update(Markdown(output))
-                for row in print_stats_report(saved_completions):
-                    console.out(row)
-                readline.write_history_file(hist)
-            except EOFError:
-                print("\nExiting REPL.")
-                break
-            except KeyboardInterrupt:
-                print("\nKeyboardInterrupt. Type ctrl-D to quit.")
-            except Exception as e:
-                traceback.print_exc()
-                print(f"Error: {e}")
 
         continue_result = {}
         saved_completions = []
 
-        while not fancy:
+        background_request = threading.Event()
+        def handle_sigint(signum, frame):
+            print("n!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt - moving to background...\n")
+            background_request.set()
+
+        signal.signal(signal.SIGINT, handle_sigint)
+
+        while True:
             try:
                 # Get input directly from sys.stdin
                 if not continue_result:
@@ -178,9 +144,16 @@ class RayAgentRunner:
                     time.sleep(0.3)  # in case log messages are gonna come
                     continue
 
-                for event in self.facade.next_turn(
-                    line, continue_result, debug=self.debug
-                ):
+                if background_request.is_set():
+                    break
+                request_id = self.facade.start_request(line, debug=self.debug)
+                background_request.clear()
+
+                for event in self.facade.get_events(request_id):
+                    if background_request.is_set():
+                        background_request.clear()
+                        threading.Thread(target=self.watch_background_request, args=(request_id,), daemon=True).start()                   
+                        break
                     continue_result = {}
                     if event is None:
                         break
@@ -207,6 +180,15 @@ class RayAgentRunner:
             except Exception as e:
                 traceback.print_exc()
                 print(f"Error: {e}")
+
+    def watch_background_request(self, request_id: str):
+        for event in self.facade.get_events(request_id):
+            if event is None:
+                break
+            if self._should_print(event):
+                print(f"{Colors.LIGHT_GRAY}{str(event)}{Colors.ENDC}", end="")
+            time.sleep(0.1)
+        print()
 
     def print_stats_report(
         self, completions: list[FinishCompletion], aggregator: Aggregator
@@ -316,6 +298,50 @@ class RayAgentRunner:
             print(f"  {self.facade.name}")
         else:
             print("Unknown command: ", line)
+
+    def rich_loop(self):    
+        # This was working but I havent worked on it for a while.
+        try:
+            # Get input directly from sys.stdin
+            line = console.input("> ")
+
+            if line == "quit" or line == "":
+                return
+
+            output = ""
+            with console.status("[bold blue]thinking...", spinner="dots") as status:
+                with Live(
+                    Markdown(output),
+                    refresh_per_second=1,
+                    auto_refresh=not self.debug,
+                ) as live:
+                    self.start(line)
+
+                    for event in self.next(include_completions=True):
+                        if event is None:
+                            break
+                        elif event.requests_input():
+                            response = input(f"\n{event.request_message}\n>>>> ")
+                            self.continue_with(response)
+                        elif isinstance(event, FinishCompletion):
+                            saved_completions.append(event)
+                        else:
+                            if event.depth == 0:
+                                output += str(event)
+                                live.update(Markdown(output))
+                    output += "\n\n"
+                    live.update(Markdown(output))
+            for row in print_stats_report(saved_completions):
+                console.out(row)
+            readline.write_history_file(hist)
+        except EOFError:
+            print("\nExiting REPL.")
+            return
+        except KeyboardInterrupt:
+            print("\nKeyboardInterrupt. Type ctrl-D to quit.")
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Error: {e}")
 
 
 def find_agent_objects(module_members: Dict[str, Any], agent_class: Type) -> List:

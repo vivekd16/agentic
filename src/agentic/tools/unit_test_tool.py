@@ -10,7 +10,7 @@ STATE_FILE = "test_state.txt"
 
 
 class UnitTestingTool(BaseAgenticTool):
-    def __init__(self, story_log: str):
+    def __init__(self, story_log: str="log.txt"):
         self.story_log = story_log
 
     def get_tools(self) -> list[Callable]:

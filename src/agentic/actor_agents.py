@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import Any, Optional, Generator, Literal
 from pydantic import BaseModel
 from dataclasses import dataclass
@@ -96,6 +97,7 @@ class AgentPauseContext:
     tool_function: Optional[Function] = None
 
 
+litellm.drop_params = True
 @ray.remote
 class ActorBaseAgent:
     name: str = "Agent"
@@ -680,6 +682,7 @@ app.add_middleware(
 )
 class ProcessRequest(BaseModel):
     prompt: str
+    debug: Optional[str] = None
 
 from sse_starlette.sse import EventSourceResponse
 
@@ -694,19 +697,21 @@ class DynamicFastAPIHandler:
         self.prompt: ProcessRequest = None
     
     @app.post("/process")
-    async def handle_post(self, prompt: ProcessRequest):
+    async def handle_post(self, prompt: ProcessRequest) -> str:
         self.prompt = prompt
+        level = DebugLevel(prompt.debug) if prompt.debug else DebugLevel(DebugLevel.OFF)
+        return self.agent_facade.start_request(prompt.prompt, debug=level)
 
     @app.get("/getevents", response_model=None)
-    async def get_events(self, stream: bool = False) -> list[str]|EventSourceResponse:
+    async def get_events(self, request_id: str, stream: bool = False) -> list[str]|EventSourceResponse:
         if not stream:
             results = []
-            for event in self.next_turn(self.prompt.prompt):
+            for event in self.agent_facade.get_events(request_id):
                 results.append(str(event))
             return results
         else:
             def render_events():
-                for event in self.next_turn(self.prompt.prompt):
+                for event in self.agent_facade.get_events(request_id):
                     yield (str(event))
             return EventSourceResponse(render_events())
 
@@ -756,7 +761,8 @@ class DynamicFastAPIHandler:
             operations=["chat"],
         )
     
-
+from queue import Queue
+import threading
 
 class RayFacadeAgent:
     """The facade agent is the object directly instantiated in code. It holds a reference to the remote
@@ -797,6 +803,7 @@ class RayFacadeAgent:
         self.memories = memories
         self.debug = debug
         self._handle_turn_start = handle_turn_start
+        self.request_queues: dict[str, Queue] = {}
 
         # Check we have all the secrets
         self._ensure_tool_secrets()
@@ -956,9 +963,53 @@ class RayFacadeAgent:
                 if value:
                     os.environ[key] = value
 
+    # Start a new agent request. We spawn a thread to actually iterate the agent loop, and
+    # it queues events coming back from the agent. Then our caller can get calling "get_events"
+    # to retrieve from the queue. This lets them run multiple requests by making separate "get_events"                    
+    # calls for separate requests.
+    def start_request(
+        self, 
+        request: str, 
+        debug: DebugLevel = DebugLevel(DebugLevel.OFF),
+    ) -> str: # returns the request_id
+        self.debug = debug
+        self.queue_done_sentinel = "QUEUE_DONE"
+        event: Event
+        request_obj = Prompt(
+            self.name,
+            request,
+            debug=self.debug,
+            depth=0,
+        )
+        remote_gen = self._agent.handlePromptOrResume.remote(
+            request_obj,
+        )
+        def producer(queue, remote_gen):
+            for remote_next in remote_gen:
+                event = ray.get(remote_next)
+                queue.put(event)
+            queue.put(self.queue_done_sentinel)
+        queue = Queue()
+        self.request_queues[request_obj.request_id] = queue
+
+        t = threading.Thread(target=producer, args=(queue, remote_gen))
+        t.start()
+        return request_obj.request_id
+
+    def get_events(self, request_id: str):
+        queue = self.request_queues[request_id]
+        while True:
+            event = queue.get()
+            if event == self.queue_done_sentinel:
+                break
+            yield event
+            time.sleep(0.01)
+
+   
     def next_turn(
         self,
         request: str,
+        request_id: str = None,
         continue_result: dict = {},
         debug: DebugLevel = DebugLevel(DebugLevel.OFF),
     ) -> Generator[Event, Any, Any]:

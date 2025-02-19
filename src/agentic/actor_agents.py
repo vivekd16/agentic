@@ -48,6 +48,9 @@ from litellm.types.utils import ModelResponse, Message
 from litellm import completion_cost
 from litellm import token_counter
 
+#imports for model provider system
+from .model_provider import model_registry, ModelConfig
+
 from .swarm.types import (
     AgentFunction,
     ChatCompletionMessage,
@@ -80,6 +83,8 @@ from .events import (
 )
 from agentic.tools.registry import tool_registry
 
+
+
 __CTX_VARS_NAME__ = "run_context"
 
 # define a CallbackType Enum with values: "handle_turn_start", "handle_turn_end"
@@ -99,7 +104,7 @@ class AgentPauseContext:
 @ray.remote
 class ActorBaseAgent:
     name: str = "Agent"
-    model: str = "gpt-4o"
+    model: str = "gpt-4o"  # Default model
     instructions_str: str = "You are a helpful agent."
     tools: list[str] = []
     functions: List[AgentFunction] = []
@@ -136,6 +141,10 @@ class ActorBaseAgent:
         stream: bool,
     ) -> ChatCompletionMessage:
         """Call the LLM completion endpoint"""
+
+        print("\nDEBUG: Starting LLM completion")
+        print(f"DEBUG: Model requested = {model_override or self.model}")
+    
         instructions = self.get_instructions(run_context)
         messages = [{"role": "system", "content": instructions}] + history
 
@@ -147,21 +156,33 @@ class ActorBaseAgent:
             if __CTX_VARS_NAME__ in params["required"]:
                 params["required"].remove(__CTX_VARS_NAME__)
 
-        create_params = {
-            "model": model_override or self.model,
-            "temperature": 0.0,
-            "messages": messages,
-            "tools": tools or None,
-            "tool_choice": self.tool_choice,
-            "stream": stream,
-            "stream_options": {"include_usage": True},
-        }
+        # Create model config object
+        config = ModelConfig(
+            model=model_override or self.model,
+            messages=messages,
+            temperature=0.0,
+            tools=tools or None,
+            tool_choice=self.tool_choice,
+            stream=stream,
+            stream_options={"include_usage": True}
+        )
+        
+
         if self.max_tokens:
-            create_params["max_tokens"] = self.max_tokens
+            config.max_tokens = self.max_tokens
 
+        # Handle tools config
         if tools:
-            create_params["parallel_tool_calls"] = self.parallel_tool_calls
+            config.parallel_tool_calls = self.parallel_tool_calls
 
+        # Get provider-specific parameters
+        print("\nGetting completion params from registry...")
+        print(f"Config being sent to registry: {config}")
+        create_params = model_registry.get_completion_params(config)
+        print("Final params returned from registry:")
+        pprint.pprint(create_params)
+        
+        # Create simplified version of params for debug logging
         debug_params = create_params.copy()
         if debug_params.get("tools"):
             debug_params["tools"] = [

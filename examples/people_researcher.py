@@ -62,6 +62,8 @@ You do research on people. Given a name and a company:
 2. If you find multiple matches, please ask the user which one they are interested in.
 3. Now call the Person Report Writer and pass in the linked profile URL.
 """,
+    #model="lmstudio/deepseek-r1-distill-qwen-7B"
+    model="lmstudio/qwen2.5-7b-instruct-1m",
     tools=[search_profiles, get_human_input, handoff(person_report_writer)],
 )
 

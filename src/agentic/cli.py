@@ -257,7 +257,7 @@ def serve(filename: str = typer.Argument(default="", show_default=False)):
     agent_instances = find_agent_instances(filename)
     for agent in agent_instances:
         runner = AgentRunner(agent)
-        runner.start_api_server()
+        runner.serve()
 
     # Busy loop until ctrl-c or ctrl-d
     while True:

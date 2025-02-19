@@ -141,12 +141,10 @@ class Result(BaseModel):
     Attributes:
         value (str): The result value as a string.
         agent (Agent): The agent instance, if applicable.
-        context_variables (dict): A dictionary of context variables.
     """
 
     value: str = ""
     agent: Optional[SwarmAgent] = None
-    context_variables: dict = {}
     tool_function: Optional[Function] = None
 
 
@@ -155,5 +153,5 @@ class Response(BaseModel):
     agent: Optional[SwarmAgent] = None
     # These are meant to be updates to Run Context variables. But I think it's easier for
     # tools to just update RunContext directly.
-    context_variables: dict = {}
+    # Swarm used this dict to pass around state, but we are using RunContext instead.
     last_tool_result: Optional[Result] = None

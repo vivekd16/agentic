@@ -188,7 +188,7 @@ class ActorBaseAgent:
         """
 
         function_map = {f.__name__: f for f in functions}
-        partial_response = Response(messages=[], agent=None, context_variables={})
+        partial_response = Response(messages=[], agent=None)
 
         events = []
 
@@ -225,7 +225,6 @@ class ActorBaseAgent:
             # )
 
             func = function_map[name]
-            # pass context_variables to agent functions
             if __CTX_VARS_NAME__ in func.__code__.co_varnames:
                 args[__CTX_VARS_NAME__] = run_context
 
@@ -299,7 +298,6 @@ class ActorBaseAgent:
                 }
             )
             partial_response.last_tool_result = result
-            partial_response.context_variables.update(result.context_variables)
             # This was the simple way that Swarm did handoff
             if result.agent:
                 partial_response.agent = result.agent
@@ -418,7 +416,6 @@ class ActorBaseAgent:
             self.debug = actor_message.debug
             self.depth = actor_message.depth
             init_len = len(self.history)
-            context_variables = {}
             self.history.append({"role": "user", "content": actor_message.payload})
             yield PromptStarted(self.name, actor_message.payload, self.depth)
 
@@ -432,7 +429,6 @@ class ActorBaseAgent:
                 return
             init_len = self.paused_context.orig_history_length
             # Copy human input into our context
-            #context_variables = actor_message.request_keys.copy()
             self.run_context.update(actor_message.request_keys.copy())
             # Re-call our tool function
             tool_function = self.paused_context.tool_function
@@ -452,7 +448,6 @@ class ActorBaseAgent:
             )
             yield from events
             self.history.extend(partial_response.messages)
-            #context_variables.update(partial_response.context_variables)
 
         # MAIN TURN LOOP
         # Critically, if a "wait_for_human" tool is requested, then we save our
@@ -478,7 +473,7 @@ class ActorBaseAgent:
                 # No more tool calls, so assume this turn is done
                 break
 
-            # handle function calls, updating context_variables, and switching agents
+            # handle function calls
             partial_response, events = self._execute_tool_calls(
                 response.tool_calls,
                 self.functions,
@@ -511,7 +506,6 @@ class ActorBaseAgent:
                     break
 
             self.history.extend(partial_response.messages)
-            #context_variables.update(partial_response.context_variables)
             # end of turn loop
 
         # Altough we emit interim events, we also publish all the messages from this 'turn'
@@ -716,6 +710,13 @@ class DynamicFastAPIHandler:
                     yield (str(event))
             return EventSourceResponse(render_events())
 
+    @app.post('/stream_request')
+    async def stream_request(self, prompt: ProcessRequest) -> EventSourceResponse:
+        def render_events():
+            for event in self.next_turn(prompt.prompt):
+                yield (str(event))
+        return EventSourceResponse(render_events())
+
     def next_turn(
         self,
         request: str,
@@ -839,7 +840,8 @@ class RayFacadeAgent:
         )
         ray.get(obj_ref)
 
-    def _create_fastapi_endpoint(self):
+    def _create_fastapi_endpoint(self, port: int = 8086):
+        serve.start(http_options={"host": "0.0.0.0", "port": port})
         deployment = serve.run(
             DynamicFastAPIHandler.bind(self._agent, self),
             route_prefix=f"/{self.safe_name}",
@@ -847,7 +849,7 @@ class RayFacadeAgent:
         return deployment
 
 
-    def start_api_server(self):
+    def start_api_server(self, port: int = 8086):
         self._create_fastapi_endpoint()
 
     def _ensure_tool_secrets(self):
@@ -889,6 +891,10 @@ class RayFacadeAgent:
     def _update_state(self, state: dict):
         obj_ref = self._agent.set_state.remote(SetState(self.name, state))
         ray.get(obj_ref)
+
+    def set_model(self, model: str):
+        self.model = model
+        self._update_state({"model": model})
 
     def _get_funcs(self, thefuncs: list):
         useable = []

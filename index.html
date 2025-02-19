@@ -12,7 +12,7 @@
       
       
       
-        <link rel="next" href="AGENTIC_MANIFESTO/">
+        <link rel="next" href="Building_Agents/">
       
       
       <link rel="icon" href="assets/images/favicon.png">
@@ -366,48 +366,6 @@
   
   
     <li class="md-nav__item">
-      <a href="AGENTIC_MANIFESTO/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Design Principles
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="AGENT_MEMORY/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Memory
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="Building_Agents/" class="md-nav__link">
         
   
@@ -429,11 +387,11 @@
   
   
     <li class="md-nav__item">
-      <a href="CLI/" class="md-nav__link">
+      <a href="Debugging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agentic CLI
+    Debugging agents
     
   </span>
   
@@ -450,11 +408,11 @@
   
   
     <li class="md-nav__item">
-      <a href="Events/" class="md-nav__link">
+      <a href="Tools/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Event system
+    Tools
     
   </span>
   
@@ -471,32 +429,11 @@
   
   
     <li class="md-nav__item">
-      <a href="FLOWS/" class="md-nav__link">
+      <a href="REST_API/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agent processing flow
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="Models/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Models
+    REST API
     
   </span>
   
@@ -534,11 +471,11 @@
   
   
     <li class="md-nav__item">
-      <a href="SETTINGS/" class="md-nav__link">
+      <a href="Events/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    SETTINGS
+    Event system
     
   </span>
   
@@ -555,11 +492,11 @@
   
   
     <li class="md-nav__item">
-      <a href="Tools/" class="md-nav__link">
+      <a href="AGENTIC_MANIFESTO/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Tools
+    Agentic Design Principles
     
   </span>
   
@@ -728,77 +665,90 @@
 
 <p>Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
 and can use tools to do work on your behalf.</p>
-<p>Agentic is in the tradition of <em>opinionated frameworks</em>. We've tried to encode lots of sensisible
+<p>In the tradition of <em>opinionated frameworks</em>, we've tried to encode lots of sensible
 defaults and best practices into the design, testing and deployment of agents. </p>
+<p>Agentic is composed of multiple parts:</p>
+<ul>
+<li>A code framework for implementing AI agents</li>
+<li>A runtime for deploying your agents</li>
+<li>A reference implementation of the <a href="https://github.com/supercog-ai/agent-protocol">Agent Protocol</a> which defines
+interoperability between agents using different stacks</li>
+</ul>
 <p>Some key features:</p>
 <ul>
 <li>Approachable and simple to use, but flexible enough to support the most complex agents</li>
 <li>Supports teams of cooperating agents</li>
 <li>Supports Human-in-the-loop</li>
-<li>Easy definition and use of tools</li>
+<li>Thin, readable abstractions.</li>
 <li>Built in library of production-tested tools</li>
 </ul>
 <p>But there is much more. The rest of this guide will go over getting started with the framework. You can find some more background
 info in these docs:</p>
 <h2 id="install">Install</h2>
-<p><code>pip install agents-kit</code></p>
+<p><code>pip install agentic-framework</code></p>
 <p>Or using a virtual environmment:</p>
-<pre><code class="language-sh">mkdir myagents
-cd myagents
-python -m venv .venv
-source .venv/bin/activate
+<div class="codehilite"><pre><span></span><code>mkdir<span class="w"> </span>myagents
+<span class="nb">cd</span><span class="w"> </span>myagents
+python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
 
-pip install agents-kit
-agentic init .
-</code></pre>
-<p>(Lots of the obvious 'agentic' packages names have empty squatters on them.) </p>
+pip<span class="w"> </span>install<span class="w"> </span>agentic-framework
+</code></pre></div>
+
+<p>Now setup your folder to hold your agents:</p>
+<div class="codehilite"><pre><span></span><code>agentic<span class="w"> </span>init<span class="w"> </span>.
+</code></pre></div>
+
 <p>The install will copy examples and a basic file structure into the directory <code>myagents</code>. You can name
 or rename this folder however you like.</p>
 <h2 id="intro-tutorial">Intro Tutorial</h2>
-<p>Let's build our first agent. We'll start with the "Hello World" of agents, and agent which can
+<p>Let's build our first agent. We'll start with the "Hello World" of agents, an agent which can
 give us a weather report.</p>
 <p>Create a new file <code>./agents/weather.py</code>, and add this code:</p>
-<pre><code class="language-python">from agentic.common import Agent, AgentRunner
-from agentic.tools.weather_tool import WeatherTool
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">AgentRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools.weather_tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">WeatherTool</span>
 
-weather_agent = Agent(
-    name=&quot;Weather Agent&quot;,
-    welcome=&quot;I can give you some weather reports! Just tell me which city.&quot;,
-    instructions=&quot;You are a helpful assistant.&quot;,
-    tools=[WeatherTool()],
-    model=&quot;openai/gpt-4o-mini&quot;
-)
+<span class="n">weather_agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Weather Agent&quot;</span><span class="p">,</span>
+    <span class="n">welcome</span><span class="o">=</span><span class="s2">&quot;I can give you some weather reports! Just tell me which city.&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;You are a helpful assistant.&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">WeatherTool</span><span class="p">()],</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;openai/gpt-4o-mini&quot;</span>
+<span class="p">)</span>
 
-if __name__ == &quot;__main__&quot;:
-    AgentRunner(weather_agent).repl_loop()
-</code></pre>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">AgentRunner</span><span class="p">(</span><span class="n">weather_agent</span><span class="p">)</span><span class="o">.</span><span class="n">repl_loop</span><span class="p">()</span>
+</code></pre></div>
+
 <p>Now let's run our agent. Note that you will need to configure your OpenAI API key. If you
 want to use a different LLM, including running a model locally, see the intstructions
-at <a href="./docs/Models.md">models</a>.</p>
-<pre><code class="language-sh">    agentic set-secret OPENAI_API_KEY &lt;your key&gt;
-</code></pre>
-<pre><code class="language-sh">(.venv) % python agents/weather.py 
-I can give you some weather reports! Just tell me which city.
-press &lt;enter&gt; to quit
-[Weather Agent]&gt; what is the weather like in NYC?
-The current weather in New York City is as follows:
+at <a href="Models/">models</a>.</p>
+<div class="codehilite"><pre><span></span><code><span class="w">    </span>agentic<span class="w"> </span>set-secret<span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span>&lt;your<span class="w"> </span>key&gt;
+</code></pre></div>
 
-- **Temperature:** 0.5°C
-- **Feels Like:** -4.9°C
-- **Wind Speed:** 22.9 km/h
-- **Wind Direction:** 278° (from the west)
-- **Wind Gusts:** 45.0 km/h
-- **Precipitation:** 0.0 mm
-- **Cloud Cover:** 0%
-- **Relative Humidity:** 53%
-- **Visibility:** 37,000 m
-- **UV Index:** 0.0
-- **Daylight:** No (its currently dark)
+<div class="codehilite"><pre><span></span><code><span class="o">(</span>.venv<span class="o">)</span><span class="w"> </span>%<span class="w"> </span>python<span class="w"> </span>agents/weather.py<span class="w"> </span>
+I<span class="w"> </span>can<span class="w"> </span>give<span class="w"> </span>you<span class="w"> </span>some<span class="w"> </span>weather<span class="w"> </span>reports!<span class="w"> </span>Just<span class="w"> </span>tell<span class="w"> </span>me<span class="w"> </span>which<span class="w"> </span>city.
+press<span class="w"> </span>&lt;ctrl-d&gt;<span class="w"> </span>to<span class="w"> </span>quit
+<span class="o">[</span>Weather<span class="w"> </span>Agent<span class="o">]</span>&gt;<span class="w"> </span>what<span class="w"> </span>is<span class="w"> </span>the<span class="w"> </span>weather<span class="w"> </span>like<span class="w"> </span><span class="k">in</span><span class="w"> </span>NYC?
+The<span class="w"> </span>current<span class="w"> </span>weather<span class="w"> </span><span class="k">in</span><span class="w"> </span>New<span class="w"> </span>York<span class="w"> </span>City<span class="w"> </span>is<span class="w"> </span>as<span class="w"> </span>follows:
 
-It seems to be quite cold with a significant wind chill factor.
-[openai/gpt-4o-mini: 2 calls, tokens: 162 -&gt; 144, 0.02 cents, time: 3.81s tc: 0.02 c, ctx: 306]
-[Weather Agent]&gt; 
-</code></pre>
+-<span class="w"> </span>**Temperature:**<span class="w"> </span><span class="m">0</span>.5°C
+-<span class="w"> </span>**Feels<span class="w"> </span>Like:**<span class="w"> </span>-4.9°C
+-<span class="w"> </span>**Wind<span class="w"> </span>Speed:**<span class="w"> </span><span class="m">22</span>.9<span class="w"> </span>km/h
+-<span class="w"> </span>**Wind<span class="w"> </span>Direction:**<span class="w"> </span><span class="m">278</span>°<span class="w"> </span><span class="o">(</span>from<span class="w"> </span>the<span class="w"> </span>west<span class="o">)</span>
+-<span class="w"> </span>**Wind<span class="w"> </span>Gusts:**<span class="w"> </span><span class="m">45</span>.0<span class="w"> </span>km/h
+-<span class="w"> </span>**Precipitation:**<span class="w"> </span><span class="m">0</span>.0<span class="w"> </span>mm
+-<span class="w"> </span>**Cloud<span class="w"> </span>Cover:**<span class="w"> </span><span class="m">0</span>%
+-<span class="w"> </span>**Relative<span class="w"> </span>Humidity:**<span class="w"> </span><span class="m">53</span>%
+-<span class="w"> </span>**Visibility:**<span class="w"> </span><span class="m">37</span>,000<span class="w"> </span>m
+-<span class="w"> </span>**UV<span class="w"> </span>Index:**<span class="w"> </span><span class="m">0</span>.0
+-<span class="w"> </span>**Daylight:**<span class="w"> </span>No<span class="w"> </span><span class="o">(</span>its<span class="w"> </span>currently<span class="w"> </span>dark<span class="o">)</span>
+
+It<span class="w"> </span>seems<span class="w"> </span>to<span class="w"> </span>be<span class="w"> </span>quite<span class="w"> </span>cold<span class="w"> </span>with<span class="w"> </span>a<span class="w"> </span>significant<span class="w"> </span>wind<span class="w"> </span>chill<span class="w"> </span>factor.
+<span class="o">[</span>openai/gpt-4o-mini:<span class="w"> </span><span class="m">2</span><span class="w"> </span>calls,<span class="w"> </span>tokens:<span class="w"> </span><span class="m">162</span><span class="w"> </span>-&gt;<span class="w"> </span><span class="m">144</span>,<span class="w"> </span><span class="m">0</span>.02<span class="w"> </span>cents,<span class="w"> </span>time:<span class="w"> </span><span class="m">3</span>.81s<span class="w"> </span>tc:<span class="w"> </span><span class="m">0</span>.02<span class="w"> </span>c,<span class="w"> </span>ctx:<span class="w"> </span><span class="m">306</span><span class="o">]</span>
+<span class="o">[</span>Weather<span class="w"> </span>Agent<span class="o">]</span>&gt;<span class="w"> </span>
+</code></pre></div>
+
 <p>That's it. We've created an agent, powered by the GPT-4o-mini LLM, and given it a tool which
 it can use to retrieve weather reports. (The weather info is provided by https://open-meteo.com.)</p>
 <p>Try running some of the other example agents to get a feel for the framework.</p>
@@ -808,7 +758,7 @@ it can use to retrieve weather reports. (The weather info is provided by https:/
 <ul>
 <li>The LLM controls the execution flow of your agent</li>
 <li>You specify the tasks and flow of your agent via the LLM system prompt</li>
-<li>The agents gets one or more <strong>tools</strong> that it can use to accomplish its task</li>
+<li>The agent gets one or more <strong>tools</strong> that it can use to accomplish its task</li>
 <li>The agent runs in this loop until it decides that it can't go further:<ul>
 <li>plan next step</li>
 <li>generate text completion or tool call
@@ -832,49 +782,51 @@ inside each agent has these properties:</p>
 other agents, in the same way. </p>
 <p>Calling "sub agents" allows us to organize a set of multiple agents to solve
 a single problem. The simplest example looks like this:</p>
-<pre><code class="language-python">from agentic.tools import GoogleNewsTool
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">GoogleNewsTool</span>
 
-producer = Agent(
-    name=&quot;Producer&quot;,
-    welcome=&quot;I am the news producer. Tell me the topic, and I'll get the news from my reporter.&quot;,
-    instructions=&quot;You are a news producer. Call the reporter with the indicated topic.&quot;,
-    model=&quot;gpt-4o-mini&quot;,
-    tools=[
-        Agent(
-            name=&quot;News Reporter&quot;,
-            instructions=f&quot;&quot;&quot;
-        Call Google News to get headlines on the indicated news topic.
-        &quot;&quot;&quot;,
-            tools=[GoogleNewsTool()],
-        )
-    ],
-)
-</code></pre>
+<span class="n">producer</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Producer&quot;</span><span class="p">,</span>
+    <span class="n">welcome</span><span class="o">=</span><span class="s2">&quot;I am the news producer. Tell me the topic, and I&#39;ll get the news from my reporter.&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;You are a news producer. Call the reporter with the indicated topic.&quot;</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">Agent</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;News Reporter&quot;</span><span class="p">,</span>
+            <span class="n">instructions</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        Call Google News to get headlines on the indicated news topic.</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">GoogleNewsTool</span><span class="p">()],</span>
+        <span class="p">)</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+
 <h3 id="calling-agents-in-sequence">Calling agents in sequence</h3>
 <p>Treating agents as a <code>subroutine</code> is useful, but sometimes we want <code>pipeline</code> semantics
 where we want to invoke the next agent by "handing off" execution to that agent and
 not waiting for it to return. We can just use the <code>handoff</code> property to do so:</p>
-<pre><code class="language-python">from agentic import handoff
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic</span><span class="w"> </span><span class="kn">import</span> <span class="n">handoff</span>
 
-agentA = Agent(
-    name=&quot;Producer&quot;,
-    welcome=&quot;This is the handoff demo.&quot;,
-    instructions=&quot;Print the message 'I am A', then call agent B. Afterwards print 'WARNING!'&quot;,
-    tools=[
-        handoff(Agent(
-            name=&quot;Agent B&quot;,
-            instructions=&quot;Print the msssage 'and I am B'&quot;,
-        ))
-    ],
-)
+<span class="n">agentA</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Producer&quot;</span><span class="p">,</span>
+    <span class="n">welcome</span><span class="o">=</span><span class="s2">&quot;This is the handoff demo.&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;Print the message &#39;I am A&#39;, then call agent B. Afterwards print &#39;WARNING!&#39;&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">handoff</span><span class="p">(</span><span class="n">Agent</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Agent B&quot;</span><span class="p">,</span>
+            <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;Print the msssage &#39;and I am B&#39;&quot;</span><span class="p">,</span>
+        <span class="p">))</span>
+    <span class="p">],</span>
+<span class="p">)</span>
 
-python examples/handoff_demo.py
-This is the handoff demo.
-&gt; run
-I am A
-and I am B
-&gt; 
-</code></pre>
+<span class="n">python</span> <span class="n">examples</span><span class="o">/</span><span class="n">handoff_demo</span><span class="o">.</span><span class="n">py</span>
+<span class="n">This</span> <span class="ow">is</span> <span class="n">the</span> <span class="n">handoff</span> <span class="n">demo</span><span class="o">.</span>
+<span class="o">&gt;</span> <span class="n">run</span>
+<span class="n">I</span> <span class="n">am</span> <span class="n">A</span>
+<span class="ow">and</span> <span class="n">I</span> <span class="n">am</span> <span class="n">B</span>
+<span class="o">&gt;</span> 
+</code></pre></div>
+
 <p>Without using <code>handoff</code> we would have seen the WARNING message printed from the root agent.
 Handoff can be useful if your sub-agent generates a lot of output, because normally that
 output when be fed back into AgentA as the <code>observation</code> step, which means both another
@@ -902,40 +854,41 @@ human input. When your agent is waiting for input it is effectively paused, cons
 no resources. This means that complex patterns like "send an email for clarification,
 and wait for the reply" are easy and low-cost to build.</p>
 <h2 id="complete-example">Complete example</h2>
-<pre><code class="language-python">from agentic import Agent, AgentRunner
-from agentic.tools import LinkedinTool, HumanInterruptTool
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">AgentRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinkedinTool</span><span class="p">,</span> <span class="n">HumanInterruptTool</span>
 
-researcher = Agent(
-    name=&quot;Person Researcher&quot;,
-    welcome=&quot;I am your People Researcher. Who would you like to know more about?&quot;,
-    instructions=&quot;&quot;&quot;
-You do research on people. Given a name and a company:
-1. Search for matching profiles on linkedin.
-2. If you find a single strong match, then prepare a background report on that person. Make sure
-to print the full report.
-3. If you find multiple matches, then ask stop and ask the user for clarification. Then go back to step 1.
-If you are missing info, then seek clarification from the user.
-&quot;&quot;&quot;,
-    model=&quot;openai://gpt-4o-mini&quot;,
-    tools=[
-        LinkedinTool(), 
-        HumanInterruptTool(),
-        Agent(
-            name = &quot;Person Report Writer&quot;,
-            instructions=&quot;&quot;&quot;
-        You will receive the URL to a linkedin profile. Retrieve the profile and
-        write a background report on the person, focusing on their career progression
-        and current role.
-            &quot;&quot;&quot;,
-            tools=[LinkedinTool()],
-            model=&quot;anthropic://claude-sonnet-3.5&quot;,
-        )
-    ]
-)
+<span class="n">researcher</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Person Researcher&quot;</span><span class="p">,</span>
+    <span class="n">welcome</span><span class="o">=</span><span class="s2">&quot;I am your People Researcher. Who would you like to know more about?&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">You do research on people. Given a name and a company:</span>
+<span class="s2">1. Search for matching profiles on linkedin.</span>
+<span class="s2">2. If you find a single strong match, then prepare a background report on that person. Make sure</span>
+<span class="s2">to print the full report.</span>
+<span class="s2">3. If you find multiple matches, then ask stop and ask the user for clarification. Then go back to step 1.</span>
+<span class="s2">If you are missing info, then seek clarification from the user.</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;openai://gpt-4o-mini&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">LinkedinTool</span><span class="p">(),</span> 
+        <span class="n">HumanInterruptTool</span><span class="p">(),</span>
+        <span class="n">Agent</span><span class="p">(</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Person Report Writer&quot;</span><span class="p">,</span>
+            <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        You will receive the URL to a linkedin profile. Retrieve the profile and</span>
+<span class="s2">        write a background report on the person, focusing on their career progression</span>
+<span class="s2">        and current role.</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">LinkedinTool</span><span class="p">()],</span>
+            <span class="n">model</span><span class="o">=</span><span class="s2">&quot;anthropic://claude-sonnet-3.5&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">)</span>
 
-runner = AgentRunner(agent)
-runner.repl_loop()
-</code></pre>
+<span class="n">runner</span> <span class="o">=</span> <span class="n">AgentRunner</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+<span class="n">runner</span><span class="o">.</span><span class="n">repl_loop</span><span class="p">()</span>
+</code></pre></div>
+
 <p><strong>Breaking down our example</strong></p>
 <p>First we define our top-level agent, the "Person Researcher", give it a goal
 and a task list, an LLM model, and some tools:</p>
@@ -950,33 +903,34 @@ different LLM model. We include this agent in the list of tools for the Research
 <p>To run our agent, we construct an <code>AgentRunner</code>. This object manages
 a single multi-turn session interacting with our agent.</p>
 <p>Here is the complete (condensed) run output:</p>
-<pre><code class="language-markdown">(agentic) scottp@MacBook-Air agentic % python examples/people_researcher.py 
+<div class="codehilite"><pre><span></span><code>(agentic) scottp@MacBook-Air agentic % python examples/people_researcher.py 
 I am the People Researcher. Tell me who you want to know about.
-&gt; marc benioff
+<span class="k">&gt; </span><span class="ge">marc benioff</span>
 --&gt; search_profiles({&quot;name&quot;:&quot;marc benioff&quot;})
 --&gt; get_human_input({&quot;request_message&quot;:&quot;I found multiple profiles for Marc...&quot;})
 I found multiple LinkedIn profiles for Marc Benioff. Here are the details:
 
-1. **Marc Benioff**  
-   - **Headline:** Chair &amp; CEO at Salesforce  
+<span class="k">1.</span> <span class="gs">**Marc Benioff**</span>  
+<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="gs">**Headline:**</span> Chair &amp; CEO at Salesforce  
    ...
 
-2. **Marc Benioff**  
-   - **Headline:** Bachelor's degree at Brunel University London  
+<span class="k">2.</span> <span class="gs">**Marc Benioff**</span>  
+<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="gs">**Headline:**</span> Bachelor&#39;s degree at Brunel University London  
    ...
 ...
 Please let me know which profile you would like to know more about. 
-&gt; 1
+<span class="k">&gt; </span><span class="ge">1</span>
 call_person_report_writer({&quot;message&quot;:&quot;Please prepare a background report on Marc Benioff...&quot;})
 --&gt; get_profile({&quot;url&quot;:&quot;https://www.linkedin.com/in/marcbenioff&quot;})
-### Background Report on Marc Benioff
-**Current Role:**
+<span class="gu">### Background Report on Marc Benioff</span>
+<span class="gs">**Current Role:**</span>
 Marc Benioff is the Chair and CEO of Salesforce, a leading cloud-based software company headquartered in San Francisco, California. Under his leadership, Salesforce has become a pioneer in customer relationship management (CRM) software and has significantly influenced the tech industry with its innovative solutions and commitment to social responsibility.
 
-**Career Progression:**
-- **Early Career:** Marc Benioff began his career at Oracle Corporation, where he worked for 13 years. During his time at Oracle, he held various positions, gaining valuable experience in software development and sales.
+<span class="gs">**Career Progression:**</span>
+<span class="k">-</span><span class="w"> </span><span class="gs">**Early Career:**</span> Marc Benioff began his career at Oracle Corporation, where he worked for 13 years. During his time at Oracle, he held various positions, gaining valuable experience in software development and sales.
 ...
-</code></pre>
+</code></pre></div>
+
 <p>We call <code>start</code> to start our agent.
 Now we iteratively grab events from the agent until the turn is finished.</p>
 <ul>
@@ -1006,12 +960,12 @@ agent, with the profile URL as input, but in a new LLM context. This agent calls
 <h3 id="things-to-note">Things to note</h3>
 <p>We have used the convenience <code>repl_loop</code> in <code>AgentRunner</code> to interface to our agent.
 But we can write our own loop (or API or whatever) to run our agent:</p>
-<pre><code class="language-python">
-runner.start(command)
-for event in self.next():
-    print(&quot;Agent event: &quot;, event)
-</code></pre>
-<p>The <code>next</code> function will keep emitting events until the current turn of the agent is
+<div class="codehilite"><pre><span></span><code><span class="n">runner</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_turn</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Agent event: &quot;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The <code>next_turn</code> function will keep emitting events until the current turn of the agent is
 complete. Because you are getting fine-grained events as the agent runs, you can
 choose to do other things in the middle, including things like modifying the agent
 by giving it more tools. Even though this interface looks like the agent is
@@ -1021,30 +975,21 @@ events along the way, but it can stop at any time.</p>
 generating the event. So the top agent generates <code>depth=0</code>, the first level 
 sub-agent generates at <code>depth=1</code> and so forth. </p>
 <p>The list of tools on an agent should be modifiable at any time:</p>
-<pre><code>agent.add_tool(tool)
-agent.remove_tool(tool)
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">agent</span><span class="o">.</span><span class="n">add_tool</span><span class="p">(</span><span class="k">tool</span><span class="p">)</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">remove_tool</span><span class="p">(</span><span class="k">tool</span><span class="p">)</span>
+</code></pre></div>
+
 <p>However, tools probably shouldn't modify the running agent directly. Safer that
 they publish events like <code>EnableTool</code> which can be handled properly by the
 framework (there might be security controls or what not).</p>
 <p><strong>RunContext</strong></p>
-<p>PydanticAI uses this object, and I have the same (same name!) in Supercog. Real tools
-will often want to retrieve bits of context like the current agent name, or running
-user, etc... An example of where we use this in SC is an "email_user" function which looks
-up the current user email in the RunContext.</p>
-<p><strong>Run state</strong></p>
-<p>Langgraph has a <code>state</code> notion, a dict that is passed between nodes. I have a feeling
-that this is poor encapsulation and probably leads to poor code. Letta has "memory blocks"
-which can be shared between agents, and this feels like probably a better design choice where
-you very explicitly decide to share state rather than just using tool inputs and outputs.</p>
-<p>A good example of this is if agent B needs to return a large chunk of info to agent A
-(like the contents of a file), then it could put the file to a memory block and 
-return a reference to that block in its call response to agent A. </p>
+<p>The state for your agent is kept and transmitted between turns via the <code>RunContext</code>
+object. One is created each time a turn starts.</p>
 <h3 id="examples">Examples</h3>
-<p>Look in the <a href="./examples/">examples</a> folder.</p>
+<p>Read <a href="Examples/">Examples</a> or look at the github repo <a href="https://github.com/supercog-ai/agentic/tree/main/examples">examples</a> folder.</p>
 <h2 id="try-the-web-ui-using-streamlit">Try the web UI (using streamlit)</h2>
-<pre><code>agentic ui
-</code></pre>
+<div class="codehilite"><pre><span></span><code>agentic ui
+</code></pre></div>
 
 
 

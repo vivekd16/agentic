@@ -11,8 +11,10 @@
         <link rel="canonical" href="https://supercog.ai/agentic/Tools/">
       
       
-        <link rel="prev" href="../SETTINGS/">
+        <link rel="prev" href="../Debugging/">
       
+      
+        <link rel="next" href="../REST_API/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -60,6 +62,11 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
+      
+        
+        <a href="#tool-return-types" class="md-skip">
+          Skip to content
+        </a>
       
     </div>
     <div data-md-component="announce">
@@ -207,48 +214,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Design Principles
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../AGENT_MEMORY/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Memory
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../Building_Agents/" class="md-nav__link">
         
   
@@ -270,11 +235,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../CLI/" class="md-nav__link">
+      <a href="../Debugging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agentic CLI
+    Debugging agents
     
   </span>
   
@@ -288,19 +253,113 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../Events/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Tools
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
-    Event system
+    Tools
     
   </span>
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tool-return-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool return types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-and-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration and Secrets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration and Secrets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-environment-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using environment configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementing-human-in-the-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementing Human-in-the-Loop
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementing Human-in-the-Loop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generating-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generating Events
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -312,32 +371,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../FLOWS/" class="md-nav__link">
+      <a href="../REST_API/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agent processing flow
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../Models/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Models
+    REST API
     
   </span>
   
@@ -375,11 +413,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../SETTINGS/" class="md-nav__link">
+      <a href="../Events/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    SETTINGS
+    Event system
     
   </span>
   
@@ -393,27 +431,19 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Tools
+    Agentic Design Principles
     
   </span>
   
 
       </a>
-      
     </li>
   
 
@@ -436,6 +466,71 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tool-return-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tool return types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-and-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration and Secrets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration and Secrets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-environment-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using environment configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementing-human-in-the-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementing Human-in-the-Loop
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementing Human-in-the-Loop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generating-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generating Events
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -452,26 +547,170 @@
 
   <h1>Tools</h1>
 
+<p><strong>Tools</strong> are the fundamental way that your agent gets access to the world around it.
+Tools can literally do anything - query any data or take any action - that you can think of.</p>
+<p>It is tempting to think of tools the way we think about libraries that we use in traditional code,
+but this is a mistake. In fact tools are the key component in the <strong>AI to computer</strong> interface. 
+They determine how well the LLM can interact with the world, and the fidelity with which your
+agent can perceive the world around it. Tools have a huge impact on the efficacy of agents,
+and building agents often involves a lot of time working on tools (although we are getting
+better "off the shelf" tools all the time.)</p>
+<p>At root, tools are exposing <em>functions</em> to your Agent. Using the <em>tool calling</em> protocol developed
+by OpenAI, your agent elects to call tools by generating a text block in its output, and this
+output is parsed by the framework and turned into the actual function call.</p>
+<blockquote>
+<p>Side node: The <em>smolagents</em> library from Huggingface promotes the idea of using 
+<a href="https://huggingface.co/blog/smolagents#code-agents">CodeAgents</a> instead of tool calling. Some
+researchers have found that having your agent write <em>code</em> - on demand - to call functions elicits
+superior results than traditional tool calling. It's certainly an intriguing notion, and one that
+we are testing presently.</p>
+</blockquote>
+<p>Agentic supports providing tool functions as:</p>
+<ul>
+<li>Simple functions</li>
+<li>Class instance methods</li>
+<li>Langchain tools</li>
+<li>Model Context Protocol (from Anthropic) tools</li>
+</ul>
+<p>Here are a few examples:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">simple_function</span><span class="p">(</span><span class="n">arg1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">arg2</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Multiplies two numbers by a mystery factor &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">arg1</span> <span class="o">*</span> <span class="n">arg2</span> <span class="o">*</span> <span class="mi">23</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">FileReaderTool</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_tools</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callable</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read_file</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_file</span><span class="p">,</span>
+        <span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Returns the file at the given path &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot; Writes the provided content to the indicated path &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;The file was written&quot;</span>
+
+<span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="o">...</span>
+    <span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">simple_function</span><span class="p">,</span> <span class="n">FileReaderTool</span><span class="p">()]</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p>Note that the <em>docstring</em> is required to describe each function.</p>
+<p>Here are some rules/guidelines for writing good tools:</p>
+<ul>
+<li>Generally we find classes and methods are a more useful form than bare functions. There
+aren't a lot of bare functions that are super helpful tools.</li>
+<li>Using classes and methods means that you can keep state in your tool (via <code>self</code>) and
+share it between function calls.</li>
+<li>The name of the function, the docstring, and the parameter names are all passed to the LLM.
+Function names should very clearly explain the purpose of the function.</li>
+<li>You can describe parameter usage (possible values, etc...) in the docstring, but often
+its enough to just have good parameter names.</li>
+<li>Try to avoid super generic function names like <code>read_file</code>, and consider prefixing 
+functions with a namespace, like <code>github_read_file</code>.</li>
+</ul>
+<p>Although you can always use "plain functions" for tools, Agentic has some special support
+for particular tool patterns.</p>
 <p><strong>RunContext</strong></p>
-<p>PydanticAI uses this object, and I have the same (same name!) in Supercog. Real tools
-will often want to retrieve bits of context like the current agent name, or running
-user, etc... An example of where we use this in SC is an "email_user" function which looks
-up the current user email in the RunContext.</p>
-<p><strong>Run state</strong></p>
-<p>Langgraph has a <code>state</code> notion, a dict that is passed between nodes. I have a feeling
-that this is poor encapsulation and probably leads to poor code. Letta has "memory blocks"
-which can be shared between agents, and this feels like probably a better design choice where
-you very explicitly decide to share state rather than just using tool inputs and outputs.</p>
-<p>A good example of this is if agent B needs to return a large chunk of info to agent A
-(like the contents of a file), then it could put the file to a memory block and 
-return a reference to that block in its call response to agent A. </p>
-<p>The list of tools on an agent should be modifiable at any time:</p>
-<pre><code>agent.add_tool(tool)
-agent.remove_tool(tool)
-</code></pre>
-<p>However, tools probably shouldn't modify the running agent directly. Safer that
-they publish events like <code>EnableTool</code> which can be handled properly by the
-framework (there might be security controls or what not).</p>
+<p>When your agent is started, a <code>RunContext</code> object is created and preserved through the lifetime
+of the run session. This object can hold arbitrary state that your agent can use
+during the run. Tool functions just need to define a parameter called <code>run_context</code> to receive
+the object when they are invoked:</p>
+<div class="codehilite"><pre><span></span><code>    def hello_func(self, run_context: RunContext, message):
+        print(message)
+        print(&quot;I am running in agent: &quot;, run_context.agent.name)
+</code></pre></div>
+
+<p>RunContext also offers various utility methods for getting access to system services.</p>
+<h2 id="tool-return-types">Tool return types</h2>
+<p>The most common tool simply returns a <em>string</em> which is provided to the LLM as the "anwer"
+to the tool call.</p>
+<p>However, tools can generally return any kind of object as long as it can be serialized into
+a string. In particular dicts and lists of dicts will be automatically serialized as JSON
+which most LLMs understand quite well.</p>
+<h2 id="configuration-and-secrets">Configuration and Secrets</h2>
+<p>It is very common for tools to need some configuration or credentials in order to operate.
+Agentic tries to provide some framework support to cover the most common cases:</p>
+<div class="codehilite"><pre><span></span><code><span class="o">-</span><span class="w"> </span><span class="k">For</span><span class="w"> </span><span class="n">config</span><span class="p">,</span><span class="w"> </span><span class="n">take</span><span class="w"> </span><span class="n">parameters</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n n-Quoted">`__init__`</span><span class="w"> </span><span class="k">function</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">your</span><span class="w"> </span><span class="n">tool</span><span class="w"> </span><span class="n">class</span>
+<span class="o">-</span><span class="w"> </span><span class="n">Configure</span><span class="w"> </span><span class="n">secrets</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">environment</span><span class="p">,</span><span class="w"> </span><span class="n">but</span><span class="w"> </span><span class="k">use</span><span class="w"> </span><span class="n n-Quoted">`run_context`</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">access</span><span class="w"> </span><span class="n">them</span>
+<span class="o">-</span><span class="w"> </span><span class="n">Described</span><span class="w"> </span><span class="n">required</span><span class="w"> </span><span class="n">secrets</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">implementing</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n n-Quoted">`required_secrets`</span><span class="w"> </span><span class="n">method</span>
+</code></pre></div>
+
+<p>Here is an example from the TavilyTool (for web search):</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TavilySearchTool</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="n">api_key</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">required_secrets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;TAVILY_API_KEY&quot;</span><span class="p">:</span> <span class="s2">&quot;Tavily API key&quot;</span><span class="p">}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">query_for_news</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">days_back</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">PauseForInputResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the latest headlines on the given topic.&quot;&quot;&quot;</span>
+
+        <span class="n">api_key</span> <span class="o">=</span> <span class="n">run_context</span><span class="o">.</span><span class="n">get_secret</span><span class="p">(</span><span class="s2">&quot;TAVILY_API_KEY&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span><span class="p">)</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<p>You can pass the API key to the init function, but more likely you want to configure that 
+key in your environment. By implementing <code>required_secrets</code> you tell the framework
+that your tool needs some credentials, and the framework will check that they are set, or
+prompt the user to supply them.</p>
+<p>Once your tool function is called (like 'query_for_news') then you can retrieve the
+secrets from the RunContext. Look at Agentic's <a href="./Secrets.md">secrets</a> system for a description
+of how secrets are managed.</p>
+<h3 id="using-environment-configuration">Using environment configuration</h3>
+<p>In addition to secrets, you can store plaintext settings in your enviroment as well. Add
+a setting with the CLI:</p>
+<div class="codehilite"><pre><span></span><code>agentic set &lt;setting1&gt; &lt;value1&gt;
+</code></pre></div>
+
+<p>and access it in your tool via <code>run_context.get</code>.</p>
+<h2 id="implementing-human-in-the-loop">Implementing Human-in-the-Loop</h2>
+<p>Sometimes your tool will need some info from the human operator, and so your agent will need
+to pause to wait for that input. You can achieve this with the <code>PauseForInputResult</code> class:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">PauseForInputResult</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_favorite_tv_show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_context</span><span class="p">):</span>
+        <span class="n">fave_tv</span> <span class="o">=</span> <span class="n">run_context</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="s2">&quot;tv_show&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fave_tv</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">PauseForInputResult</span><span class="p">({</span><span class="s2">&quot;tv_show&quot;</span><span class="p">:</span> <span class="s2">&quot;Please indicate your favorite TV Show&quot;</span><span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">run_context</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="s2">&quot;tv_show&quot;</span><span class="p">,</span> <span class="n">fave_tv</span><span class="p">)</span> <span class="c1"># remember persistently</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Ok, getting your favorite espiodes from </span><span class="si">{</span><span class="n">fave_tv</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<p>The first time your function is called it determines that the required
+value is missing, so it returns the <code>PauseForInputResult</code> with the missing key and a message
+describing what it needs. The message will be shown to the user, and their response will
+be automatically set in the <code>run_context</code> using the indicated key. Then your function will
+be invoked <strong>again</strong>, but this time the setting should be available. You can choose to persist
+the value so that the human doesn't get interrupted again on the next run, via <code>run_context.set_setting</code>. </p>
+<p>If you want your agent to request "human input" directly, there is a convenience <code>HumanInterruptTool</code>
+available.</p>
+<h3 id="generating-events">Generating Events</h3>
+<p>Remember that when you agent is running, it emits a stream of well-typed <a href="../Events/">events</a>.
+It is possible for tool functions to also generate events. In this case these events will be
+emitted by your agent, but they won't be revealed to the LLM. Only the actual return value
+from your function is returned to the LLM.</p>
+<p>A classic use case is generating logging events from a function:</p>
+<div class="codehilite"><pre><span></span><code><span class="w">    </span><span class="n">def</span><span class="w"> </span><span class="n">long_running_function</span><span class="p">(</span><span class="kr">self</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">str</span><span class="o">:</span>
+<span class="w">        </span><span class="s">&quot;&quot;&quot; Runs a long operation and returns the result. &quot;&quot;&quot;</span>
+<span class="w">        </span><span class="n">for</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="kr">in</span><span class="w"> </span><span class="nf">range</span><span class="p">()</span><span class="o">:</span>
+<span class="w">            </span><span class="n">yield</span><span class="w"> </span><span class="n">ToolOutput</span><span class="p">(</span><span class="n">f</span><span class="s">&quot;working on row {x})</span>
+<span class="s">            ... do some work</span>
+
+<span class="s">        return &quot;</span><span class="n">The</span><span class="w"> </span><span class="n">work</span><span class="w"> </span><span class="n">is</span><span class="w"> </span><span class="n">done</span><span class="o">!</span><span class="w"> </span><span class="n">Thanks</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">waiting</span><span class="p">.</span><span class="s">&quot;</span>
+</code></pre></div>
+
+<p><strong>Adding tools dynamically</strong></p>
 
 
 

@@ -8,13 +8,9 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/CLI/">
+        <link rel="canonical" href="https://supercog.ai/agentic/Flows/">
       
       
-        <link rel="prev" href="../Building_Agents/">
-      
-      
-        <link rel="next" href="../Events/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +18,7 @@
     
     
       
-        <title>Agentic CLI - Agentic Docs</title>
+        <title>ReAct Agent - Agentic Docs</title>
       
     
     
@@ -64,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agentic-cli" class="md-skip">
+        <a href="#react-agent" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Agentic CLI
+              ReAct Agent
             
           </span>
         </div>
@@ -214,48 +210,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Design Principles
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../AGENT_MEMORY/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Memory
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../Building_Agents/" class="md-nav__link">
         
   
@@ -274,45 +228,14 @@
       
   
   
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    Agentic CLI
-    
-  </span>
-  
-
-      </a>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
   
   
     <li class="md-nav__item">
-      <a href="../Events/" class="md-nav__link">
+      <a href="../Debugging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Event system
+    Debugging agents
     
   </span>
   
@@ -329,11 +252,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../FLOWS/" class="md-nav__link">
+      <a href="../Tools/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agent processing flow
+    Tools
     
   </span>
   
@@ -350,11 +273,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../Models/" class="md-nav__link">
+      <a href="../REST_API/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Models
+    REST API
     
   </span>
   
@@ -392,11 +315,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../SETTINGS/" class="md-nav__link">
+      <a href="../Events/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    SETTINGS
+    Event system
     
   </span>
   
@@ -413,11 +336,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../Tools/" class="md-nav__link">
+      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Tools
+    Agentic Design Principles
     
   </span>
   
@@ -461,26 +384,20 @@
 
 
 
-<h1 id="agentic-cli">Agentic CLI</h1>
-<p>Commands:</p>
-<pre><code>--help          - Get help
+<h1 id="react-agent">ReAct Agent</h1>
+<p>This is the default form for Agentic agents.</p>
+<h1 id="pipeline">Pipeline</h1>
+<p>A pipeline strings together the outputs-&gt;inputs of a set of agents in a linear sequence.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">Pipeline</span>
 
-models          - list some popular LLM models
-list            - List all settings.
-set             - Set a config value.
-get             - Get a config value.
-delete          - Delete a config value.
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
+    <span class="n">Agent</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;agent 1&quot;</span><span class="p">),</span>
+    <span class="n">Agent</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;agent 2&quot;</span><span class="p">),</span>
+    <span class="n">Agent</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;agent 3&quot;</span><span class="p">),</span>
+<span class="p">)</span>
 
-list-secrets    List all secrets.
-set-secret      Set a secret.
-get-secret      Get a secret.
-delete-secret   Delete a secret.
-
-ollama          - List the latest popular models from Ollama. Use "ollama pull &lt;model&gt; to download.
-ui              - Runs the agentic UI
-claude          - Runs a completion with Anthropic's Claude sonnet model
-gpt             - Runs a completion with OpenAI's GPT-4o-mini model. Use --model to override.
-</code></pre>
+<span class="n">AgentRunner</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</code></pre></div>
 
 
 

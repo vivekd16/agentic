@@ -11,10 +11,10 @@
         <link rel="canonical" href="https://supercog.ai/agentic/Events/">
       
       
-        <link rel="prev" href="../CLI/">
+        <link rel="prev" href="../PROJECT_STRUCTURE/">
       
       
-        <link rel="next" href="../FLOWS/">
+        <link rel="next" href="../AGENTIC_MANIFESTO/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -214,48 +214,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Design Principles
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../AGENT_MEMORY/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Memory
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../Building_Agents/" class="md-nav__link">
         
   
@@ -277,11 +235,74 @@
   
   
     <li class="md-nav__item">
-      <a href="../CLI/" class="md-nav__link">
+      <a href="../Debugging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agentic CLI
+    Debugging agents
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Tools/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tools
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REST_API/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    REST API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PROJECT_STRUCTURE/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Project structure
     
   </span>
   
@@ -387,95 +408,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../FLOWS/" class="md-nav__link">
+      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agent processing flow
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../Models/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Models
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../PROJECT_STRUCTURE/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Project structure
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../SETTINGS/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    SETTINGS
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../Tools/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Tools
+    Agentic Design Principles
     
   </span>
   
@@ -560,27 +497,30 @@ generating the event. So the top agent generates <code>depth=0</code>, the first
 sub-agent generates at <code>depth=1</code> and so forth. </p>
 <p>Agents publish events whenever they are asked to do something. For a single
 agent this mechanism is simple:</p>
-<pre><code>caller      --- msg --&gt;     agent
-  |                           |
-  |         &lt;-- event ---     |
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">caller</span><span class="w">      </span><span class="o">---</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">--&gt;</span><span class="w">     </span><span class="n">agent</span>
+<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="o">---</span><span class="w">     </span><span class="o">|</span>
+</code></pre></div>
+
 <p>However, once agents start calling other agents, it gets more complicated. Our general
 rules is that ALL events published at any level should bubble up back to the original
 caller. This is to maximize the caller's visibility into what the system is doing:</p>
-<pre><code>caller      --- msg --&gt;     agent A               agent B
-  |                           |                       |
-  |         &lt;-- event1 ---    |                       |
-  |                           |    --- call B -&gt;      |
-  |                           |                       |
-  |                           |     &lt;-- event 2 --    |
-  |         &lt;-- event 2 ---   |                       |
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">caller</span><span class="w">      </span><span class="o">---</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">--&gt;</span><span class="w">     </span><span class="n">agent</span><span class="w"> </span><span class="n">A</span><span class="w">               </span><span class="n">agent</span><span class="w"> </span><span class="n">B</span>
+<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="n">event1</span><span class="w"> </span><span class="o">---</span><span class="w">    </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">    </span><span class="o">---</span><span class="w"> </span><span class="n">call</span><span class="w"> </span><span class="n">B</span><span class="w"> </span><span class="o">-&gt;</span><span class="w">      </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">     </span><span class="o">&lt;--</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">--</span><span class="w">    </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">---</span><span class="w">   </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
+</code></pre></div>
+
 <p>Each event has an agent <code>name</code> property, and <code>depth</code> property which indicates how far down 
 in the call tree the event originated.</p>
 <p>So the caller will get these two events:</p>
-<pre><code>event1 (Agent A, depth=0)
+<div class="codehilite"><pre><span></span><code>event1 (Agent A, depth=0)
 event2 (Agent B, depth=1)
-</code></pre>
+</code></pre></div>
+
 <p>This allows the caller to ignore sub-agent execution if it prefers.</p>
 <h2 id="agent-execution-flow">Agent execution flow</h2>
 <p>When you call agent A, it may execute agent B, plus agent C, and they in turn
@@ -592,18 +532,20 @@ make sure to wait for the <code>TurnEnd</code> message from each one. </p>
 <p>To implement "pipeline semantics", agents can "hand off" from one to another. In this
 case the sub-agent will assume the original caller of the first agent, and will assume
 its <code>depth</code> as well:</p>
-<pre><code>caller      --- msg --&gt;     agent A               agent B
-  |                           |                       |
-  |         &lt;-- event1 ---    |                       |
-  |                           |  ---  *handoff* B -&gt;  |
-  |         &lt;-- turnend: A -- |                       |                
-  |                                                   |
-  |         &lt;-- ---------------------- event 2 --     |
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">caller</span><span class="w">      </span><span class="o">---</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">--&gt;</span><span class="w">     </span><span class="n">agent</span><span class="w"> </span><span class="n">A</span><span class="w">               </span><span class="n">agent</span><span class="w"> </span><span class="n">B</span>
+<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="n">event1</span><span class="w"> </span><span class="o">---</span><span class="w">    </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">  </span><span class="o">---</span><span class="w">  </span><span class="o">*</span><span class="n">handoff</span><span class="o">*</span><span class="w"> </span><span class="n">B</span><span class="w"> </span><span class="o">-&gt;</span><span class="w">  </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="n">turnend</span><span class="o">:</span><span class="w"> </span><span class="n">A</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span><span class="w">                </span>
+<span class="w">  </span><span class="o">|</span><span class="w">                                                   </span><span class="o">|</span>
+<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="o">----------------------</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">--</span><span class="w">     </span><span class="o">|</span>
+</code></pre></div>
+
 <p>So the caller will get events like this:</p>
-<pre><code>event1 (Agent A, depth=0)
+<div class="codehilite"><pre><span></span><code>event1 (Agent A, depth=0)
 event2 (Agent B, depth=0)
-</code></pre>
+</code></pre></div>
+
 <h2 id="chat-history">Chat history</h2>
 <p>A typical interactive agent is built with <em>chat history</em> which maintains the history
 of interactions over the life of a session.</p>

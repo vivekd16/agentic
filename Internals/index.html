@@ -8,13 +8,9 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/FLOWS/">
+        <link rel="canonical" href="https://supercog.ai/agentic/Internals/">
       
       
-        <link rel="prev" href="../Events/">
-      
-      
-        <link rel="next" href="../Models/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -214,48 +210,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Design Principles
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../AGENT_MEMORY/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Memory
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../Building_Agents/" class="md-nav__link">
         
   
@@ -277,11 +231,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../CLI/" class="md-nav__link">
+      <a href="../Debugging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agentic CLI
+    Debugging agents
     
   </span>
   
@@ -298,147 +252,16 @@
   
   
     <li class="md-nav__item">
-      <a href="../Events/" class="md-nav__link">
+      <a href="../Tools/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Event system
+    Tools
     
   </span>
   
 
       </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Agent processing flow
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    Agent processing flow
-    
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#special-tool-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      Special tool results:
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#handoff" class="md-nav__link">
-    <span class="md-ellipsis">
-      Handoff
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#case-1-normal-sub-agent-call-with-pauseforchildresult" class="md-nav__link">
-    <span class="md-ellipsis">
-      Case 1: Normal Sub-Agent Call with PauseForChildResult
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#case-2-pause-for-human-input" class="md-nav__link">
-    <span class="md-ellipsis">
-      Case 2: Pause for Human Input
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#case-3-handoff-to-another-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      Case 3: Handoff to Another Agent
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ray-actor-logic" class="md-nav__link">
-    <span class="md-ellipsis">
-      Ray Actor logic
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Ray Actor logic">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pause-and-resume" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pause and Resume
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -450,11 +273,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../Models/" class="md-nav__link">
+      <a href="../REST_API/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Models
+    REST API
     
   </span>
   
@@ -492,11 +315,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../SETTINGS/" class="md-nav__link">
+      <a href="../Events/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    SETTINGS
+    Event system
     
   </span>
   
@@ -513,11 +336,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../Tools/" class="md-nav__link">
+      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Tools
+    Agentic Design Principles
     
   </span>
   
@@ -669,79 +492,83 @@ Agent A stops processing. Agent B assumes current context, the original caller,
 the original depth, and is expected to emit the <code>TurnEnd</code> event back to the original
 caller. It should also emit the </p>
 <h3 id="case-1-normal-sub-agent-call-with-pauseforchildresult">Case 1: Normal Sub-Agent Call with PauseForChildResult</h3>
-<pre><code class="language-mermaid">%% Case 1: Normal Sub-Agent Call with PauseForChildResult
-sequenceDiagram
-    participant caller
-    participant Agent A
-    participant Agent B
+<div class="codehilite"><pre><span></span><code><span class="c">%% Case 1: Normal Sub-Agent Call with PauseForChildResult</span>
+<span class="n">sequenceDiagram</span>
+<span class="w">    </span><span class="s">participant</span><span class="w"> </span><span class="s">caller</span>
+<span class="w">    </span><span class="n">participant</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span>
+<span class="w">    </span><span class="n">participant</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">B</span>
 
-    caller-&gt;&gt;Agent A: Event
-    Note over Agent A: Process Event
-    Agent A-&gt;&gt;Agent B: Prompt
-    Note over Agent A: Return PauseForChildResult
-    Note over Agent A: Enter Paused State
-    Agent B-&gt;&gt;Agent A: TurnEnd
-    Note over Agent A: Resume Processing
-    Agent A-&gt;&gt;caller: TurnEnd
+<span class="w">    </span><span class="n">caller</span><span class="o">-&gt;&gt;</span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Event</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Process</span><span class="w"> </span><span class="n">Event</span>
+<span class="w">    </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="o">-&gt;&gt;</span><span class="n">Agent</span><span class="w"> </span><span class="n">B</span><span class="p">:</span><span class="w"> </span><span class="n">Prompt</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Return</span><span class="w"> </span><span class="n">PauseForChildResult</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Enter</span><span class="w"> </span><span class="n">Paused</span><span class="w"> </span><span class="n">State</span>
+<span class="w">    </span><span class="n">Agent</span><span class="w"> </span><span class="n">B</span><span class="o">-&gt;&gt;</span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">TurnEnd</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Resume</span><span class="w"> </span><span class="n">Processing</span>
+<span class="w">    </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="o">-&gt;&gt;</span><span class="n">caller</span><span class="p">:</span><span class="w"> </span><span class="n">TurnEnd</span>
+</code></pre></div>
 
-</code></pre>
 <h3 id="case-2-pause-for-human-input">Case 2: Pause for Human Input</h3>
-<pre><code class="language-mermaid">%% Case 2: Pause for Human Input
-sequenceDiagram
-    participant human
-    participant caller
-    participant Agent A
+<div class="codehilite"><pre><span></span><code><span class="o">%%</span><span class="w"> </span><span class="n">Case</span><span class="w"> </span><span class="mi">2</span><span class="p">:</span><span class="w"> </span><span class="n">Pause</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Human</span><span class="w"> </span><span class="n">Input</span>
+<span class="n">sequenceDiagram</span>
+<span class="w">    </span><span class="n">participant</span><span class="w"> </span><span class="n">human</span>
+<span class="w">    </span><span class="n">participant</span><span class="w"> </span><span class="n">caller</span>
+<span class="w">    </span><span class="n">participant</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span>
 
-    caller-&gt;&gt;Agent A: Event
-    Note over Agent A: Process Event
-    Note over Agent A: Tool returns PauseForInputResult
-    Agent A-&gt;&gt;caller: WaitForInput
-    caller-&gt;&gt;human: Request Input
-    human-&gt;&gt;caller: Provide Input
-    caller-&gt;&gt;Agent A: ResumeWithInput
-    Note over Agent A: Re-call tool with input
-    Note over Agent A: Continue Processing
-    Agent A-&gt;&gt;caller: TurnEnd
-</code></pre>
+<span class="w">    </span><span class="n">caller</span><span class="o">-&gt;&gt;</span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Event</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Process</span><span class="w"> </span><span class="n">Event</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Tool</span><span class="w"> </span><span class="n">returns</span><span class="w"> </span><span class="n">PauseForInputResult</span>
+<span class="w">    </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="o">-&gt;&gt;</span><span class="n">caller</span><span class="p">:</span><span class="w"> </span><span class="n">WaitForInput</span>
+<span class="w">    </span><span class="n">caller</span><span class="o">-&gt;&gt;</span><span class="n">human</span><span class="p">:</span><span class="w"> </span><span class="n">Request</span><span class="w"> </span><span class="n">Input</span>
+<span class="w">    </span><span class="n">human</span><span class="o">-&gt;&gt;</span><span class="n">caller</span><span class="p">:</span><span class="w"> </span><span class="n">Provide</span><span class="w"> </span><span class="n">Input</span>
+<span class="w">    </span><span class="n">caller</span><span class="o">-&gt;&gt;</span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">ResumeWithInput</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Re</span><span class="o">-</span><span class="n">call</span><span class="w"> </span><span class="k">tool</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">input</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Continue</span><span class="w"> </span><span class="n">Processing</span>
+<span class="w">    </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="o">-&gt;&gt;</span><span class="n">caller</span><span class="p">:</span><span class="w"> </span><span class="n">TurnEnd</span>
+</code></pre></div>
+
 <h3 id="case-3-handoff-to-another-agent">Case 3: Handoff to Another Agent</h3>
-<pre><code class="language-mermaid">%% Case 3: Handoff to Another Agent
-sequenceDiagram
-    participant caller
-    participant Agent A
-    participant Agent B
+<div class="codehilite"><pre><span></span><code><span class="c">%% Case 3: Handoff to Another Agent</span>
+<span class="n">sequenceDiagram</span>
+<span class="w">    </span><span class="s">participant</span><span class="w"> </span><span class="s">caller</span>
+<span class="w">    </span><span class="n">participant</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span>
+<span class="w">    </span><span class="n">participant</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">B</span>
 
-    caller-&gt;&gt;Agent A: Event
-    Note over Agent A: Process Event
-    Agent A-&gt;&gt;Agent B: Prompt
-    Note over Agent A: Return FinishAgentResult
-    Note over Agent A: Stop Processing
-    Note over Agent B: Assume Context &amp; Depth
-    Agent B-&gt;&gt;caller: TurnEnd
-</code></pre>
+<span class="w">    </span><span class="n">caller</span><span class="o">-&gt;&gt;</span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Event</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Process</span><span class="w"> </span><span class="n">Event</span>
+<span class="w">    </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="o">-&gt;&gt;</span><span class="n">Agent</span><span class="w"> </span><span class="n">B</span><span class="p">:</span><span class="w"> </span><span class="n">Prompt</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Return</span><span class="w"> </span><span class="n">FinishAgentResult</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">A</span><span class="p">:</span><span class="w"> </span><span class="n">Stop</span><span class="w"> </span><span class="n">Processing</span>
+<span class="w">    </span><span class="n">Note</span><span class="w"> </span><span class="n">over</span><span class="w"> </span><span class="n">Agent</span><span class="w"> </span><span class="n">B</span><span class="p">:</span><span class="w"> </span><span class="n">Assume</span><span class="w"> </span><span class="n">Context</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">Depth</span>
+<span class="w">    </span><span class="n">Agent</span><span class="w"> </span><span class="n">B</span><span class="o">-&gt;&gt;</span><span class="n">caller</span><span class="p">:</span><span class="w"> </span><span class="n">TurnEnd</span>
+</code></pre></div>
+
 <h2 id="ray-actor-logic">Ray Actor logic</h2>
 <p>Each running agent is execute by a <em>remote</em> Ray object. This means that we call its
 methods via Ray and they return Promises to get their results. We have to call <code>ray.get</code>
 to retrieve or wait for the actual result.</p>
 <p>Our basic agent execution loop looks like:</p>
-<pre><code class="language-python">user input -&gt;
-    remote_gen = agent.receiveMessage.remote(Prompt())
-        (agent starts the LLM &quot;turn&quot; loop, calling LLM completions and yielding events)
-    for next_ref in remote_gen:
-        event = ray.get(next_ref)  # Prompt handling yields events until turn is over
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">user</span> <span class="nb">input</span> <span class="o">-&gt;</span>
+    <span class="n">remote_gen</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">.</span><span class="n">remote</span><span class="p">(</span><span class="n">Prompt</span><span class="p">())</span>
+        <span class="p">(</span><span class="n">agent</span> <span class="n">starts</span> <span class="n">the</span> <span class="n">LLM</span> <span class="s2">&quot;turn&quot;</span> <span class="n">loop</span><span class="p">,</span> <span class="n">calling</span> <span class="n">LLM</span> <span class="n">completions</span> <span class="ow">and</span> <span class="n">yielding</span> <span class="n">events</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">next_ref</span> <span class="ow">in</span> <span class="n">remote_gen</span><span class="p">:</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">ray</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">next_ref</span><span class="p">)</span>  <span class="c1"># Prompt handling yields events until turn is over</span>
+</code></pre></div>
+
 <p>If our agent needs to call another agent, it creates the Agent and calls it via
 Ray remote:</p>
-<pre><code class="language-python">user input -&gt;
-    remote_gen = 
-        (agent starts the LLM &quot;turn&quot; loop, calling LLM completions and yielding events)
-    for next_ref in agent.receiveMessage.remote(Prompt()):
-            # Agent does a function call to a child. 
-            agent -&gt; starts sub_agent
-                agent -&gt; iterate over Prompt
-                    sub_agent yield Event
-                agent yield Event
-        event = ray.get(next_ref)  # Prompt handling yields events until turn is over
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="n">user</span> <span class="nb">input</span> <span class="o">-&gt;</span>
+    <span class="n">remote_gen</span> <span class="o">=</span> 
+        <span class="p">(</span><span class="n">agent</span> <span class="n">starts</span> <span class="n">the</span> <span class="n">LLM</span> <span class="s2">&quot;turn&quot;</span> <span class="n">loop</span><span class="p">,</span> <span class="n">calling</span> <span class="n">LLM</span> <span class="n">completions</span> <span class="ow">and</span> <span class="n">yielding</span> <span class="n">events</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">next_ref</span> <span class="ow">in</span> <span class="n">agent</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">.</span><span class="n">remote</span><span class="p">(</span><span class="n">Prompt</span><span class="p">()):</span>
+            <span class="c1"># Agent does a function call to a child. </span>
+            <span class="n">agent</span> <span class="o">-&gt;</span> <span class="n">starts</span> <span class="n">sub_agent</span>
+                <span class="n">agent</span> <span class="o">-&gt;</span> <span class="n">iterate</span> <span class="n">over</span> <span class="n">Prompt</span>
+                    <span class="n">sub_agent</span> <span class="k">yield</span> <span class="n">Event</span>
+                <span class="n">agent</span> <span class="k">yield</span> <span class="n">Event</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">ray</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">next_ref</span><span class="p">)</span>  <span class="c1"># Prompt handling yields events until turn is over</span>
+</code></pre></div>
+
 <p>If the child call is a <code>handoff</code> then the parent agent simply gives the child agent
 the same <code>depth</code>, and once the child is done then the parent agent finishes without
 generating the <code>TurnEnd</code> event, since the child already did.</p>

@@ -11,10 +11,10 @@
         <link rel="canonical" href="https://supercog.ai/agentic/PROJECT_STRUCTURE/">
       
       
-        <link rel="prev" href="../Models/">
+        <link rel="prev" href="../REST_API/">
       
       
-        <link rel="next" href="../SETTINGS/">
+        <link rel="next" href="../Events/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -214,48 +214,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Design Principles
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../AGENT_MEMORY/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Memory
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../Building_Agents/" class="md-nav__link">
         
   
@@ -277,11 +235,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../CLI/" class="md-nav__link">
+      <a href="../Debugging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agentic CLI
+    Debugging agents
     
   </span>
   
@@ -298,11 +256,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../Events/" class="md-nav__link">
+      <a href="../Tools/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Event system
+    Tools
     
   </span>
   
@@ -319,32 +277,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../FLOWS/" class="md-nav__link">
+      <a href="../REST_API/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Agent processing flow
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../Models/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Models
+    REST API
     
   </span>
   
@@ -392,11 +329,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../SETTINGS/" class="md-nav__link">
+      <a href="../Events/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    SETTINGS
+    Event system
     
   </span>
   
@@ -413,11 +350,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../Tools/" class="md-nav__link">
+      <a href="../AGENTIC_MANIFESTO/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Tools
+    Agentic Design Principles
     
   </span>
   
@@ -463,25 +400,25 @@
 
 <h1 id="project-structure">Project structure</h1>
 <p>An Agentic project has the following structure:</p>
-<pre><code>&lt;root&gt;/
-    pyproject.toml
-    agents/
-        agent1.py
-        agent1.prompts.yaml
-        agent2.py
-    tools/
-        weather_tool.py
-        news_tool.py
-        tests/
-            test_weather_tool.py
-            test_news_tool.py
-    indexes/
-        personal.rag.sqlite
-        dev.rag.sqlite
-    evals/
-        agent1.eval
-        agent2.eval
-</code></pre>
+<div class="codehilite"><pre><span></span><code><span class="o">&lt;</span><span class="n">root</span><span class="o">&gt;/</span>
+<span class="w">    </span><span class="n">pyproject</span><span class="o">.</span><span class="n">toml</span>
+<span class="w">    </span><span class="n">agents</span><span class="o">/</span>
+<span class="w">        </span><span class="n">agent1</span><span class="o">.</span><span class="n">py</span>
+<span class="w">        </span><span class="n">agent1</span><span class="o">.</span><span class="n">prompts</span><span class="o">.</span><span class="n">yaml</span>
+<span class="w">        </span><span class="n">agent2</span><span class="o">.</span><span class="n">py</span>
+<span class="w">    </span><span class="n">tools</span><span class="o">/</span>
+<span class="w">        </span><span class="n">weather_tool</span><span class="o">.</span><span class="n">py</span>
+<span class="w">        </span><span class="n">news_tool</span><span class="o">.</span><span class="n">py</span>
+<span class="w">        </span><span class="n">tests</span><span class="o">/</span>
+<span class="w">            </span><span class="n">test_weather_tool</span><span class="o">.</span><span class="n">py</span>
+<span class="w">            </span><span class="n">test_news_tool</span><span class="o">.</span><span class="n">py</span>
+<span class="w">    </span><span class="n">indexes</span><span class="o">/</span>
+<span class="w">        </span><span class="n">personal</span><span class="o">.</span><span class="n">rag</span><span class="o">.</span><span class="n">sqlite</span>
+<span class="w">        </span><span class="n">dev</span><span class="o">.</span><span class="n">rag</span><span class="o">.</span><span class="n">sqlite</span>
+<span class="w">    </span><span class="n">evals</span><span class="o">/</span>
+<span class="w">        </span><span class="n">agent1</span><span class="o">.</span><span class="n">eval</span>
+<span class="w">        </span><span class="n">agent2</span><span class="o">.</span><span class="n">eval</span>
+</code></pre></div>
 
 
 

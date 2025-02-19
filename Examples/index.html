@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/Models/">
+        <link rel="canonical" href="https://supercog.ai/agentic/Examples/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>Models - Agentic Docs</title>
+        <title>Examples - Agentic Docs</title>
       
     
     
@@ -59,11 +59,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#ollama" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -96,7 +91,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Models
+              Examples
             
           </span>
         </div>
@@ -368,23 +363,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#ollama" class="md-nav__link">
-    <span class="md-ellipsis">
-      Ollama
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -399,38 +377,9 @@
 
 
 
-  <h1>Models</h1>
+  <h1>Examples</h1>
 
-<p>Agentic uses <a href="https://www.litellm.ai/">Litellm</a> as the "LLM router" which allows us
-to support most popular LLMs via simple configuration.</p>
-<p>Models providers supported include:</p>
-<ul>
-<li>OpenAI</li>
-<li>Anthropic</li>
-<li>Google</li>
-<li>Llama3.x</li>
-<li>Deepseek</li>
-</ul>
-<p>and many more.</p>
-<p>When you specify the <code>model</code> parameter to your Agent, supply a qualified model
-name like:</p>
-<div class="codehilite"><pre><span></span><code>openai/gpt-4o
-</code></pre></div>
 
-<p>or </p>
-<div class="codehilite"><pre><span></span><code>anthropic/claude-3-5-sonnet-20240620
-</code></pre></div>
-
-<p>Try using <code>agentic models</code> at the command line to get a list of popular models.</p>
-<h2 id="ollama">Ollama</h2>
-<p>Agentic has built-in support for using locally installed models via <a href="https://ollama.com/">Ollama</a>.</p>
-<p>To use, first install ollama. Then serve your model:</p>
-<div class="codehilite"><pre><span></span><code>ollama run llama3.2:latest
-</code></pre></div>
-
-<p>And specify your agent's model:</p>
-<div class="codehilite"><pre><span></span><code>model=ollama/llama3.2:latest
-</code></pre></div>
 
 
 

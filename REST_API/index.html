@@ -8,9 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/Models/">
+        <link rel="canonical" href="https://supercog.ai/agentic/REST_API/">
       
       
+        <link rel="prev" href="../Tools/">
+      
+      
+        <link rel="next" href="../PROJECT_STRUCTURE/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Models - Agentic Docs</title>
+        <title>REST API - Agentic Docs</title>
       
     
     
@@ -59,11 +63,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#ollama" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -96,7 +95,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Models
+              REST API
             
           </span>
         </div>
@@ -270,10 +269,17 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../REST_API/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -283,6 +289,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -368,23 +375,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#ollama" class="md-nav__link">
-    <span class="md-ellipsis">
-      Ollama
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -399,37 +389,38 @@
 
 
 
-  <h1>Models</h1>
+  <h1>REST API</h1>
 
-<p>Agentic uses <a href="https://www.litellm.ai/">Litellm</a> as the "LLM router" which allows us
-to support most popular LLMs via simple configuration.</p>
-<p>Models providers supported include:</p>
-<ul>
-<li>OpenAI</li>
-<li>Anthropic</li>
-<li>Google</li>
-<li>Llama3.x</li>
-<li>Deepseek</li>
-</ul>
-<p>and many more.</p>
-<p>When you specify the <code>model</code> parameter to your Agent, supply a qualified model
-name like:</p>
-<div class="codehilite"><pre><span></span><code>openai/gpt-4o
+<p>Agentic includes built-in support for your agent to expose a <strong>REST API</strong> using <em>FastAPI</em>. This API
+is an alternative way to use your agent besides the command line.</p>
+<p>To start the API server, using the <code>serve</code> method on <code>AgentRunner</code>:</p>
+<div class="codehilite"><pre><span></span><code>AgentRunner(agent).serve()
 </code></pre></div>
 
-<p>or </p>
-<div class="codehilite"><pre><span></span><code>anthropic/claude-3-5-sonnet-20240620
+<p>Note that you will need to add some idle loop to prevent your program from existing. For convenience
+you can start the API server with the CLI:</p>
+<div class="codehilite"><pre><span></span><code>agentic serve examples/basic_agent.py
 </code></pre></div>
 
-<p>Try using <code>agentic models</code> at the command line to get a list of popular models.</p>
-<h2 id="ollama">Ollama</h2>
-<p>Agentic has built-in support for using locally installed models via <a href="https://ollama.com/">Ollama</a>.</p>
-<p>To use, first install ollama. Then serve your model:</p>
-<div class="codehilite"><pre><span></span><code>ollama run llama3.2:latest
+<p>that you can use to interact with it
+programmatically. The AgentRunner runs a <em>FastAPI</em> service that exposes an interface to your agent.</p>
+<p>Your agent will expose endpoints at:</p>
+<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/&lt;name of agent&gt;
 </code></pre></div>
 
-<p>And specify your agent's model:</p>
-<div class="codehilite"><pre><span></span><code>model=ollama/llama3.2:latest
+<p>like:</p>
+<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/basic_agent
+</code></pre></div>
+
+<p>visit the embedded <code>/docs</code> page for quick testing:</p>
+<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/basic_agent/docs
+</code></pre></div>
+
+<p>Some of the main endpoints include:</p>
+<div class="codehilite"><pre><span></span><code>GET /describe           Get the agent spec
+POST /process           Start a request
+GET /getevents          SSE stream events from a request
+GET /stream_request     Process and stream events in one call
 </code></pre></div>
 
 

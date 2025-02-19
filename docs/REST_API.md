@@ -15,6 +15,12 @@ you can start the API server with the CLI:
 that you can use to interact with it
 programmatically. The AgentRunner runs a _FastAPI_ service that exposes an interface to your agent.
 
+There is a discovery endpoint which lists all agent paths:
+
+    http://0.0.0.0:8086/_discovery
+
+This will list `/basic_agent` as an available path.
+
 Your agent will expose endpoints at:
 
     http://0.0.0.0:8086/<name of agent>

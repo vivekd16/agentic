@@ -710,6 +710,13 @@ class DynamicFastAPIHandler:
                     yield (str(event))
             return EventSourceResponse(render_events())
 
+    @app.post('/stream_request')
+    async def stream_request(self, prompt: ProcessRequest) -> EventSourceResponse:
+        def render_events():
+            for event in self.next_turn(prompt.prompt):
+                yield (str(event))
+        return EventSourceResponse(render_events())
+
     def next_turn(
         self,
         request: str,
@@ -833,7 +840,8 @@ class RayFacadeAgent:
         )
         ray.get(obj_ref)
 
-    def _create_fastapi_endpoint(self):
+    def _create_fastapi_endpoint(self, port: int = 8086):
+        serve.start(http_options={"host": "0.0.0.0", "port": port})
         deployment = serve.run(
             DynamicFastAPIHandler.bind(self._agent, self),
             route_prefix=f"/{self.safe_name}",
@@ -841,7 +849,7 @@ class RayFacadeAgent:
         return deployment
 
 
-    def start_api_server(self):
+    def start_api_server(self, port: int = 8086):
         self._create_fastapi_endpoint()
 
     def _ensure_tool_secrets(self):

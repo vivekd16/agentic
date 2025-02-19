@@ -27,7 +27,7 @@ Agentic supports providing tool functions as:
 
 Here are a few examples:
 
-```python
+``` python
 
 def simple_function(arg1: int, arg2: int) ->:
     """ Multiplies two numbers by a mystery factor """
@@ -69,6 +69,8 @@ share it between function calls.
 Function names should very clearly explain the purpose of the function.
 - You can describe parameter usage (possible values, etc...) in the docstring, but often
 its enough to just have good parameter names.
+- Try to avoid super generic function names like `read_file`, and consider prefixing 
+functions with a namespace, like `github_read_file`.
 
 Although you can always use "plain functions" for tools, Agentic has some special support
 for particular tool patterns.

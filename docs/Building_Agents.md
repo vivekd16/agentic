@@ -2,15 +2,14 @@
 
 ### Terminology
 
-An "agent" is an LLM-powered program that is defined in code. You can run an agent one or
-more times at once.
+An "agent" is an LLM-powered program that is defined in code. 
 
-The persistent history of your interactions with an agent consitute a _session_. The LLM
-context is preserved as long as the session continues. Once a new session is started then
+The persistent history of your interactions with an agent consitute a _run_. The LLM
+context is preserved as long as the run session continues. Once a new Run is started then
 the _context_ goes back to the initial state.
 
 Each interaction of: user request -> agent thinking -> agent response is called a _turn_.
-A single session can include many turns. 
+A single run can include many turns. 
 
 As your agent operates, it may take multiple _steps_ in order to complete a turn. Generally
 each step will result in either a _completion_ - the generation of some text, or a _function call_,
@@ -43,8 +42,7 @@ that can be displayed to the end user to help them use the agent.
 Optional parameters to your agent include:
 
     max_tokens - The maximum number of tokens to generate on each completion
-    debug - The debugging level you want the agent to observe
-    memories - A list of facts to inject into the Agent's context for every session
+    memories - A list of facts to inject into the Agent's context for every Run
 
 See [models](./Models.md) for information on using different models. 
 
@@ -86,8 +84,8 @@ if __name__ == 'main':
     AgentRunner(agent).run_repl()
 ```
 
-By default it maintains a persistent session with your agent, so that each turn is appending
-to the active session. 
+By default it maintains a persistent Run (session) with your agent, so that each turn is appending
+to the active run. 
 
 ```sh
 % python examples/basic_agent.py 
@@ -110,6 +108,7 @@ The runner repl includes a set of "dot" system commands:
     .history - show the history of the current session
     .debug [<level>] - enable debug. Defaults to 'tools', or one of 'llm', 'tools', 'all', 'off'
     .settings - show the current config settings
+    .model - switch the active LLM model
     .help - Show this help
     .quit - Quit the REPL
 ```

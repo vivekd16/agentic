@@ -102,8 +102,8 @@ class RayAgentRunner:
         self.debug = DebugLevel(level)
         self.facade.set_debug_level(self.debug)
 
-    def start_api_server(self):
-        self.facade.start_api_server()
+    def serve(self, port: int = 8086):
+        self.facade.start_api_server(port)
 
     def repl_loop(self):
         hist = os.path.expanduser("~/.agentic_history")

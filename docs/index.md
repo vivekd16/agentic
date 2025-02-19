@@ -1,15 +1,23 @@
 Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
 and can use tools to do work on your behalf.
 
-Agentic is in the tradition of _opinionated frameworks_. We've tried to encode lots of sensible
+In the tradition of _opinionated frameworks_, we've tried to encode lots of sensible
 defaults and best practices into the design, testing and deployment of agents. 
+
+Agentic is composed of multiple parts:
+
+- A code framework for implementing AI agents
+- A runtime for deploying your agents
+- A reference implementation of the [Agent Protocol](https://github.com/supercog-ai/agent-protocol) which defines
+interoperability between agents using different stacks
+
 
 Some key features:
 
 - Approachable and simple to use, but flexible enough to support the most complex agents
 - Supports teams of cooperating agents
 - Supports Human-in-the-loop
-- Easy definition and use of tools
+- Thin, readable abstractions.
 - Built in library of production-tested tools
 
 But there is much more. The rest of this guide will go over getting started with the framework. You can find some more background
@@ -19,7 +27,7 @@ info in these docs:
 
 ## Install
 
-`pip install agents-kit`
+`pip install agentic-framework`
 
 Or using a virtual environmment:
 
@@ -29,7 +37,7 @@ cd myagents
 python -m venv .venv
 source .venv/bin/activate
 
-pip install agents-kit
+pip install agentic-framework
 ```
 
 Now setup your folder to hold your agents:
@@ -43,7 +51,7 @@ or rename this folder however you like.
 
 ## Intro Tutorial
 
-Let's build our first agent. We'll start with the "Hello World" of agents, and agent which can
+Let's build our first agent. We'll start with the "Hello World" of agents, an agent which can
 give us a weather report.
 
 Create a new file `./agents/weather.py`, and add this code:
@@ -66,16 +74,16 @@ if __name__ == "__main__":
 
 Now let's run our agent. Note that you will need to configure your OpenAI API key. If you
 want to use a different LLM, including running a model locally, see the intstructions
-at [models](./docs/Models.md).
+at [models](./Models.md).
 
 ```sh
-    agentic set-secret OPENAI_API_KEY <your key>
+    agentic set-secret OPENAI_API_KEY=<your key>
 ```
 
 ```sh
 (.venv) % python agents/weather.py 
 I can give you some weather reports! Just tell me which city.
-press <enter> to quit
+press <ctrl-d> to quit
 [Weather Agent]> what is the weather like in NYC?
 The current weather in New York City is as follows:
 
@@ -110,7 +118,7 @@ Agentic agents by default use the LLM **ReAct** pattern. This means:
 
 - The LLM controls the execution flow of your agent
 - You specify the tasks and flow of your agent via the LLM system prompt
-- The agents gets one or more **tools** that it can use to accomplish its task
+- The agent gets one or more **tools** that it can use to accomplish its task
 - The agent runs in this loop until it decides that it can't go further:
     - plan next step
     - generate text completion or tool call
@@ -337,11 +345,11 @@ But we can write our own loop (or API or whatever) to run our agent:
 ```python
 
 runner.start(command)
-for event in self.next():
+for event in self.next_turn(request: str):
     print("Agent event: ", event)
 ```
 
-The `next` function will keep emitting events until the current turn of the agent is
+The `next_turn` function will keep emitting events until the current turn of the agent is
 complete. Because you are getting fine-grained events as the agent runs, you can
 choose to do other things in the middle, including things like modifying the agent
 by giving it more tools. Even though this interface looks like the agent is
@@ -363,25 +371,12 @@ framework (there might be security controls or what not).
 
 **RunContext**
 
-PydanticAI uses this object, and I have the same (same name!) in Supercog. Real tools
-will often want to retrieve bits of context like the current agent name, or running
-user, etc... An example of where we use this in SC is an "email_user" function which looks
-up the current user email in the RunContext.
-
-**Run state**
-
-Langgraph has a `state` notion, a dict that is passed between nodes. I have a feeling
-that this is poor encapsulation and probably leads to poor code. Letta has "memory blocks"
-which can be shared between agents, and this feels like probably a better design choice where
-you very explicitly decide to share state rather than just using tool inputs and outputs.
-
-A good example of this is if agent B needs to return a large chunk of info to agent A
-(like the contents of a file), then it could put the file to a memory block and 
-return a reference to that block in its call response to agent A. 
-
+The state for your agent is kept and transmitted between turns via the `RunContext`
+object. One is created each time a turn starts.
+ 
 ### Examples
 
-Look in the [examples](./examples/) folder.
+Read [Examples](./Examples.md) or look at the github repo [examples](https://github.com/supercog-ai/agentic/tree/main/examples) folder.
 
 ## Try the web UI (using streamlit)
 

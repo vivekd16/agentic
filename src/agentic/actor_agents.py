@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
 from pathlib import Path
+from queue import Queue
+import threading
+
 import inspect
 import json
 import os
@@ -761,9 +764,6 @@ class DynamicFastAPIHandler:
             operations=["chat"],
         )
     
-from queue import Queue
-import threading
-
 class RayFacadeAgent:
     """The facade agent is the object directly instantiated in code. It holds a reference to the remote
     Ray agent object and proxies calls to it. The intention is that we should be able to build

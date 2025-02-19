@@ -9,7 +9,7 @@ agent = Agent(
     You have some functions to work with. Print verbose output about your steps and actions.
     Print a message before and after each function call.
 """,
-    model="openai/gpt-4o", #"gemini/gemini-2.0-flash",
+    model="openai/gpt-4o",
     tools=[UnitTestingTool()]
 )
 

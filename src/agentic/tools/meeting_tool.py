@@ -36,14 +36,18 @@ class Meeting(Base):
     name="MeetingTool",
     description="A tool for managing video meetings, recording transcripts, and generating summaries",
     dependencies=[
-        Dependency("langchain-openai", type="pip", version="0.3.6"),
-        Dependency("langchain-chromadb", type="pip", version="0.2.2")
+        Dependency("openai", type="pip", version="1.63.2"),
+        Dependency("langchain", type="pip", version="0.3.19"),
+        Dependency("langchain-community", type="pip", version="0.3.17"),
+        Dependency("chromadb", type="pip", version="0.6.3")
     ],
     config_requirements=[
         ConfigRequirement("MEETINGBAAS_API_KEY", description="MEETINGBAAS API key", required=True),
         ConfigRequirement("OPENAI_API_KEY", description="OpenAI API key", required=True),
     ],
 )
+
+
 class MEETING_BAAS_Tool(BaseAgenticTool):
     openai_api_key: str = ""
     meeting_baas_api_key: str = ""
@@ -52,6 +56,10 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         self.db_path = "meetings.db"
         # Do not initialize engine here, will be done when needed.
         self.Session = None
+        self._engine = None
+        self._initialized = False
+        self._vector_store = None
+        self._rag_initialized = False
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -65,19 +73,40 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
 
     def _initialize_rag(self):
         """Initialize the RAG components"""
-        self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
-        self.vector_store = Chroma(
-            collection_name="meeting_summaries",
-            embedding_function=OpenAIEmbeddings(openai_api_key=self.openai_api_key)
-        )
+        if not self._rag_initialized:
+            self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
+            self._vector_store = Chroma(
+                collection_name="meeting_summaries",
+                embedding_function=OpenAIEmbeddings(openai_api_key=self.openai_api_key)
+            )
+            self._rag_initialized = True
 
     def _get_session(self):
         """Lazy initialization of the database session."""
-        if self.Session is None:
-            engine = create_engine(f'sqlite:///{self.db_path}')
-            Base.metadata.create_all(engine)
-            self.Session = sessionmaker(bind=engine)
+        if not self._initialized:
+            self._engine = create_engine(f'sqlite:///{self.db_path}')
+            Base.metadata.create_all(self._engine)
+            self.Session = sessionmaker(bind=self._engine)
+            self._initialized = True
         return self.Session()
+
+    def __getstate__(self):
+        """Custom serialization for Ray."""
+        state = self.__dict__.copy()
+        # Remove unpicklable entries
+        state['Session'] = None
+        state['_engine'] = None
+        state['_initialized'] = False
+        state['_vector_store'] = None
+        state['_rag_initialized'] = False
+        # Don't pickle API keys
+        state['openai_api_key'] = ""
+        state['meeting_baas_api_key'] = ""
+        return state
+
+    def __setstate__(self, state):
+        """Custom deserialization for Ray."""
+        self.__dict__.update(state)
 
     def join_meeting(
         self, 
@@ -89,13 +118,22 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         try:
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.meeting_baas_api_key}"
+                "x-meeting-baas-api-key": self.meeting_baas_api_key
             }
             
             data = {
                 "meeting_url": meeting_url,
                 "bot_name": bot_name,
-                "recording_mode": "audio_video"
+                "bot_image": None,
+                "entry_message": "This is the Supercog meeting bot, sent by supercog support", 
+                "recording_mode": "audio_only",
+                "reserved": False,
+                "speech_to_text": {
+                    "provider": "Default"
+                },
+                "automatic_leave": {
+                    "waiting_room_timeout": 600
+                },
             }
             
             response = requests.post(
@@ -145,7 +183,9 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 return {"status": "error", "message": "Meeting not found"}
                 
             if not meeting.transcript:
-                headers = {"Authorization": f"Bearer {self.meeting_baas_api_key}"}
+                headers = {
+                    "x-meeting-baas-api-key": self.meeting_baas_api_key
+                }
                 response = requests.get(
                     f"https://api.meetingbaas.com/bots/meeting_data",
                     headers=headers,
@@ -173,6 +213,12 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "message": f"Error getting transcript: {str(e)}"
             }
 
+    def _ensure_openai_initialized(self):
+        """Ensure OpenAI client is properly initialized"""
+        if not self.openai_api_key:
+            self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
+            openai.api_key = self.openai_api_key
+
     def get_summary(self, meeting_id: str) -> dict:
         """Generate a detailed summary of the meeting"""
         try:
@@ -199,7 +245,8 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             Format the summary in clear sections with headers.
             """
             
-            response = openai.ChatCompletion.acreate(
+            self._ensure_openai_initialized()
+            response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=[{"role": "system", "content": summary_prompt},
                           {"role": "user", "content": formatted_transcript}],
@@ -220,7 +267,9 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             )
             chunks = text_splitter.split_text(detailed_summary)
             
-            self.vector_store.add_texts(
+            # Initialize RAG if needed
+            self._initialize_rag()
+            self._vector_store.add_texts(
                 texts=chunks,
                 metadatas=[{"meeting_id": meeting_id, "type": "summary"}] * len(chunks)
             )
@@ -273,7 +322,9 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             if not meeting:
                 return {"status": "error", "message": "Meeting not found"}
                 
-            headers = {"Authorization": f"Bearer {self.api_key}"}
+            headers = {
+                "x-meeting-baas-api-key": self.meeting_baas_api_key
+            }
             response = requests.get(
                 f"https://api.meetingbaas.com/bots/{meeting_id}/status",
                 headers=headers
@@ -309,7 +360,8 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 
             summary = meeting_summary_result["summary"]
             
-            response = openai.ChatCompletion.acreate(
+            self._ensure_openai_initialized()
+            response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},

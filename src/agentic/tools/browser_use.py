@@ -10,6 +10,7 @@ from browser_use import Agent as BrowserAgent
 from browser_use import Browser, BrowserConfig
 from langchain_openai import ChatOpenAI
 from langchain.callbacks import StdOutCallbackHandler
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 @tool_registry.register(
     name="Browser-use Tool",
@@ -37,6 +38,8 @@ class BrowserUseTool:
     # For Windows, typically: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
     # For Linux, typically: '/usr/bin/google-chrome'
 
+    # FIXME: Check the model and make sure we have the API key (implement "required_secrets").
+    
     def __init__(self, chrome_instance_path: Optional[str]=None, model: str=GPT_4O_MINI):
         self.chrome_instance_path = chrome_instance_path
         self.model = model
@@ -55,6 +58,7 @@ class BrowserUseTool:
             The history of browsing actions taken is returned.
         """
         browser = None
+        print(f"BrowserTool, Using model: {self.model}")
         if self.chrome_instance_path:
             browser = browser = Browser(
                 config=BrowserConfig(
@@ -62,9 +66,14 @@ class BrowserUseTool:
                 )
             )
         token_counter = TokenCounterStdOutCallback()
-        agent = BrowserAgent(
+        if self.model.startswith("gemini"):
+            llm = ChatGoogleGenerativeAI(model=self.model.split("/")[-1], callbacks=[token_counter])
+        else:
+            llm = ChatOpenAI(model=self.model, callbacks=[token_counter])
+
+        agent = BrowserAgent(   
             task=instructions,
-            llm=ChatOpenAI(model=self.model, callbacks=[token_counter]),
+            llm=llm,
             browser=browser,
         )
         result = await agent.run()

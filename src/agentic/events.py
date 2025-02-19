@@ -1,6 +1,7 @@
 # Shutup stupid pydantic warnings
 import warnings
 import typing
+import uuid
 
 warnings.filterwarnings("ignore", message="Valid config keys have changed in V2:*")
 
@@ -50,7 +51,8 @@ class Prompt(Event):
     # back to the top. Note that in Thespian, we don't have this address until the first receiveMessage
     # is called, so we set it then.
     debug: DebugLevel
-
+    request_id: str = uuid.uuid4().hex
+    
     def __init__(
         self,
         agent: str,
@@ -58,6 +60,7 @@ class Prompt(Event):
         debug: DebugLevel,
         depth: int = 0,
         ignore_result: bool = False,
+        request_id: str = None,
     ):
         data = {
             "agent": agent,
@@ -67,6 +70,8 @@ class Prompt(Event):
             "debug": debug,
             "ignore_result": ignore_result,
         }
+        if request_id:
+            data["request_id"] = request_id
         # Use Pydantic's model initialization directly
         BaseModel.__init__(self, **data)
 

@@ -257,9 +257,11 @@ def serve(filename: str = typer.Argument(default="", show_default=False)):
     agent_instances = find_agent_instances(filename)
     for agent in agent_instances:
         runner = AgentRunner(agent)
-        runner.serve()
+        path = runner.serve()
 
     # Busy loop until ctrl-c or ctrl-d
+    os.system(f"open http://0.0.0.0:8086{path}/docs")
+
     while True:
         time.sleep(1)
 

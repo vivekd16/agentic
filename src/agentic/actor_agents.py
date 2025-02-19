@@ -846,11 +846,11 @@ class RayFacadeAgent:
             DynamicFastAPIHandler.bind(self._agent, self),
             route_prefix=f"/{self.safe_name}",
         )
-        return deployment
+        return deployment, f"/{self.safe_name}"
 
 
-    def start_api_server(self, port: int = 8086):
-        self._create_fastapi_endpoint()
+    def start_api_server(self, port: int = 8086) -> str:
+        return self._create_fastapi_endpoint()[1]
 
     def _ensure_tool_secrets(self):
         from agentic.agentic_secrets import agentic_secrets

@@ -281,41 +281,47 @@ def search_collection(
     alpha: float = 0.5
 ) -> List[Dict]:
     """Search documents with hybrid search support"""
-    # Generate query vector using our embedding model
-    query_vector = list(embed_model.embed([query]))[0].tolist()
-    
-    search_params = {
-        "limit": limit,
-        "return_metadata": ["distance", "score"] if hybrid else ["distance"],
-        "return_properties": ["filename", "content", "source_url", "timestamp"]
-    }
-    
-    if filters and len(filters) == 1:
-        key, value = next(iter(filters.items()))
-        search_params["filters"] = Filter.by_property(key).equal(value)
-    
-    if hybrid:
-        result = collection.query.hybrid(
-            query=query,
-            vector=query_vector,  # Provide pre-computed vector
-            alpha=alpha,
-            fusion_type=HybridFusion.RELATIVE_SCORE,
-            **search_params
-        )
-    else:
-        result = collection.query.near_vector(
-            near_vector=query_vector,
-            **search_params
-        )
-    
-    return [
-        {
-            "filename": obj.properties.get("filename", "Unknown"),
-            "content": obj.properties.get("content", ""),
-            "source_url": obj.properties.get("source_url", ""),
-            "timestamp": obj.properties.get("timestamp", ""),
-            "distance": obj.metadata.distance if hasattr(obj.metadata, 'distance') else None,
-            "score": obj.metadata.score if hasattr(obj.metadata, 'score') else None
+    try:
+        # Generate query vector using our embedding model
+        query_vector = list(embed_model.embed([query]))[0].tolist()
+        
+        search_params = {
+            "limit": limit,
+            "return_metadata": ["distance", "score"] if hybrid else ["distance"],
+            "return_properties": ["filename", "content", "source_url", "timestamp"]
         }
-        for obj in result.objects
-    ] 
+        
+        if filters and len(filters) == 1:
+            key, value = next(iter(filters.items()))
+            try:
+                search_params["filters"] = Filter.by_property(key).equal(value)
+            except Exception as e:
+                return [{"error": f"Invalid filter: {str(e)}"}]
+        
+        if hybrid:
+            result = collection.query.hybrid(
+                query=query,
+                vector=query_vector,
+                alpha=alpha,
+                fusion_type=HybridFusion.RELATIVE_SCORE,
+                **search_params
+            )
+        else:
+            result = collection.query.near_vector(
+                near_vector=query_vector,
+                **search_params
+            )
+        
+        return [
+            {
+                "filename": obj.properties.get("filename", "Unknown"),
+                "content": obj.properties.get("content", ""),
+                "source_url": obj.properties.get("source_url", ""),
+                "timestamp": obj.properties.get("timestamp", ""),
+                "distance": obj.metadata.distance if hasattr(obj.metadata, 'distance') else None,
+                "score": obj.metadata.score if hasattr(obj.metadata, 'score') else None
+            }
+            for obj in result.objects
+        ]
+    except Exception as e:
+        return [{"error": f"Search failed: {str(e)}"}] 

@@ -764,6 +764,14 @@ class DynamicFastAPIHandler:
             operations=["chat"],
         )
     
+from starlette.requests import Request
+@serve.deployment
+class BaseServeDeployment:
+    def __call__(self, request: Request) -> list[str]:
+        return [f"/{agent.safe_name}" for agent in _AGENT_REGISTRY]
+
+base_serve_app = None
+
 class RayFacadeAgent:
     """The facade agent is the object directly instantiated in code. It holds a reference to the remote
     Ray agent object and proxies calls to it. The intention is that we should be able to build
@@ -848,11 +856,23 @@ class RayFacadeAgent:
         ray.get(obj_ref)
 
     def _create_fastapi_endpoint(self, port: int = 8086):
+        global base_serve_app
+
         serve.start(http_options={"host": "0.0.0.0", "port": port})
         deployment = serve.run(
             DynamicFastAPIHandler.bind(self._agent, self),
+            name=f"{self.safe_name}_api",
             route_prefix=f"/{self.safe_name}",
         )
+
+        if base_serve_app is None:
+            base_serve_app = BaseServeDeployment.bind()
+            serve.run(
+                base_serve_app, 
+                name=f"base_api",
+                route_prefix="/_discovery"
+            )
+
         return deployment, f"/{self.safe_name}"
 
 

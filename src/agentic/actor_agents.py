@@ -13,7 +13,7 @@ import inspect
 import json
 import os
 from copy import deepcopy
-from pprint import pprint
+from pprint import pprint, pformat
 from pathlib import Path
 import os
 import yaml
@@ -52,6 +52,7 @@ from litellm.types.utils import ModelResponse, Message
 from litellm import completion_cost
 from litellm import token_counter
 
+
 from .swarm.types import (
     AgentFunction,
     ChatCompletionMessage,
@@ -85,6 +86,9 @@ from .events import (
 from agentic.tools.registry import tool_registry
 from agentic.db.db_manager import DatabaseManager
 
+from .models import get_special_model_params 
+
+
 __CTX_VARS_NAME__ = "run_context"
 
 # define a CallbackType Enum with values: "handle_turn_start", "handle_event", "handle_turn_end"
@@ -105,7 +109,7 @@ litellm.drop_params = True
 @ray.remote
 class ActorBaseAgent:
     name: str = "Agent"
-    model: str = "gpt-4o"
+    model: str = "gpt-4o"  # Default model
     instructions_str: str = "You are a helpful agent."
     tools: list[str] = []
     functions: List[AgentFunction] = []
@@ -153,21 +157,27 @@ class ActorBaseAgent:
             if __CTX_VARS_NAME__ in params["required"]:
                 params["required"].remove(__CTX_VARS_NAME__)
 
+        # Create parameters for litellm call
         create_params = {
             "model": model_override or self.model,
-            "temperature": 0.0,
             "messages": messages,
+            "temperature": 0.0,
             "tools": tools or None,
             "tool_choice": self.tool_choice,
             "stream": stream,
             "stream_options": {"include_usage": True},
         }
+
+        # Add any special parameters needed for specific model types
+        create_params.update(get_special_model_params(create_params["model"]))
+
         if self.max_tokens:
             create_params["max_tokens"] = self.max_tokens
 
         if tools:
             create_params["parallel_tool_calls"] = self.parallel_tool_calls
-
+            
+        # Create simplified version of params for debug logging
         debug_params = create_params.copy()
         if debug_params.get("tools"):
             debug_params["tools"] = [
@@ -176,7 +186,7 @@ class ActorBaseAgent:
 
         debug_completion_start(self.debug, self.model, debug_params)
 
-        # Use LiteLLM's completion instead of OpenAI's client
+        # Use LiteLLM's completion
         try:
             return litellm.completion(**create_params)
         except Exception as e:

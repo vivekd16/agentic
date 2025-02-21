@@ -222,6 +222,8 @@ Popular models:
     openai/gpt-4o-mini
     anthropic/claude-3-5-sonnet-20240620
     anthropic/claude-3-5-haiku-20241022
+    lm_studio/qwen2.5-7b-instruct-1m
+    lm_studio/deepseek-r1-distill-qwen-7B
      """
     )
 

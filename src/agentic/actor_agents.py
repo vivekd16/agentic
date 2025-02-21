@@ -170,9 +170,6 @@ class ActorBaseAgent:
 
         if tools:
             create_params["parallel_tool_calls"] = self.parallel_tool_calls
-
-        #print("\nDEBUG: LiteLLM parameters:")
-        #pprint(create_params)
             
         # Create simplified version of params for debug logging
         debug_params = create_params.copy()

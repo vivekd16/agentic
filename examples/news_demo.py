@@ -37,6 +37,8 @@ def get_human_input(run_context: RunContext):
 
 
 model = "openai/gpt-4o-mini"
+#model="lm_studio/qwen2.5-7b-instruct-1m"
+#model="lm_studio/deepseek-r1-distill-qwen-7B"
 
 reporter = Agent(
     name="News Reporter",

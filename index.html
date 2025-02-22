@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#install" class="md-skip">
+        <a href="#pre-built-agents-you-can-run-today" class="md-skip">
           Skip to content
         </a>
       
@@ -233,6 +233,57 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pre-built-agents-you-can-run-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-built agents you can run today
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pre-built agents you can run today">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agent Operator
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#podcast-producer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Podcast Producer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#meeting-notetaker" class="md-nav__link">
+    <span class="md-ellipsis">
+      Meeting Notetaker
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#personal-data-analyst" class="md-nav__link">
+    <span class="md-ellipsis">
+      Personal Data Analyst
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#install" class="md-nav__link">
@@ -429,6 +480,27 @@
   
   
     <li class="md-nav__item">
+      <a href="Rag/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RAG Support
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="REST_API/" class="md-nav__link">
         
   
@@ -529,6 +601,57 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pre-built-agents-you-can-run-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-built agents you can run today
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pre-built agents you can run today">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agent Operator
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#podcast-producer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Podcast Producer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#meeting-notetaker" class="md-nav__link">
+    <span class="md-ellipsis">
+      Meeting Notetaker
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#personal-data-analyst" class="md-nav__link">
+    <span class="md-ellipsis">
+      Personal Data Analyst
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#install" class="md-nav__link">
@@ -665,26 +788,41 @@
 
 <p>Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
 and can use tools to do work on your behalf.</p>
-<p>In the tradition of <em>opinionated frameworks</em>, we've tried to encode lots of sensible
+<p>Agentic is in the tradition of <em>opinionated</em> frameworks_. We've tried to encode lots of sensisible
 defaults and best practices into the design, testing and deployment of agents. </p>
-<p>Agentic is composed of multiple parts:</p>
+<p>Agentic is a few different things:</p>
 <ul>
-<li>A code framework for implementing AI agents</li>
-<li>A runtime for deploying your agents</li>
-<li>A reference implementation of the <a href="https://github.com/supercog-ai/agent-protocol">Agent Protocol</a> which defines
-interoperability between agents using different stacks</li>
+<li>A lightweight agent framework. Same part of the stack as SmolAgents or PydanticAI.</li>
+<li>A reference implementation of the <a href="https://github.com/supercog-ai/agent-protocol">agent protocol</a>.</li>
+<li>An agent runtime built on <a href="https://github.com/ray-project/ray">Ray</a></li>
+<li>An optional "batteries included" set of features to help you get running quickly:</li>
+<li>Built in FastAPI <a href="REST_API/">API</a> for your agent</li>
+<li>Basic RAG features</li>
+<li>A set of production-ready <a href="https://github.com/supercog-ai/agentic/tree/main/src/agentic/tools">tools</a> (extracted from our Supercog product)</li>
+<li>Agentic Chat UI examples in <a href="https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui/next-js">NextJS</a> and <a href="https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui">Streamlit</a></li>
+<li>A growing set of working <a href="https://github.com/supercog-ai/agentic/tree/main/examples">examples</a></li>
 </ul>
-<p>Some key features:</p>
+<p>You can pretty much use any of these features and leave the others. There are lots of framework choices but we think we have
+embedded some good ideas into ours.</p>
+<p>Some of the <em>framework</em> features:</p>
 <ul>
 <li>Approachable and simple to use, but flexible enough to support the most complex agents</li>
 <li>Supports teams of cooperating agents</li>
 <li>Supports Human-in-the-loop</li>
-<li>Thin, readable abstractions.</li>
-<li>Built in library of production-tested tools</li>
+<li>Easy definition and use of tools (functions, class methods, import LangChain tools, ...)</li>
+<li>Built alongside a set of production-tested tools</li>
 </ul>
-<p>But there is much more. The rest of this guide will go over getting started with the framework. You can find some more background
-info in these docs:</p>
+<h2 id="pre-built-agents-you-can-run-today">Pre-built agents you can run today</h2>
+<h3 id="agent-operator"><a href="https://github.com/supercog-ai/agentic/blob/main/examples/operator_agent.py">Agent Operator</a></h3>
+<p>...full browser automation, including using authenticated sessions...</p>
+<h3 id="podcast-producer"><a href="https://github.com/supercog-ai/agentic/blob/main/examples/podcast.py">Podcast Producer</a></h3>
+<p>An agent team which auto-produces and publishes a daily podcast. Customize for your news interests.</p>
+<h3 id="meeting-notetaker"><a href="https://github.com/supercog-ai/agentic/blob/main/examples/meeting_notetaker.py">Meeting Notetaker</a></h3>
+<p>[Coming soon] Your own meeting bot agent with meeting summaries stored into RAG.</p>
+<h3 id="personal-data-analyst">Personal Data Analyst</h3>
+<p>[Coming soon]</p>
 <h2 id="install">Install</h2>
+<p>The easiest thing is to install the package from pypi:</p>
 <p><code>pip install agentic-framework</code></p>
 <p>Or using a virtual environmment:</p>
 <div class="codehilite"><pre><span></span><code>mkdir<span class="w"> </span>myagents

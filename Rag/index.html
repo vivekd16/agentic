@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/Debugging/">
+        <link rel="canonical" href="https://supercog.ai/agentic/Rag/">
       
       
-        <link rel="prev" href="../Building_Agents/">
+        <link rel="prev" href="../Tools/">
       
       
-        <link rel="next" href="../Tools/">
+        <link rel="next" href="../REST_API/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Debugging agents - Agentic Docs</title>
+        <title>RAG Support - Agentic Docs</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#debugging-agents" class="md-skip">
+        <a href="#rag-support" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +100,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Debugging agents
+              RAG Support
             
           </span>
         </div>
@@ -232,19 +232,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../Debugging/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -254,7 +245,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -284,10 +274,19 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../Rag/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -297,6 +296,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -419,34 +419,64 @@
 
 
 
-<h1 id="debugging-agents">Debugging agents</h1>
-<p>The simplest tools for debugging are using the debug levels in the REPL:</p>
-<div class="codehilite"><pre><span></span><code><span class="s1">&#39;agents&#39;</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">Log</span><span class="w"> </span><span class="n">agent</span><span class="w"> </span><span class="n">operations</span>
-<span class="s1">&#39;tools&#39;</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="n">Log</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="k">tool</span><span class="w"> </span><span class="n">calls</span>
-<span class="s1">&#39;llm&#39;</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Log</span><span class="w"> </span><span class="n">LLM</span><span class="w"> </span><span class="n">completions</span>
-<span class="s1">&#39;all&#39;</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Log</span><span class="w"> </span><span class="n">everything</span>
+<h1 id="rag-support">RAG Support</h1>
+<p>Agentic has a basic RAG feature set built on the <a href="https://weaviate.io/">Weaviate</a> vector database.</p>
+<p>You can manage vectorstore indexes using the CLI:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Chunk a file, calculate chunk embeddings, and add them to the vectorstore</span>
+agentic<span class="w"> </span>index_file<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path&gt;
+
+<span class="c1"># Remove all the chunks of a file from the vector store</span>
+agentic<span class="w"> </span>delete_document<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
+
+<span class="c1"># list the indexes</span>
+agentic<span class="w"> </span>list-indexes
+
+<span class="c1"># rename an index</span>
+agentic<span class="w"> </span>rename-index<span class="w"> </span>&lt;from<span class="w"> </span>name&gt;<span class="w"> </span>&lt;to<span class="w"> </span>name&gt;
+
+<span class="c1"># delete a whole index</span>
+agentic<span class="w"> </span>delete-index<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
+
+<span class="c1"># List the documents in a vector store</span>
+agentic<span class="w"> </span>list-documents<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
+
+<span class="c1"># Show the metadata for a doc in the vector store</span>
+agentic<span class="w"> </span>show-document<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
+
+<span class="c1"># Perform a search of the vector store. Searches by vector by default, or can do hybrid search</span>
+agentic<span class="w"> </span>search<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;query&gt;<span class="w"> </span><span class="o">[</span><span class="nv">hybrid</span><span class="o">=</span>true<span class="o">]</span>
 </code></pre></div>
 
-<p>Note that you can also combine tags like 'tools,llm':</p>
-<div class="codehilite"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="o">.</span><span class="n">debug</span><span class="w"> </span><span class="n">tools</span><span class="p">,</span><span class="n">llm</span>
-<span class="n">Debug</span><span class="w"> </span><span class="n">level</span><span class="w"> </span><span class="n">set</span><span class="w"> </span><span class="n">to</span><span class="p">:</span><span class="w"> </span><span class="n">tools</span><span class="p">,</span><span class="n">llm</span>
+<p>Example usage:</p>
+<div class="codehilite"><pre><span></span><code>$<span class="w"> </span>agentic<span class="w"> </span>index_file<span class="w"> </span>index1<span class="w"> </span>tests/data/agentic_reasoning.pdf
+
+$<span class="w"> </span>agentic<span class="w"> </span>list-documents<span class="w"> </span>index1
+<span class="w">                                                         </span>Documents<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s1">&#39;index1&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">3</span><span class="o">)</span><span class="w">                                                         </span>
+-<span class="w"> </span>agentic_reasoning.pdf<span class="w"> </span>
+<span class="w">  </span>ID:<span class="w"> </span>27c0600f...<span class="w"> </span><span class="p">|</span><span class="w"> </span>Chunks:<span class="w"> </span><span class="m">19</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>Last<span class="w"> </span>indexed:<span class="w"> </span><span class="m">2025</span>-02-22<span class="w"> </span><span class="m">05</span>:54:51+00:00
+
+$<span class="w"> </span>agentic<span class="w"> </span>search<span class="w"> </span>index1<span class="w"> </span><span class="s2">&quot;reasoning models&quot;</span>
+<span class="w">                                                     </span>Result<span class="w"> </span><span class="m">1</span><span class="w"> </span>-<span class="w"> </span>agentic_reasoning.pdf<span class="w">                                                      </span>
+-<span class="w"> </span>Source:<span class="w"> </span>None
+-<span class="w"> </span>Date:<span class="w"> </span><span class="m">2025</span>-02-22<span class="w"> </span><span class="m">05</span>:54:51+00:00
+-<span class="w"> </span>Distance:<span class="w"> </span><span class="m">0</span>.18599754571914673
+-<span class="w"> </span>Score:<span class="w"> </span>N/A
+...
 </code></pre></div>
 
-<p><strong>Switching models</strong></p>
-<p>Use <code>.model &lt;model&gt;</code> to temporarily change the active model of the current agent:</p>
-<div class="codehilite"><pre><span></span><code><span class="p">[</span><span class="n">Basic</span><span class="w"> </span><span class="n">Agent</span><span class="p">]</span><span class="o">&gt;</span><span class="w"> </span><span class="p">.</span><span class="n">model</span><span class="w"> </span><span class="n">claude</span><span class="mi">-3</span><span class="o">-</span><span class="n">opus</span><span class="mi">-20240229</span>
-<span class="n">Model</span><span class="w"> </span><span class="n">set</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">claude</span><span class="mi">-3</span><span class="o">-</span><span class="n">opus</span><span class="mi">-20240229</span>
-<span class="p">[</span><span class="n">Basic</span><span class="w"> </span><span class="n">Agent</span><span class="p">]</span><span class="o">&gt;</span><span class="w"> </span><span class="n">when</span><span class="w"> </span><span class="n">is</span><span class="w"> </span><span class="n">your</span><span class="w"> </span><span class="n">training</span><span class="w"> </span><span class="o">?</span>
-<span class="o">&lt;</span><span class="n">thinking</span><span class="o">&gt;</span>
-<span class="n">The</span><span class="w"> </span><span class="n">user</span><span class="w"> </span><span class="n">is</span><span class="w"> </span><span class="n">asking</span><span class="w"> </span><span class="n">when</span><span class="w"> </span><span class="n">my</span><span class="w"> </span><span class="n">training</span><span class="w"> </span><span class="n">occurred</span><span class="p">.</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="n">question</span><span class="w"> </span><span class="n">does</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">require</span><span class="w"> </span><span class="n">any</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">provided</span><span class="w"> </span><span class="n">weather</span><span class="o">-</span><span class="n">related</span><span class="w"> </span><span class="n">tools</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">answer</span><span class="p">.</span><span class="w"> </span><span class="n">The</span><span class="w"> </span><span class="n">tools</span><span class="w"> </span><span class="n">are</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">retrieving</span><span class="w"> </span><span class="n">current</span><span class="w"> </span><span class="n">weather</span><span class="p">,</span><span class="w"> </span><span class="n">weather</span><span class="w"> </span><span class="n">forecasts</span><span class="p">,</span><span class="w"> </span><span class="n">historical</span><span class="w"> </span><span class="n">weather</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">and</span><span class="w"> </span><span class="n">historical</span><span class="w"> </span><span class="n">weather</span><span class="w"> </span><span class="n">averages</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">specific</span><span class="w"> </span><span class="n">locations</span><span class="w"> </span><span class="n">and</span><span class="w"> </span><span class="n">dates</span><span class="p">.</span><span class="w"> </span><span class="n">None</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="n">them</span><span class="w"> </span><span class="n">are</span><span class="w"> </span><span class="n">relevant</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">providing</span><span class="w"> </span><span class="n">information</span><span class="w"> </span><span class="n">about</span><span class="w"> </span><span class="n">my</span><span class="w"> </span><span class="n">own</span><span class="w"> </span><span class="n">training</span><span class="p">.</span>
-<span class="o">&lt;/</span><span class="n">thinking</span><span class="o">&gt;</span>
+<p>And to use RAG with an agent, via <em>agentic RAG</em>, just enable the RAG Tool:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools.rag_tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAGTool</span>
 
-<span class="n">I</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">have</span><span class="w"> </span><span class="n">specific</span><span class="w"> </span><span class="n">information</span><span class="w"> </span><span class="n">about</span><span class="w"> </span><span class="n">when</span><span class="w"> </span><span class="n">I</span><span class="w"> </span><span class="n">was</span><span class="w"> </span><span class="n">trained</span><span class="p">.</span><span class="w"> </span><span class="n">I</span><span class="w"> </span><span class="n">am</span><span class="w"> </span><span class="n">an</span><span class="w"> </span><span class="n">AI</span><span class="w"> </span><span class="n">assistant</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="n">by</span><span class="w"> </span><span class="n">Anthropic</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">be</span><span class="w"> </span><span class="n">helpful</span><span class="p">,</span><span class="w"> </span><span class="n">harmless</span><span class="p">,</span><span class="w"> </span><span class="n">and</span><span class="w"> </span><span class="n">honest</span><span class="p">.</span><span class="w"> </span><span class="n">The</span><span class="w"> </span><span class="n">details</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="n">my</span><span class="w"> </span><span class="n">training</span><span class="w"> </span><span class="n">process</span><span class="w"> </span><span class="n">are</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">something</span><span class="w"> </span><span class="n">I</span><span class="w"> </span><span class="n">have</span><span class="w"> </span><span class="n">direct</span><span class="w"> </span><span class="n">knowledge</span><span class="w"> </span><span class="n">of</span><span class="p">.</span>
-<span class="p">[</span><span class="n">claude</span><span class="mi">-3</span><span class="o">-</span><span class="n">opus</span><span class="mi">-20240229</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="n">calls</span><span class="p">,</span><span class="w"> </span><span class="n">tokens</span><span class="o">:</span><span class="w"> </span><span class="mi">12</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="mi">113</span><span class="p">,</span><span class="w"> </span><span class="mf">2.98</span><span class="w"> </span><span class="n">cents</span><span class="p">,</span><span class="w"> </span><span class="n">time</span><span class="o">:</span><span class="w"> </span><span class="mf">5.17</span><span class="n">s</span><span class="w"> </span><span class="n">tc</span><span class="o">:</span><span class="w"> </span><span class="mf">2.98</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">ctx</span><span class="o">:</span><span class="w"> </span><span class="mi">125</span><span class="p">]</span>
+<span class="n">agent</span><span class="o">=</span><span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Agent with RAG&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">RAGTool</span><span class="p">(</span><span class="s2">&quot;index1&quot;</span><span class="p">)]</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">agent</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;What do we know about reasoning models?&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p><strong>Showing chat messages</strong></p>
-<p>Use <code>.history</code> to see the list of Messages in the current LLM context.</p>
+<p><strong>Coming soon</strong>: Classic RAG</p>
+<p>Create an agent which programmatically loads content from RAG into the LLM context to
+answer the user's query.</p>
 
 
 

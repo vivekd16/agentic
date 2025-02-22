@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://supercog.ai/agentic/REST_API/">
       
       
-        <link rel="prev" href="../Tools/">
+        <link rel="prev" href="../Rag/">
       
       
         <link rel="next" href="../PROJECT_STRUCTURE/">
@@ -269,6 +269,27 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../Rag/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RAG Support
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -404,6 +425,11 @@ you can start the API server with the CLI:</p>
 
 <p>that you can use to interact with it
 programmatically. The AgentRunner runs a <em>FastAPI</em> service that exposes an interface to your agent.</p>
+<p>There is a discovery endpoint which lists all agent paths:</p>
+<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/_discovery
+</code></pre></div>
+
+<p>This will list <code>/basic_agent</code> as an available path.</p>
 <p>Your agent will expose endpoints at:</p>
 <div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/&lt;name of agent&gt;
 </code></pre></div>

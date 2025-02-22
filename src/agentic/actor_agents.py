@@ -129,6 +129,7 @@ class ActorBaseAgent:
     # The Actor who sent us our Prompt
     max_tokens: int = None
     run_context: RunContext = None
+    api_endpoint: str = None
     _prompter = None
     _callbacks: dict[CallbackType, CallbackFunc] = {}
     class Config:
@@ -432,7 +433,10 @@ class ActorBaseAgent:
             # Middleware to modify the input prompt (or change agent context)
             self.run_context = (
                 RunContext(
-                    agent_name=self.name, agent=self, debug_level=actor_message.debug
+                    agent_name=self.name, 
+                    agent=self, 
+                    debug_level=actor_message.debug,
+                    api_endpoint=self.api_endpoint
                 )
                 if self.run_context is None
                 else self.run_context
@@ -639,6 +643,7 @@ class ActorBaseAgent:
             "model",
             "max_tokens",
             "memories",
+            "api_endpoint",
         ]:
             if key in state:
                 setattr(self, remap.get(key, key), state[key])
@@ -684,6 +689,55 @@ class ActorBaseAgent:
 
     def handle_request(self, method: str, data: dict):
         return f"Actor {self.name} processed {method} request with data: {data}"
+
+    def webhook(self, run_id: str, callback_name: str, args: dict) -> Any:
+        """Handle webhook callbacks by executing the specified tool function
+        
+        Args:
+            run_id: ID of the agent run this webhook is for
+            callback_name: Name of the tool function to call
+            args: Arguments to pass to the tool function
+        """
+        # Get the run context from the database
+        db_manager = DatabaseManager()
+        run = db_manager.get_run(run_id)
+        if not run:
+            raise ValueError(f"No run found with ID {run_id}")
+        # Recreate run context
+        self.run_context = RunContext(
+            agent=self,
+            agent_name=self.name, 
+            debug_level=self.debug,
+            run_id=run_id,
+            api_endpoint=self.api_endpoint
+        )
+        # Find the tool function
+        function_map = {f.__name__: f for f in self.functions}
+        if callback_name not in function_map:
+            raise ValueError(f"No tool function found named {callback_name}")
+
+        # Execute the tool call
+        try:
+            # Create tool call object
+            tool_call = ChatCompletionMessageToolCall(
+                id="",
+                type="function",
+                function=Function(
+                    name=callback_name,
+                    arguments=json.dumps(args)
+                )
+            )
+
+            # Execute the tool call
+            response, events = self._execute_tool_calls(
+                [tool_call],
+                self.functions,
+                self.run_context
+            )
+            return response
+
+        except Exception as e:
+            raise RuntimeError(f"Error executing webhook {callback_name}: {str(e)}")
 
 class HandoffAgentWrapper:
     def __init__(self, agent):
@@ -791,6 +845,38 @@ class DynamicFastAPIHandler:
     async def get_run_logs(self, run_id=str) -> list[dict]:
         run_logs = self.agent_facade.get_run_logs(run_id)
         return [run_log.model_dump() for run_log in run_logs]
+    
+    @app.post("/webhook/{run_id}/{callback_name}")
+    async def handle_webhook(
+        self, 
+        run_id: str, 
+        callback_name: str,
+        request: Request
+    ) -> dict:
+        """Handle incoming webhook requests by executing the specified callback
+        
+        Args:
+            run_id: ID of the agent run this webhook is for 
+            callback_name: Name of the callback function to invoke
+            request: FastAPI request object containing query params and body
+        """
+        # Get query parameters
+        params = dict(request.query_params)
+        # Get request body if any
+        try:
+            body = await request.json()
+            params.update(body)
+        except:
+            pass
+        # Call the remote webhook handler
+        result = ray.get(
+            self._agent.webhook.remote(
+                run_id=run_id,
+                callback_name=callback_name, 
+                args=params
+            )
+        )
+        return {"status": "success", "result": result}
 
     def next_turn(
         self,
@@ -961,6 +1047,9 @@ class RayFacadeAgent:
             name=f"{self.safe_name}_api",
             route_prefix=f"/{self.safe_name}",
         )
+
+        api_endpoint = f"http://0.0.0.0:{port}/{self.safe_name}"
+        self._update_state({"api_endpoint": api_endpoint})
 
         if base_serve_app is None:
             base_serve_app = BaseServeDeployment.bind()

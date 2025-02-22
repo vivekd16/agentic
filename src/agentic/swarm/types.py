@@ -63,11 +63,15 @@ class RunContext:
         context: dict = {},
         agent_name: str = "",
         debug_level: DebugLevel = DebugLevel(DebugLevel.OFF),
+        run_id: str = None,
+        api_endpoint: str = None,
     ):
         self._context = context
         self.agent_name = agent_name
         self.agent = agent
         self.debug_level = debug_level
+        self.run_id = run_id
+        self.api_endpoint = api_endpoint
 
     def __getitem__(self, key):
         return self._context.get(key, None)
@@ -122,6 +126,27 @@ class RunContext:
 
     def __repr__(self):
         return f"RunContext({self._context})"
+    
+    def get_webhook_endpoint(self, callback_name: str, args: dict = None) -> str:
+        if not self.run_id:
+            raise ValueError("No active run_id. Webhook endpoints require an active agent run.")
+        
+        if not self.api_endpoint:
+            # Fallback to default if not set
+            host = "localhost"
+            port = 8086
+            base_url = f"http://{host}:{port}/{self.agent_name}" 
+        else:
+            base_url = self.api_endpoint
+
+        # Build webhook URL
+        webhook_url = f"{base_url}/webhook/{self.run_id}/{callback_name}"
+        
+        if args:
+            query_params = "&".join(f"{k}={v}" for k, v in args.items())
+            return f"{webhook_url}?{query_params}"
+        
+        return webhook_url
 
 
 class SwarmAgent(BaseModel):

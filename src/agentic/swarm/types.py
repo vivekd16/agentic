@@ -63,11 +63,15 @@ class RunContext:
         context: dict = {},
         agent_name: str = "",
         debug_level: DebugLevel = DebugLevel(DebugLevel.OFF),
+        run_id: str = None,
+        api_endpoint: str = None,
     ):
         self._context = context
         self.agent_name = agent_name
         self.agent = agent
         self.debug_level = debug_level
+        self.run_id = run_id
+        self.api_endpoint = api_endpoint
 
     def __getitem__(self, key):
         return self._context.get(key, None)

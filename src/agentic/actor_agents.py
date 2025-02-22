@@ -433,7 +433,10 @@ class ActorBaseAgent:
             # Middleware to modify the input prompt (or change agent context)
             self.run_context = (
                 RunContext(
-                    agent_name=self.name, agent=self, debug_level=actor_message.debug
+                    agent_name=self.name, 
+                    agent=self, 
+                    debug_level=actor_message.debug,
+                    api_endpoint=self.api_endpoint
                 )
                 if self.run_context is None
                 else self.run_context

@@ -423,8 +423,11 @@ you can start the API server with the CLI:</p>
 <div class="codehilite"><pre><span></span><code>agentic serve examples/basic_agent.py
 </code></pre></div>
 
-<p>that you can use to interact with it
-programmatically. The AgentRunner runs a <em>FastAPI</em> service that exposes an interface to your agent.</p>
+<p>It may be useful to enable lots of (server side) logging:</p>
+<div class="codehilite"><pre><span></span><code>AGENTIC_DEBUG=all agentic serve examples/basic_agent.py
+</code></pre></div>
+
+<p>The AgentRunner runs a <em>FastAPI</em> service that exposes an interface to your agent.</p>
 <p>There is a discovery endpoint which lists all agent paths:</p>
 <div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/_discovery
 </code></pre></div>

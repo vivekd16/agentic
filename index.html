@@ -245,9 +245,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#agent-operator" class="md-nav__link">
+  <a href="#oss-operator" class="md-nav__link">
     <span class="md-ellipsis">
-      Agent Operator
+      OSS Operator
     </span>
   </a>
   
@@ -291,6 +291,21 @@
       Install
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-the-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the package
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -613,9 +628,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#agent-operator" class="md-nav__link">
+  <a href="#oss-operator" class="md-nav__link">
     <span class="md-ellipsis">
-      Agent Operator
+      OSS Operator
     </span>
   </a>
   
@@ -659,6 +674,21 @@
       Install
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-the-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the package
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -795,12 +825,14 @@ defaults and best practices into the design, testing and deployment of agents. <
 <li>A lightweight agent framework. Same part of the stack as SmolAgents or PydanticAI.</li>
 <li>A reference implementation of the <a href="https://github.com/supercog-ai/agent-protocol">agent protocol</a>.</li>
 <li>An agent runtime built on <a href="https://github.com/ray-project/ray">Ray</a></li>
-<li>An optional "batteries included" set of features to help you get running quickly:</li>
+<li>An optional "batteries included" set of features to help you get running quickly:<ul>
 <li>Built in FastAPI <a href="REST_API/">API</a> for your agent</li>
-<li>Basic RAG features</li>
+<li>Basic <a href="Rag/">RAG</a> features</li>
 <li>A set of production-ready <a href="https://github.com/supercog-ai/agentic/tree/main/src/agentic/tools">tools</a> (extracted from our Supercog product)</li>
 <li>Agentic Chat UI examples in <a href="https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui/next-js">NextJS</a> and <a href="https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui">Streamlit</a></li>
 <li>A growing set of working <a href="https://github.com/supercog-ai/agentic/tree/main/examples">examples</a></li>
+</ul>
+</li>
 </ul>
 <p>You can pretty much use any of these features and leave the others. There are lots of framework choices but we think we have
 embedded some good ideas into ours.</p>
@@ -811,9 +843,10 @@ embedded some good ideas into ours.</p>
 <li>Supports Human-in-the-loop</li>
 <li>Easy definition and use of tools (functions, class methods, import LangChain tools, ...)</li>
 <li>Built alongside a set of production-tested tools</li>
+<li>Interoperate with agents built with other frameworks</li>
 </ul>
 <h2 id="pre-built-agents-you-can-run-today">Pre-built agents you can run today</h2>
-<h3 id="agent-operator"><a href="https://github.com/supercog-ai/agentic/blob/main/examples/operator_agent.py">Agent Operator</a></h3>
+<h3 id="oss-operator"><a href="https://github.com/supercog-ai/agentic/blob/main/examples/oss_operator.py">OSS Operator</a></h3>
 <p>...full browser automation, including using authenticated sessions...</p>
 <h3 id="podcast-producer"><a href="https://github.com/supercog-ai/agentic/blob/main/examples/podcast.py">Podcast Producer</a></h3>
 <p>An agent team which auto-produces and publishes a daily podcast. Customize for your news interests.</p>
@@ -822,17 +855,17 @@ embedded some good ideas into ours.</p>
 <h3 id="personal-data-analyst">Personal Data Analyst</h3>
 <p>[Coming soon]</p>
 <h2 id="install">Install</h2>
-<p>The easiest thing is to install the package from pypi:</p>
-<p><code>pip install agentic-framework</code></p>
-<p>Or using a virtual environmment:</p>
-<div class="codehilite"><pre><span></span><code>mkdir<span class="w"> </span>myagents
-<span class="nb">cd</span><span class="w"> </span>myagents
-python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
-<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
-
-pip<span class="w"> </span>install<span class="w"> </span>agentic-framework
+<p>At this stage it's probably easiest to run this repo from source. We use <code>uv</code> for package managment:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">git</span><span class="w"> </span><span class="n">clone</span><span class="w"> </span><span class="n">git</span><span class="nv">@github</span><span class="p">.</span><span class="nl">com</span><span class="p">:</span><span class="n">supercog</span><span class="o">-</span><span class="n">ai</span><span class="o">/</span><span class="n">agentic</span><span class="p">.</span><span class="n">git</span>
+<span class="n">cd</span><span class="w"> </span><span class="n">agentic</span>
+<span class="n">uv</span><span class="w"> </span><span class="n">pip</span><span class="w"> </span><span class="n">install</span><span class="w"> </span><span class="o">-</span><span class="n">e</span><span class="w"> </span><span class="ss">&quot;.[all,dev]&quot;</span>
 </code></pre></div>
 
+<p>these commands will install the <code>agentic</code> package locally so that you can use the <code>agentic</code> cli command
+and so your pythonpath is set correctly.</p>
+<h3 id="install-the-package">Install the package</h3>
+<p>You can also try installing just the package:</p>
+<p><code>pip install agentic-framework</code></p>
 <p>Now setup your folder to hold your agents:</p>
 <div class="codehilite"><pre><span></span><code>agentic<span class="w"> </span>init<span class="w"> </span>.
 </code></pre></div>

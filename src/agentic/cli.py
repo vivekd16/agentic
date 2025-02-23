@@ -6,6 +6,9 @@ from rich.console import Console
 from typing import Optional, List, Dict
 from .file_cache import file_cache
 from .colors import Colors
+
+
+import agentic.quiet_warnings
 from agentic.agentic_secrets import agentic_secrets as secrets
 from agentic.settings import settings
 
@@ -13,6 +16,9 @@ import shutil
 from pathlib import Path
 from importlib import resources
 from rich.status import Status
+
+import warnings
+warnings.filterwarnings("ignore")
 
 ### WARNING: DO NOT ADD MORE IMPORTS HERE
 # Everything imported at module level runs every time you run ANY cli command.
@@ -349,100 +355,22 @@ def index_file(
         help="Comma-separated delimiters for fallback chunk splitting"
     ),
 ):
-    from weaviate.classes.config import (
-        VectorDistances
-    )
-    from weaviate.classes.query import Filter
-    from agentic.utils.summarizer import generate_document_summary
-    from agentic.utils.rag_helper import (
-        init_weaviate,
-        create_collection,
-        prepare_document_metadata,
-        check_document_exists,
-        init_embedding_model,
-        init_chunker,
-    )
-
-    distance_metric = VectorDistances.COSINE
-
-    """Index a file using configurable Weaviate Embedded and chunking parameters"""
-    from agentic.utils.file_reader import read_file
-
+    from agentic.utils.rag_helper import rag_index_file
     console = Console()
-    client = None
-    
-    try:
-        with Status("[bold green]Initializing Weaviate..."):
-            client = init_weaviate()
-            create_collection(client, index_name, distance_metric)
-            
-        with Status("[bold green]Initializing models..."):
-            embed_model = init_embedding_model(embedding_model)
-            chunker = init_chunker(chunk_threshold, chunk_delimiters)
-            
-        with Status(f"[bold green]Processing {file_path}...", console=console):
-            text, mime_type = read_file(str(file_path))
-            metadata = prepare_document_metadata(file_path, text, mime_type, GPT_DEFAULT_MODEL)
-            
-        collection = client.collections.get(index_name)
-        exists, status = check_document_exists(
-            collection, 
-            metadata["document_id"],
-            metadata["fingerprint"]
-        )
-        
-        if status == "unchanged":
-            console.print(f"[yellow]⏩ Document '{metadata['filename']}' unchanged[/yellow]")
-            return
-        elif status == "duplicate":
-            console.print(f"[yellow]⚠️ Content already exists under different filename[/yellow]")
-            return
-        elif status == "changed":
-            console.print(f"[yellow]🔄 Updating changed document '{metadata['filename']}'[/yellow]")
-            collection.data.delete_many(
-                where=Filter.by_property("document_id").equal(metadata["document_id"])
-            )
 
-        with Status("[bold green]Generating document summary...", console=console):
-            metadata["summary"] = generate_document_summary(
-                text=text[:12000],
-                mime_type=mime_type,
-                model=GPT_DEFAULT_MODEL
-            )
-        
-        chunks = chunker(text)
-        chunks_text = [chunk.text for chunk in chunks]
-        if not chunks_text:
-            raise ValueError("No text chunks generated from document")
-        
-        batch_size = 128
-        embeddings = []
-        with Status("[bold green]Generating embeddings..."):
-            for i in range(0, len(chunks_text), batch_size):
-                batch = chunks_text[i:i+batch_size]
-                embeddings.extend(list(embed_model.embed(batch)))
-        
-        with Status("[bold green]Indexing chunks..."), collection.batch.dynamic() as batch:
-            for i, chunk in enumerate(chunks):
-                vector = embeddings[i].tolist()
-                batch.add_object(
-                    properties={
-                        **metadata,
-                    "content": chunk.text,
-                    "chunk_index": i,
-                    },
-                    vector=vector
-                )
-                
-        console.print(f"[bold green]✅ Indexed {len(chunks)} chunks in {index_name}")
-        
+    try:
+        rag_index_file(
+            file_path,
+            index_name,
+            chunk_threshold,
+            chunk_delimiters,
+            embedding_model,
+        )    
     except Exception as e:
         console.print(f"[bold red]Error: {str(e)}")
-    finally:
-        if client:
-            client.close()
+        raise typer.Exit(1)
 
-
+        
 @app.command()
 def delete_document(
     index_name: str,
@@ -512,6 +440,9 @@ def delete_index(
     confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
 ):
     """Delete entire Weaviate index (collection)"""
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+    )
     console = Console()
     
     try:

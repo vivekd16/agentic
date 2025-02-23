@@ -1,7 +1,7 @@
 import asyncio
 import time
 from typing import Any, Optional, Generator, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
@@ -132,8 +132,10 @@ class ActorBaseAgent:
     api_endpoint: str = None
     _prompter = None
     _callbacks: dict[CallbackType, CallbackFunc] = {}
-    class Config:
-        arbitrary_types_allowed = True
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
 
     def __init__(self, name: str):
         super().__init__()

@@ -1,4 +1,5 @@
 from typing import List, Callable
+import glob
 
 from agentic.common import RunContext
 from agentic.tools.registry import tool_registry
@@ -10,7 +11,8 @@ from agentic.utils.rag_helper import (
     prepare_document_metadata,
     check_document_exists,
     init_embedding_model,
-    init_chunker
+    init_chunker,
+    rag_index_file,
 )
 
 from agentic.utils.summarizer import generate_document_summary
@@ -19,8 +21,8 @@ from weaviate.collections.classes.grpc import Sort
 from agentic.utils.file_reader import read_file
 from weaviate.classes.config import VectorDistances
 
-import warnings
-warnings.filterwarnings("ignore")
+#import warnings
+#warnings.filterwarnings("ignore")
 
 
 
@@ -31,13 +33,28 @@ warnings.filterwarnings("ignore")
     ]
 )
 class RAGTool:
-    def __init__(self, default_index: str = "knowledge_base"):
+    def __init__(
+        self,
+        default_index: str = "knowledge_base",
+        index_paths: list[str] = []
+    ):
+        # Construct the RAG tool. You can pass a list of files and we will ensure that
+        # they are added to the index on startup. Paths can include glob patterns also,
+        # like './docs/*.md'.
         self.default_index = default_index
+        self.index_paths = index_paths
+        if self.index_paths:
+            client = init_weaviate()
+            if default_index not in list_collections(client):
+                create_collection(client, default_index, VectorDistances.COSINE)
+            for path in index_paths:
+                for file_path in [path] if path.startswith("http") else glob.glob(path):
+                    rag_index_file(file_path, self.default_index, client=client, ignore_errors=True)
 
     def get_tools(self) -> List[Callable]:
         return [
             self.save_content_to_knowledge_index,
-            self.list_indexes,
+            #self.list_indexes,
             self.search_knowledge_index,
             self.list_documents,
             self.review_full_document
@@ -126,12 +143,12 @@ class RAGTool:
             if client:
                 client.close()
     
-    def search_knowledge_index(self, index_name: str = None, query: str = None, limit: int = 1, hybrid: bool = False) -> str:
+    def search_knowledge_index(self, query: str = None, limit: int = 1, hybrid: bool = False) -> str:
         """Search a knowledge index for relevant documents"""
         try:
             embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
             client = init_weaviate()
-            collection = client.collections.get(index_name or self.default_index)
+            collection = client.collections.get(self.default_index)
 
             query_vector = list(embed_model.embed([query]))[0].tolist()
         
@@ -171,11 +188,11 @@ class RAGTool:
             if client:
                 client.close()
 
-    def list_documents(self, index_name: str = None) -> str:
+    def list_documents(self) -> str:
         """List all documents in a knowledge index"""
         try:
             client = init_weaviate()
-            collection = client.collections.get(index_name or self.default_index)
+            collection = client.collections.get(self.default_index)
             documents = list_documents_in_collection(collection)
             return documents
         except Exception as e:
@@ -184,11 +201,11 @@ class RAGTool:
             if client:
                 client.close()
 
-    def review_full_document(self, index_name: str = None, document_id: str = None) -> str:
+    def review_full_document(self, document_id: str = None) -> str:
         """Review a full document from a knowledge index"""
         try:
             client = init_weaviate()
-            collection = client.collections.get(index_name or self.default_index)
+            collection = client.collections.get(self.default_index)
 
             # Get all chunks for the document ordered by chunk_index
             result = collection.query.fetch_objects(

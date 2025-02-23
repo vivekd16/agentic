@@ -7,9 +7,8 @@ warnings.filterwarnings("ignore", message="Valid config keys have changed in V2:
 
 from dataclasses import dataclass
 from typing import Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from .swarm.types import Result, DebugLevel, RunContext
-import json
 
 from litellm.types.utils import ModelResponse, Message
 
@@ -20,8 +19,9 @@ class Event(BaseModel):
     payload: Any
     depth: int = 0
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
 
     def __str__(self) -> str:
         return str(f"[{self.agent}: {self.type}] {self.payload}\n")
@@ -179,8 +179,10 @@ class FinishCompletion(Event):
     OUTPUT_TOKENS_KEY: typing.ClassVar[str] = "output_tokens"
     ELAPSED_TIME_KEY: typing.ClassVar[str] = "elapsed_time"
     metadata: dict = {}
-    class Config:
-        arbitrary_types_allowed = True
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
 
     def __init__(
         self, agent: str, llm_message: Message, metadata: dict = {}, depth: int = 0

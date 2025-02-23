@@ -10,11 +10,11 @@ Agentic is a few different things:
 - A reference implementation of the [agent protocol](https://github.com/supercog-ai/agent-protocol).
 - An agent runtime built on [Ray](https://github.com/ray-project/ray)
 - An optional "batteries included" set of features to help you get running quickly:
-  * Built in FastAPI [API](./REST_API.md) for your agent
-  * Basic RAG features
-  * A set of production-ready [tools](https://github.com/supercog-ai/agentic/tree/main/src/agentic/tools) (extracted from our Supercog product)
-  * Agentic Chat UI examples in [NextJS](https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui/next-js) and [Streamlit](https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui)
-  * A growing set of working [examples](https://github.com/supercog-ai/agentic/tree/main/examples)
+    * Built in FastAPI [API](./REST_API.md) for your agent
+    * Basic [RAG](./Rag.md) features
+    * A set of production-ready [tools](https://github.com/supercog-ai/agentic/tree/main/src/agentic/tools) (extracted from our Supercog product)
+    * Agentic Chat UI examples in [NextJS](https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui/next-js) and [Streamlit](https://github.com/supercog-ai/agentic/tree/main/src/agentic/ui)
+    * A growing set of working [examples](https://github.com/supercog-ai/agentic/tree/main/examples)
 
 You can pretty much use any of these features and leave the others. There are lots of framework choices but we think we have
 embedded some good ideas into ours.
@@ -26,6 +26,7 @@ Some of the _framework_ features:
 - Supports Human-in-the-loop
 - Easy definition and use of tools (functions, class methods, import LangChain tools, ...)
 - Built alongside a set of production-tested tools
+- Interoperate with agents built with other frameworks
 
 ## Pre-built agents you can run today
 

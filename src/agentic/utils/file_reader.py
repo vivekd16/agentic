@@ -11,8 +11,9 @@ with warnings.catch_warnings():
 import requests
 import magic
 import tempfile
+import mimetypes
 
-def read_file(file_path: str, mime_type: str = None) -> tuple[str, str]:
+def read_file(file_path: str, mime_type: str|None = None) -> tuple[str, str]:
     """
     Universal file reader that handles multiple file types.
     Returns tuple of (content, mime_type)
@@ -23,9 +24,16 @@ def read_file(file_path: str, mime_type: str = None) -> tuple[str, str]:
     file_path_obj = Path(file_path)
     if not file_path_obj.exists():
         raise FileNotFoundError(f"File {file_path} not found")
+
+    mime_type = mime_type or mimetypes.guess_type(file_path)[0]
     
     mime_type = mime_type or magic.from_file(file_path, mime=True)
+
+    print("For file: ", file_path, " Mime type: ", mime_type)
     
+    if mime_type == 'inode/x-empty':
+        return "", "text/plain"
+
     if file_path_obj.suffix.lower() == '.md' and not mime_type:
         mime_type = 'text/markdown'
     

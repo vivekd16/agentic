@@ -118,10 +118,11 @@ class WorkflowAgent(RayFacadeAgent):
                 "NUM_QUERIES": 2
             }
         )
-        yield ChatOutput(self.query_planner.name, {"content": f"Initial research queries: {queries}"})
+        msg = f"Initial research queries:\n" + "\n".join([q.search_query for q in queries.queries])
+        yield ChatOutput(self.query_planner.name, {"content": msg})
 
         # Get initial web content
-        content = cached_call(self.query_web_content, queries)
+        content = self.query_web_content(queries)
 
         # Plan the report sections
         sections = yield from self.section_planner.final_result(

@@ -23,7 +23,7 @@ const MarkdownComponents = {
   // Style links
   a(props: any) {
     return (
-      <a className="text-blue-500 hover:underline" target="_blank" {...props} />
+      <a className="text-blue-500 hover:underline whitespace-pre-wrap break-all" target="_blank" {...props} />
     );
   },
   // Style lists

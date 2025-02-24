@@ -37,6 +37,14 @@ class DebugLevel:
                 level = ""
         self.level = str(level)
 
+    def raise_level(self, other_level: "DebugLevel"):
+        if self.debug_all():
+            return
+        if other_level.debug_all():
+            self.level = "all"
+        elif other_level.level != "":
+            self.level = ",".join(set(self.level.split(",")).union(set(other_level.level.split(","))))
+
     def debug_tools(self):
         return self.level == "all" or "tools" in self.level
 
@@ -82,8 +90,9 @@ class RunContext:
     def __setitem__(self, key, value):
         self._context[key] = value
 
-    def update(self, context: dict):
+    def update(self, context: dict) -> "RunContext":
         self._context.update(context)
+        return self
 
     def get_agent(self) -> "Agent":
         return self.agent

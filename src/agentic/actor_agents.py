@@ -1,7 +1,7 @@
 import asyncio
 import time
-from typing import Any, Optional, Generator, Literal
 from pydantic import BaseModel, ConfigDict
+from typing import Any, Optional, Generator, Literal, Type
 from dataclasses import dataclass
 from pathlib import Path
 from queue import Queue
@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 import os
 import yaml
-from jinja2 import Template
+from jinja2 import Template, DebugUndefined
 import ray
 import traceback
 from datetime import timedelta
@@ -63,6 +63,7 @@ from .events import (
     ChatOutput,
     ToolCall,
     ToolResult,
+    TurnCancelledError,
     StartCompletion,
     FinishCompletion,
     FinishAgentResult,
@@ -159,7 +160,7 @@ class ActorBaseAgent:
                 params["required"].remove(__CTX_VARS_NAME__)
 
         # Create parameters for litellm call
-        create_params = {
+        completion_params = {
             "model": model_override or self.model,
             "messages": messages,
             "temperature": 0.0,
@@ -168,18 +169,20 @@ class ActorBaseAgent:
             "stream": stream,
             "stream_options": {"include_usage": True},
         }
+        if self.result_model:
+            completion_params["response_format"] = self.result_model
 
         # Add any special parameters needed for specific model types
-        create_params.update(get_special_model_params(create_params["model"]))
+        completion_params.update(get_special_model_params(completion_params["model"]))
 
         if self.max_tokens:
-            create_params["max_tokens"] = self.max_tokens
+            completion_params["max_tokens"] = self.max_tokens
 
         if tools:
-            create_params["parallel_tool_calls"] = self.parallel_tool_calls
+            completion_params["parallel_tool_calls"] = self.parallel_tool_calls
             
         # Create simplified version of params for debug logging
-        debug_params = create_params.copy()
+        debug_params = completion_params.copy()
         if debug_params.get("tools"):
             debug_params["tools"] = [
                 f["function"]["name"] for f in debug_params["tools"]
@@ -189,7 +192,7 @@ class ActorBaseAgent:
 
         # Use LiteLLM's completion
         try:
-            return litellm.completion(**create_params)
+            return litellm.completion(**completion_params)
         except Exception as e:
             traceback.print_exc()
             raise RuntimeError("Error calling LLM: " + str(e))
@@ -357,12 +360,17 @@ class ActorBaseAgent:
         state = self._get_request_state(request_id)
         
         if isinstance(actor_message, Prompt):
-            # Initialize context for this conversation
-            state['run_context'] = RunContext(
-                agent_name=self.name,
-                agent=self,
-                debug_level=actor_message.debug,
-                api_endpoint=self.api_endpoint
+            # Middleware to modify the input prompt (or change agent context)
+            state['run_context'] = (
+                RunContext(
+                    agent_name=self.name,
+                    agent=self,
+                    debug_level=actor_message.debug,
+                    api_endpoint=self.api_endpoint,
+                    context=actor_message.request_context,
+                )
+                if self.run_context is None
+                else self.run_context.update(actor_message.request_context)
             )
             
             if self._callbacks.get('handle_turn_start'):
@@ -581,7 +589,13 @@ class ActorBaseAgent:
                     os.environ[key] = value
 
     def get_instructions(self, context: RunContext):
-        prompt = self.instructions_str
+        # Support context var substitution in prompts
+        prompt = Template(
+            self.instructions_str, 
+            undefined=DebugUndefined
+        ).render(
+            context.get_context()
+        )
         if self.memories:
             prompt += """
 <memory blocks>
@@ -606,6 +620,7 @@ class ActorBaseAgent:
             "max_tokens",
             "memories",
             "api_endpoint",
+            "result_model",
         ]:
             if key in state:
                 setattr(self, remap.get(key, key), state[key])
@@ -943,12 +958,14 @@ class RayFacadeAgent:
         db_path: Optional[str | Path] = None,
         memories: list[str] = [],
         handle_turn_start: Callable[[Prompt, RunContext], None] = None,
-        debug: DebugLevel = DebugLevel(DebugLevel.OFF),
+        result_model: Type[BaseModel]|None = None,
+        debug: DebugLevel = DebugLevel(os.environ.get("AGENTIC_DEBUG") or ""),
     ):
         self.name = name
         self.welcome = welcome or f"Hello, I am {name}."
         self.model = model or "gpt-4o-mini"
         caller_frame = inspect.currentframe()
+        self.cancelled: bool = False
         if caller_frame:
             caller_file = inspect.getframeinfo(caller_frame.f_back).filename
             directory = os.path.dirname(caller_file)
@@ -966,6 +983,7 @@ class RayFacadeAgent:
         self.debug = debug
         self._handle_turn_start = handle_turn_start
         self.request_queues: dict[str, Queue] = {}
+        self.result_model = result_model
 
         # Check we have all the secrets
         self._ensure_tool_secrets()
@@ -987,8 +1005,10 @@ class RayFacadeAgent:
     def _init_base_actor(self, instructions: str):
         # Process instructions if provided
         if instructions.strip():
-            template = Template(instructions)
+            template = Template(instructions, undefined=DebugUndefined)
             self.instructions = template.render(**self.prompt_variables)
+            # Allow one level of nested references
+            self.instructions = Template(self.instructions, undefined=DebugUndefined).render(**self.prompt_variables)
             if self.instructions.strip() == "":
                 raise ValueError(
                     f"Instructions are required for {self.name}. Maybe interpolation failed from: {instructions}"
@@ -1011,6 +1031,7 @@ class RayFacadeAgent:
                     "max_tokens": self.max_tokens,
                     "memories": self.memories,
                     "handle_turn_start": self._handle_turn_start,
+                    "result_model": self.result_model,
                 },
             ),
         )
@@ -1066,8 +1087,9 @@ class RayFacadeAgent:
                                 f"Secret {key} is required for tool {tool_name(tool)}"
                             )
 
-    def shutdown(self):
-        pass
+    def cancel(self):
+        # Flag this agent to cancel whatever it is doing
+        self.cancelled = True
 
     def list_tools(self) -> list[str]:
         """Gets the current tool list from the running agent"""
@@ -1159,7 +1181,7 @@ class RayFacadeAgent:
         run_id: Optional[str] = None,
         debug: DebugLevel = DebugLevel(DebugLevel.OFF),
     ) -> StartRequestResponse: # returns the request_id and run_id
-        self.debug = debug
+        self.debug.raise_level(debug)
         self.queue_done_sentinel = "QUEUE_DONE"
 
         # Initialize new request
@@ -1173,18 +1195,14 @@ class RayFacadeAgent:
         # Re-initialize run tracking
         self.init_run_tracking(self.db_path, run_id)
 
-        remote_gen = self._agent.handlePromptOrResume.remote(
-            request_obj,
-        )
-        def producer(queue, remote_gen):
-            for remote_next in remote_gen:
-                event = ray.get(remote_next)
+        def producer(queue, request_obj):
+            for event in self.next_turn(request_obj):
                 queue.put(event)
             queue.put(self.queue_done_sentinel)
         queue = Queue()
         self.request_queues[request_obj.request_id] = queue
 
-        t = threading.Thread(target=producer, args=(queue, remote_gen))
+        t = threading.Thread(target=producer, args=(queue, request_obj))
         t.start()
         return StartRequestResponse(request_id=request_obj.request_id, run_id=self.run_id)
 
@@ -1232,7 +1250,8 @@ class RayFacadeAgent:
    
     def next_turn(
         self,
-        request: str,
+        request: str|Prompt,
+        request_context: dict = {},
         request_id: str = None,
         continue_result: dict = {},
         debug: DebugLevel = DebugLevel(DebugLevel.OFF),
@@ -1240,26 +1259,59 @@ class RayFacadeAgent:
         """This is the key agent loop generator. It runs the agent for a single turn and
         emits events as it goes. If a WaitForInput event is emitted, then you should
         gather human input and call this function again with _continue_result_ to
-        continue the turn."""
-        self.debug = debug
+        continue the turn. If you call 'cancel' on the agent then this method will
+        raise a TurnCancelledError exception."""
+        self.cancelled = False
+        self.debug.raise_level(debug)
         event: Event
         if not continue_result:
+            prompt = (
+                request if isinstance(request, Prompt) 
+                else Prompt(self.name, request, debug=self.debug, depth=0, request_context=request_context)
+            )
             remote_gen = self._agent.handlePromptOrResume.remote(
-                Prompt(
-                    self.name,
-                    request,
-                    debug=self.debug,
-                    depth=0,
-                )
+                prompt
             )
         else:
             remote_gen = self._agent.handlePromptOrResume.remote(
                 ResumeWithInput(self.name, continue_result),
             )
         for remote_next in remote_gen:
+            if self.cancelled:
+                raise TurnCancelledError()
             event = ray.get(remote_next)
+            if isinstance(event, TurnEnd):
+                if isinstance(event.result, str) and self.result_model:
+                    event.set_result(self.result_model.model_validate_json(event.result))
             yield event
 
+    def final_result(
+            self, 
+            request: str, 
+            request_context: dict = {}, 
+            event_handler: Callable[[Event], None] = None
+        ) -> Any:
+        for event in self.next_turn(request, request_context):
+            if event_handler:
+                event_handler(event)
+            yield event
+            if isinstance(event, TurnEnd):
+                return event.result
+        return event
+
+    def grab_final_result(self, request: str, request_context: dict = {}) -> Any:
+        # Iterate over generator and get the return value
+        try:
+            # Consume all yielded values
+            items = list(self.final_result(request, request_context))
+            if isinstance(items[-1], TurnEnd):
+                return items[-1].result
+            else:
+                return items[-1]
+        except StopIteration as e:
+            # The return value is stored in the exception's value attribute
+            return e.value
+    
     def set_debug_level(self, level: DebugLevel):
         self.debug = level
         ray.get(self._agent.set_debug_level.remote(self.debug))

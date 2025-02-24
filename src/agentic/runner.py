@@ -128,8 +128,8 @@ class RayAgentRunner:
 
         background_request = threading.Event()
         def handle_sigint(signum, frame):
-            print("n!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt - moving to background...\n")
-            background_request.set()
+            print("[cancelling run]\n")
+            self.facade.cancel()
 
         signal.signal(signal.SIGINT, handle_sigint)
 
@@ -167,6 +167,7 @@ class RayAgentRunner:
                             replies[key] = input(f"\n{value}\n:> ")
                         continue_result = replies
                     elif isinstance(event, FinishCompletion):
+                        print(">>>> COMPLETED: ",event)
                         saved_completions.append(event)
                     if self._should_print(event):
                         print(str(event), end="")
@@ -194,8 +195,15 @@ class RayAgentRunner:
             time.sleep(0.1)
         print()
 
+    @staticmethod
+    def report_usages(completions: list[FinishCompletion]):
+        aggregator = Aggregator()
+        for row in RayAgentRunner.print_stats_report(completions, aggregator):
+            print(row)
+
+    @staticmethod
     def print_stats_report(
-        self, completions: list[FinishCompletion], aggregator: Aggregator
+        completions: list[FinishCompletion], aggregator: Aggregator
     ):
         costs = dict[str, Modelcost]()
         for comp in completions:

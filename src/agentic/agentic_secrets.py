@@ -13,23 +13,38 @@ from os import urandom
 
 
 class FastEncryptor:
-    def __init__(self, key):
-        self.cipher = ChaCha20Poly1305(key)
+    def __init__(self, key=None):
+        # Don't initialize the cipher in __init__, store just the key
+        self.key = key
+    
+    def _get_cipher(self):
+        # Create the cipher on demand
+        return ChaCha20Poly1305(self.key)
 
     def encrypt(self, data):
         if isinstance(data, str):
             data = data.encode()
         nonce = urandom(12)
-        return nonce + self.cipher.encrypt(nonce, data, None)
+        cipher = self._get_cipher()
+        return nonce + cipher.encrypt(nonce, data, None)
 
     def decrypt(self, data):
         try:
             nonce = data[:12]
             ciphertext = data[12:]
-            return self.cipher.decrypt(nonce, ciphertext, None).decode()
+            cipher = self._get_cipher()
+            return cipher.decrypt(nonce, ciphertext, None).decode()
         except Exception as e:
             # print(f"Error decrypting data: {e}")
             return None
+    
+    def __getstate__(self):
+        # Only pickle the key, not the cipher object
+        return {'key': self.key}
+    
+    def __setstate__(self, state):
+        # Restore the object without initializing the cipher
+        self.key = state['key']
 
 
 def get_machine_id():

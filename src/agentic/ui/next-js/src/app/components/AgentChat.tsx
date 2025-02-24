@@ -188,7 +188,7 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, runLogs, on
       const newEvents: AgentEvent[] = [];
       
       await new Promise<void>((resolve, reject) => {
-        const cleanup = agenticApi.streamEvents(agentPath, requestId, (event: AgentEvent) => {
+        const cleanup = agenticApi.streamEvents(agentPath, agentInfo.name, requestId, (event: AgentEvent) => {
           // Create a deep copy of the event to prevent reference issues
           const eventCopy = {
             type: event.type,
@@ -276,7 +276,7 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, runLogs, on
                 }
               });
             }
-          } else if (event.type === 'turn_end') {
+          } else if (event.type === 'turn_end' && event.agent === agentInfo.name) {
             // When a turn ends, make sure the current run ID is set for future continuations
             if (!currentRunId) {
               setCurrentRunId(runId);

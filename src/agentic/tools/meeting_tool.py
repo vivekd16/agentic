@@ -13,6 +13,7 @@ import json, os
 from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
+from agentic.common import RunContext
 
 Base = declarative_base()
 
@@ -49,7 +50,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
     openai_api_key: str = ""
     meeting_baas_api_key: str = ""
 
-    def __init__(self, webhook_addr = ""):
+    def __init__(self):
         self.db_path = "meetings.db"
         # Do not initialize engine here, will be done when needed.
         self.Session = None
@@ -57,7 +58,6 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         self._initialized = False
         self._vector_store = None
         self._rag_initialized = False
-        self.webhook_addr = webhook_addr
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -109,6 +109,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
     def join_meeting(
         self, 
         meeting_url: str,
+        run_context: RunContext,
         bot_name: str = "Meeting Assistant"
     ) -> dict:
         """Join a video meeting and start recording"""
@@ -119,7 +120,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "x-meeting-baas-api-key": self.meeting_baas_api_key
             }
             
-            webhook_url = f"{self.webhook_addr}/webhook/{self.id}/{self.run_context.tenant_id}/{self.run_context.user_id}/{self.run_context.run_id}"
+            webhook_url = run_context.get_webhook_endpoint("process_webhook")
 
             data = {
                 "meeting_url": meeting_url,

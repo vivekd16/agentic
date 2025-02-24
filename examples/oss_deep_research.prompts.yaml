@@ -25,7 +25,7 @@ REPORT_QUERY_PLANNER: >
   </Report organization>
 
   <Task>
-  Your goal is to generate 2 search queries that will help gather comprehensive information for planning the report sections. 
+  Your goal is to generate {{ NUM_QUERIES }} search queries that will help gather comprehensive information for planning the report sections. 
 
   The queries should:
 

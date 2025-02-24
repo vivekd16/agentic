@@ -6,18 +6,19 @@
 import asyncio
 from typing import Generator
 from pprint import pprint
-from typing import Any, Generator
+from typing import Any, Generator, Dict, List
+from pydantic import BaseModel, Field
 
-from agentic.common import Agent, AgentRunner
+
+from agentic.common import Agent, AgentRunner, cached_call
 from agentic.actor_agents import RayFacadeAgent
 from agentic.events import Prompt
 
 from agentic.agentic_secrets import agentic_secrets
 from agentic.models import GPT_4O_MINI, CLAUDE, GPT_4O
-from agentic.events import Event, FinishCompletion, ChatOutput
+from agentic.events import Event, ChatOutput
 from agentic.tools.tavily_search_tool import TavilySearchTool
 
-from oss_deep_util import cached_call, Queries, Sections, Section, format_sections
 
 PLANNER_MODEL = GPT_4O_MINI
 WRITER_MODEL = GPT_4O_MINI
@@ -70,7 +71,7 @@ class WorkflowAgent(RayFacadeAgent):
             model=WRITER_MODEL
         )
 
-    def process_section(self, section: Section, report_context: str = None) -> Generator:
+    def process_section(self, section: "Section", report_context: str = None) -> Generator:
         """Handle the complete processing of a single section"""
         # Generates web queries to gather content for each section
         queries = yield from self.section_query_planner.final_result(
@@ -147,7 +148,7 @@ class WorkflowAgent(RayFacadeAgent):
 
         return "\n".join(finals)
 
-    def query_web_content(self, queries: Queries) -> str:
+    def query_web_content(self, queries: "Queries") -> str:
         async def _query_web_content(queries: Queries) -> str:
             all_results = []
             for query in queries.queries:
@@ -158,7 +159,55 @@ class WorkflowAgent(RayFacadeAgent):
         return asyncio.run(_query_web_content(queries))
 
 
+class SearchQuery(BaseModel):
+    search_query: str = Field(None, description="Query for web search.")
+
+class Queries(BaseModel):
+    queries: List[SearchQuery] = Field(
+        description="List of search queries.",
+    )
+
+class Section(BaseModel):
+    name: str = Field(
+        description="Name for this section of the report.",
+    )
+    description: str = Field(
+        description="Brief overview of the main topics and concepts to be covered in this section.",
+    )
+    research: bool = Field(
+        description="Whether to perform web research for this section of the report."
+    )
+    content: str = Field(
+        description="The content of the section."
+    )   
+
+class Sections(BaseModel):
+    sections: List[Section] = Field(
+        description="Sections of the report.",
+    )
+
+
+def format_sections(sections: list[Section]) -> str:
+    """ Format a list of sections into a string """
+    formatted_str = ""
+    for idx, section in enumerate(sections, 1):
+        formatted_str += f"""
+{'='*60}
+Section {idx}: {section.name}
+{'='*60}
+Description:
+{section.description}
+Requires Research: 
+{section.research}
+
+Content:
+{section.content if section.content else '[Not yet written]'}
+
+"""
+    return formatted_str
+
+
+deep_researcher = WorkflowAgent(name="OSS Deep Research", model=GPT_4O_MINI)
 
 if __name__ == "__main__":
-    agent = WorkflowAgent(name="OSS Deep Research", model=GPT_4O_MINI)
-    AgentRunner(agent).repl_loop()
+    AgentRunner(deep_researcher).repl_loop()

@@ -247,6 +247,9 @@ def serve(filename: str = typer.Argument(default="", show_default=False)):
             return []
 
     agent_instances = find_agent_instances(filename)
+    if len(agent_instances) == 0:
+        typer.echo(f"No agent instances found in {filename}. Make sure to create at least one agent at module scope.")
+        raise typer.Exit(1)
     for agent in agent_instances:
         runner = AgentRunner(agent)
         path = runner.serve()

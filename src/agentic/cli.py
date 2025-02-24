@@ -1,47 +1,29 @@
 import typer
 import os
 import requests
-from bs4 import BeautifulSoup
 from rich.markdown import Markdown
 from rich.console import Console
 from typing import Optional, List, Dict
-
 from .file_cache import file_cache
 from .colors import Colors
 
+
+import agentic.quiet_warnings
 from agentic.agentic_secrets import agentic_secrets as secrets
 from agentic.settings import settings
-from agentic.common import AgentRunner
 
 import shutil
 from pathlib import Path
 from importlib import resources
 from rich.status import Status
 
-from weaviate.classes.config import (
-    VectorDistances
-)
-from weaviate.classes.query import Filter
+import warnings
+warnings.filterwarnings("ignore")
 
-from agentic.utils.file_reader import read_file
-
-from agentic.utils.summarizer import generate_document_summary
-from agentic.utils.rag_helper import (
-    init_weaviate,
-    create_collection,
-    prepare_document_metadata,
-    check_document_exists,
-    init_embedding_model,
-    init_chunker,
-    delete_document_from_index,
-    check_document_in_index,
-    get_document_id_from_path,
-    list_collections,
-    rename_collection,
-    list_documents_in_collection,
-    get_document_metadata,
-    search_collection
-)
+### WARNING: DO NOT ADD MORE IMPORTS HERE
+# Everything imported at module level runs every time you run ANY cli command.
+# So its much preferred to defer imports until the specific command that needs them.
+##############
 
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
@@ -138,6 +120,7 @@ def delete_secret(name: str):
 def ollama():
     """List the latest popular models from Ollama. Use "ollama pull <model> to download."""
     from .llm import llm_generate, LLMUsage, CLAUDE_DEFAULT_MODEL, GPT_DEFAULT_MODEL
+    from bs4 import BeautifulSoup
 
     # Download the web page from ollama.com/library
 
@@ -182,6 +165,12 @@ def ui():
     """Runs the agentic UI"""
     os.execvp("streamlit", ["streamlit", "run", "src/agentic/ui/chat.py"])
 
+@app.command()
+def webui():
+    """Runs the agentic NextJS web UI"""
+    # FIXME: get the right path when installed from the package
+    os.chdir("./src/agentic/ui/next-js")
+    os.execvp("npm", ["npm", "run", "dev"])
 
 @app.command()
 def claude(prompt: str):
@@ -222,6 +211,8 @@ Popular models:
     openai/gpt-4o-mini
     anthropic/claude-3-5-sonnet-20240620
     anthropic/claude-3-5-haiku-20241022
+    lm_studio/qwen2.5-7b-instruct-1m
+    lm_studio/deepseek-r1-distill-qwen-7B
      """
     )
 
@@ -234,6 +225,7 @@ import time
 @app.command()
 def serve(filename: str = typer.Argument(default="", show_default=False)):
     """Runs the FastAPI server for an agent"""
+    from agentic.common import AgentRunner
 
     def find_agent_instances(file_path):
         # Load the module from file path
@@ -257,9 +249,11 @@ def serve(filename: str = typer.Argument(default="", show_default=False)):
     agent_instances = find_agent_instances(filename)
     for agent in agent_instances:
         runner = AgentRunner(agent)
-        runner.serve()
+        path = runner.serve()
 
     # Busy loop until ctrl-c or ctrl-d
+    os.system(f"open http://0.0.0.0:8086{path}/docs")
+
     while True:
         time.sleep(1)
 
@@ -360,93 +354,37 @@ def index_file(
         ". ,! ,? ,\n",
         help="Comma-separated delimiters for fallback chunk splitting"
     ),
-    distance_metric: VectorDistances = typer.Option(
-        VectorDistances.COSINE,
-        help="Distance metric for vector comparison"
-    )
 ):
-    """Index a file using configurable Weaviate Embedded and chunking parameters"""
+    from agentic.utils.rag_helper import rag_index_file
     console = Console()
-    client = None
-    
-    try:
-        with Status("[bold green]Initializing Weaviate..."):
-            client = init_weaviate()
-            create_collection(client, index_name, distance_metric)
-            
-        with Status("[bold green]Initializing models..."):
-            embed_model = init_embedding_model(embedding_model)
-            chunker = init_chunker(chunk_threshold, chunk_delimiters)
-            
-        with Status(f"[bold green]Processing {file_path}...", console=console):
-            text, mime_type = read_file(str(file_path))
-            metadata = prepare_document_metadata(file_path, text, mime_type, GPT_DEFAULT_MODEL)
-            
-        collection = client.collections.get(index_name)
-        exists, status = check_document_exists(
-            collection, 
-            metadata["document_id"],
-            metadata["fingerprint"]
-        )
-        
-        if status == "unchanged":
-            console.print(f"[yellow]⏩ Document '{metadata['filename']}' unchanged[/yellow]")
-            return
-        elif status == "duplicate":
-            console.print(f"[yellow]⚠️ Content already exists under different filename[/yellow]")
-            return
-        elif status == "changed":
-            console.print(f"[yellow]🔄 Updating changed document '{metadata['filename']}'[/yellow]")
-            collection.data.delete_many(
-                where=Filter.by_property("document_id").equal(metadata["document_id"])
-            )
 
-        with Status("[bold green]Generating document summary...", console=console):
-            metadata["summary"] = generate_document_summary(
-                text=text[:12000],
-                mime_type=mime_type,
-                model=GPT_DEFAULT_MODEL
-            )
-        
-        chunks = chunker(text)
-        chunks_text = [chunk.text for chunk in chunks]
-        if not chunks_text:
-            raise ValueError("No text chunks generated from document")
-        
-        batch_size = 128
-        embeddings = []
-        with Status("[bold green]Generating embeddings..."):
-            for i in range(0, len(chunks_text), batch_size):
-                batch = chunks_text[i:i+batch_size]
-                embeddings.extend(list(embed_model.embed(batch)))
-        
-        with Status("[bold green]Indexing chunks..."), collection.batch.dynamic() as batch:
-            for i, chunk in enumerate(chunks):
-                vector = embeddings[i].tolist()
-                batch.add_object(
-                    properties={
-                        **metadata,
-                    "content": chunk.text,
-                    "chunk_index": i,
-                    },
-                    vector=vector
-                )
-                
-        console.print(f"[bold green]✅ Indexed {len(chunks)} chunks in {index_name}")
-        
+    try:
+        rag_index_file(
+            file_path,
+            index_name,
+            chunk_threshold,
+            chunk_delimiters,
+            embedding_model,
+        )    
     except Exception as e:
         console.print(f"[bold red]Error: {str(e)}")
-    finally:
-        if client:
-            client.close()
+        raise typer.Exit(1)
 
-
+        
 @app.command()
 def delete_document(
     index_name: str,
     document_identifier: str,  # Changed from file_path to accept both
     confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
 ):
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+        delete_document_from_index,
+        check_document_in_index,
+        get_document_id_from_path,
+        get_document_metadata,
+    )
+
     """Delete a document using its ID or filename/path"""
     console = Console()
     
@@ -502,6 +440,9 @@ def delete_index(
     confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
 ):
     """Delete entire Weaviate index (collection)"""
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+    )
     console = Console()
     
     try:
@@ -530,6 +471,11 @@ def delete_index(
 @app.command()
 def list_indexes():
     """List all available Weaviate indexes"""
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+        list_collections,
+    )
+
     console = Console()
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
@@ -552,6 +498,10 @@ def rename_index(
     overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing target index")
 ):
     """Rename a Weaviate index/collection"""
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+        rename_collection,
+    )
     console = Console()
     client = None
     try:
@@ -584,6 +534,10 @@ def rename_index(
 @app.command()
 def list_documents(index_name: str):
     """List all documents in an index with basic info"""
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+        list_documents_in_collection,
+    )
     console = Console()
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
@@ -614,6 +568,12 @@ def show_document(
     document_identifier: str 
 ):
     """Show detailed metadata for a specific document using its ID or filename/path"""
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+        get_document_id_from_path,
+        get_document_metadata,
+    )
+
     console = Console()
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
@@ -665,6 +625,11 @@ def search(
     alpha: float = typer.Option(0.5, min=0.0, max=1.0, help="Weight between vector (1.0) and keyword (0.0) search")
 ):
     """Search documents with hybrid search support"""
+    from agentic.utils.rag_helper import (
+        init_weaviate,
+        init_embedding_model,
+        search_collection
+    )
     console = Console()
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):

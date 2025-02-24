@@ -1,15 +1,21 @@
 import asyncio
+import time
 from typing import Any, Optional, Generator, Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from dataclasses import dataclass
 from functools import partial
 from collections import defaultdict
 from pathlib import Path
+from queue import Queue
+import threading
+
+from starlette.requests import Request
+
 import inspect
 import json
 import os
 from copy import deepcopy
-from pprint import pprint
+from pprint import pprint, pformat
 from pathlib import Path
 import os
 import yaml
@@ -48,6 +54,7 @@ from litellm.types.utils import ModelResponse, Message
 from litellm import completion_cost
 from litellm import token_counter
 
+
 from .swarm.types import (
     AgentFunction,
     ChatCompletionMessage,
@@ -78,15 +85,21 @@ from .events import (
     ToolError,
     AgentDescriptor,
 )
+from agentic.db.models import Run, RunLog
+from agentic.utils.json import make_json_serializable
 from agentic.tools.registry import tool_registry
+from agentic.db.db_manager import DatabaseManager
+
+from .models import get_special_model_params 
+
 
 __CTX_VARS_NAME__ = "run_context"
 
-# define a CallbackType Enum with values: "handle_turn_start", "handle_turn_end"
-CallbackType = Literal["handle_turn_start", "handle_turn_end"]
+# define a CallbackType Enum with values: "handle_turn_start", "handle_event", "handle_turn_end"
+CallbackType = Literal["handle_turn_start", "handle_event", "handle_turn_end"]
 
 # make a Callable type that expects a Prompt and RunContext
-CallbackFunc = Callable[[Prompt, RunContext], None]
+CallbackFunc = Callable[[Event, RunContext], None]
 
 @dataclass
 class AgentPauseContext:
@@ -96,10 +109,11 @@ class AgentPauseContext:
     tool_function: Optional[Function] = None
 
 
+litellm.drop_params = True
 @ray.remote
 class ActorBaseAgent:
     name: str = "Agent"
-    model: str = "gpt-4o"
+    model: str = "gpt-4o"  # Default model
     instructions_str: str = "You are a helpful agent."
     tools: list[str] = []
     functions: List[AgentFunction] = []
@@ -115,10 +129,13 @@ class ActorBaseAgent:
     # The Actor who sent us our Prompt
     max_tokens: int = None
     run_context: RunContext = None
+    api_endpoint: str = None
     _prompter = None
     _callbacks: dict[CallbackType, CallbackFunc] = {}
-    class Config:
-        arbitrary_types_allowed = True
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
 
     def __init__(self, name: str):
         super().__init__()
@@ -147,21 +164,27 @@ class ActorBaseAgent:
             if __CTX_VARS_NAME__ in params["required"]:
                 params["required"].remove(__CTX_VARS_NAME__)
 
+        # Create parameters for litellm call
         create_params = {
             "model": model_override or self.model,
-            "temperature": 0.0,
             "messages": messages,
+            "temperature": 0.0,
             "tools": tools or None,
             "tool_choice": self.tool_choice,
             "stream": stream,
             "stream_options": {"include_usage": True},
         }
+
+        # Add any special parameters needed for specific model types
+        create_params.update(get_special_model_params(create_params["model"]))
+
         if self.max_tokens:
             create_params["max_tokens"] = self.max_tokens
 
         if tools:
             create_params["parallel_tool_calls"] = self.parallel_tool_calls
-
+            
+        # Create simplified version of params for debug logging
         debug_params = create_params.copy()
         if debug_params.get("tools"):
             debug_params["tools"] = [
@@ -170,7 +193,7 @@ class ActorBaseAgent:
 
         debug_completion_start(self.debug, self.model, debug_params)
 
-        # Use LiteLLM's completion instead of OpenAI's client
+        # Use LiteLLM's completion
         try:
             return litellm.completion(**create_params)
         except Exception as e:
@@ -401,12 +424,21 @@ class ActorBaseAgent:
             self.depth,
         )
 
-    def handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput):
+    def handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput):            
+        for event in self._handlePromptOrResume(actor_message):
+            if self._callbacks.get('handle_event'):
+                self._callbacks['handle_event'](event, self.run_context)
+            yield event
+
+    def _handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput):
         if isinstance(actor_message, Prompt):
             # Middleware to modify the input prompt (or change agent context)
             self.run_context = (
                 RunContext(
-                    agent_name=self.name, agent=self, debug_level=actor_message.debug
+                    agent_name=self.name, 
+                    agent=self, 
+                    debug_level=actor_message.debug,
+                    api_endpoint=self.api_endpoint
                 )
                 if self.run_context is None
                 else self.run_context
@@ -613,6 +645,7 @@ class ActorBaseAgent:
             "model",
             "max_tokens",
             "memories",
+            "api_endpoint",
         ]:
             if key in state:
                 setattr(self, remap.get(key, key), state[key])
@@ -633,8 +666,14 @@ class ActorBaseAgent:
         self.debug = debug
         print("agent set new debug level: ", debug)
 
-    def set_callback(self, key: CallbackType, callback: Callable):
-        self._callbacks[key] = callback
+    def get_callback(self, key: CallbackType) -> Optional[CallbackFunc]:
+        return self._callbacks.get(key)
+
+    def set_callback(self, key: CallbackType, callback: Optional[CallbackFunc]):
+        if callback is None:
+            self._callbacks.pop(key, None)
+        else:
+            self._callbacks[key] = callback
 
     def list_tools(self) -> list[str]:
         return self.tools
@@ -652,6 +691,55 @@ class ActorBaseAgent:
 
     def handle_request(self, method: str, data: dict):
         return f"Actor {self.name} processed {method} request with data: {data}"
+
+    def webhook(self, run_id: str, callback_name: str, args: dict) -> Any:
+        """Handle webhook callbacks by executing the specified tool function
+        
+        Args:
+            run_id: ID of the agent run this webhook is for
+            callback_name: Name of the tool function to call
+            args: Arguments to pass to the tool function
+        """
+        # Get the run context from the database
+        db_manager = DatabaseManager()
+        run = db_manager.get_run(run_id)
+        if not run:
+            raise ValueError(f"No run found with ID {run_id}")
+        # Recreate run context
+        self.run_context = RunContext(
+            agent=self,
+            agent_name=self.name, 
+            debug_level=self.debug,
+            run_id=run_id,
+            api_endpoint=self.api_endpoint
+        )
+        # Find the tool function
+        function_map = {f.__name__: f for f in self.functions}
+        if callback_name not in function_map:
+            raise ValueError(f"No tool function found named {callback_name}")
+
+        # Execute the tool call
+        try:
+            # Create tool call object
+            tool_call = ChatCompletionMessageToolCall(
+                id="",
+                type="function",
+                function=Function(
+                    name=callback_name,
+                    arguments=json.dumps(args)
+                )
+            )
+
+            # Execute the tool call
+            response, events = self._execute_tool_calls(
+                [tool_call],
+                self.functions,
+                self.run_context
+            )
+            return response
+
+        except Exception as e:
+            raise RuntimeError(f"Error executing webhook {callback_name}: {str(e)}")
 
 class HandoffAgentWrapper:
     def __init__(self, agent):
@@ -680,6 +768,8 @@ app.add_middleware(
 )
 class ProcessRequest(BaseModel):
     prompt: str
+    debug: Optional[str] = None
+    run_id: Optional[str] = None
 
 from sse_starlette.sse import EventSourceResponse
 
@@ -689,25 +779,56 @@ class DynamicFastAPIHandler:
     def __init__(self, actor_ref: ray.actor.ActorHandle, agent_facade: "RayFacadeAgent"):
         self._agent = actor_ref
         self.agent_facade = agent_facade
-        self.debug = DebugLevel.OFF
+        self.debug = DebugLevel(os.environ.get("AGENTIC_DEBUG") or DebugLevel.OFF)
         self.name = self.agent_facade.name
         self.prompt: ProcessRequest = None
+
+    def __repr__(self):
+        return f"API: {self._agent.name}"
     
     @app.post("/process")
-    async def handle_post(self, prompt: ProcessRequest):
+    async def handle_post(self, prompt: ProcessRequest) -> str:
+        print(">> PROMPT request: ", prompt)
         self.prompt = prompt
+        if prompt.debug and self.debug.is_off():
+            self.debug = DebugLevel(prompt.debug)
+        return self.agent_facade.start_request(prompt.prompt, debug=self.debug, run_id=prompt.run_id)
 
     @app.get("/getevents", response_model=None)
-    async def get_events(self, stream: bool = False) -> list[str]|EventSourceResponse:
+    async def get_events(self, request_id: str, stream: bool = False) -> list[str]|EventSourceResponse:
         if not stream:
             results = []
-            for event in self.next_turn(self.prompt.prompt):
-                results.append(str(event))
+            for event in self.agent_facade.get_events(request_id):
+                if self._should_print(event):
+                    print(str(event), end="")
+
+                # Create a serializable version of the event
+                event_data = {
+                    "type": event.type,
+                    "agent": event.agent,
+                    "depth": event.depth,
+                    "payload": make_json_serializable(event.payload),
+                }
+
+                results.append(event_data)
             return results
         else:
             def render_events():
-                for event in self.next_turn(self.prompt.prompt):
-                    yield (str(event))
+                for event in self.agent_facade.get_events(request_id):
+                    if self._should_print(event):
+                        print(str(event), end="")
+                    # Create a serializable version of the event
+                    event_data = {
+                        "type": event.type,
+                        "agent": event.agent,
+                        "depth": event.depth,
+                        "payload": make_json_serializable(event.payload),
+                    }
+
+                    yield {
+                        "data": json.dumps(event_data),
+                        "event": "message",
+                    }
             return EventSourceResponse(render_events())
 
     @app.post('/stream_request')
@@ -716,6 +837,48 @@ class DynamicFastAPIHandler:
             for event in self.next_turn(prompt.prompt):
                 yield (str(event))
         return EventSourceResponse(render_events())
+    
+    @app.get('/runs')
+    async def get_runs(self) -> list[dict]:
+        runs = self.agent_facade.get_runs()
+        return [run.model_dump() for run in runs]
+    
+    @app.get('/runs/{run_id}/logs')
+    async def get_run_logs(self, run_id=str) -> list[dict]:
+        run_logs = self.agent_facade.get_run_logs(run_id)
+        return [run_log.model_dump() for run_log in run_logs]
+    
+    @app.post("/webhook/{run_id}/{callback_name}")
+    async def handle_webhook(
+        self, 
+        run_id: str, 
+        callback_name: str,
+        request: Request
+    ) -> dict:
+        """Handle incoming webhook requests by executing the specified callback
+        
+        Args:
+            run_id: ID of the agent run this webhook is for 
+            callback_name: Name of the callback function to invoke
+            request: FastAPI request object containing query params and body
+        """
+        # Get query parameters
+        params = dict(request.query_params)
+        # Get request body if any
+        try:
+            body = await request.json()
+            params.update(body)
+        except:
+            pass
+        # Call the remote webhook handler
+        result = ray.get(
+            self._agent.webhook.remote(
+                run_id=run_id,
+                callback_name=callback_name, 
+                args=params
+            )
+        )
+        return {"status": "success", "result": result}
 
     def next_turn(
         self,
@@ -755,8 +918,33 @@ class DynamicFastAPIHandler:
             endpoints=["/process", "/getevents", "/describe"],
             operations=["chat"],
         )
-    
 
+    # FIXME: DRY this with Runner
+    def _should_print(self, event: Event) -> bool:
+        if self.debug.debug_all():
+            return True
+        if not self.debug.is_off() and event.is_output and event.depth == 0:
+            return True
+        elif isinstance(event, ToolError):
+            return self.debug != ""
+        elif isinstance(event, (ToolCall, ToolResult)):
+            return self.debug.debug_tools()
+        elif isinstance(event, PromptStarted):
+            return self.debug.debug_llm() or self.debug.debug_agents()
+        elif isinstance(event, TurnEnd):
+            return self.debug.debug_agents()
+        elif isinstance(event, (StartCompletion, FinishCompletion)):
+            return self.debug.debug_llm()
+        else:
+            return False
+
+
+@serve.deployment
+class BaseServeDeployment:
+    def __call__(self, request: Request) -> list[str]:
+        return [f"/{agent.safe_name}" for agent in _AGENT_REGISTRY]
+
+base_serve_app = None
 
 class RayFacadeAgent:
     """The facade agent is the object directly instantiated in code. It holds a reference to the remote
@@ -773,6 +961,8 @@ class RayFacadeAgent:
         model: str | None = None,
         template_path: str | Path = None,
         max_tokens: int = None,
+        enable_run_logs: bool = True,
+        db_path: Optional[str | Path] = None,
         memories: list[str] = [],
         handle_turn_start: Callable[[Prompt, RunContext], None] = None,
         debug: DebugLevel = DebugLevel(DebugLevel.OFF),
@@ -797,12 +987,20 @@ class RayFacadeAgent:
         self.memories = memories
         self.debug = debug
         self._handle_turn_start = handle_turn_start
+        self.request_queues: dict[str, Queue] = {}
 
         # Check we have all the secrets
         self._ensure_tool_secrets()
 
         # Initialize the base actor
         self._init_base_actor(instructions or "")
+
+        # Initialize adding runs to the agent
+        self.db_path = None
+        if enable_run_logs:
+            self.init_run_tracking(db_path)
+        else:
+            self.run_manager = None
 
         # Ensure API key is set
         self.ensure_api_key_for_model(self.model)
@@ -841,16 +1039,33 @@ class RayFacadeAgent:
         ray.get(obj_ref)
 
     def _create_fastapi_endpoint(self, port: int = 8086):
+        global base_serve_app
+
         serve.start(http_options={"host": "0.0.0.0", "port": port})
+        dep = DynamicFastAPIHandler.bind(self._agent, self)
+        dep.name = f"{self.safe_name}_api"
         deployment = serve.run(
-            DynamicFastAPIHandler.bind(self._agent, self),
+            dep,
+            name=f"{self.safe_name}_api",
             route_prefix=f"/{self.safe_name}",
         )
-        return deployment
+
+        api_endpoint = f"http://0.0.0.0:{port}/{self.safe_name}"
+        self._update_state({"api_endpoint": api_endpoint})
+
+        if base_serve_app is None:
+            base_serve_app = BaseServeDeployment.bind()
+            serve.run(
+                base_serve_app, 
+                name=f"base_api",
+                route_prefix="/_discovery"
+            )
+
+        return deployment, f"/{self.safe_name}"
 
 
-    def start_api_server(self, port: int = 8086):
-        self._create_fastapi_endpoint()
+    def start_api_server(self, port: int = 8086) -> str:
+        return self._create_fastapi_endpoint()[1]
 
     def _ensure_tool_secrets(self):
         from agentic.agentic_secrets import agentic_secrets
@@ -956,9 +1171,92 @@ class RayFacadeAgent:
                 if value:
                     os.environ[key] = value
 
+    # Start a new agent request. We spawn a thread to actually iterate the agent loop, and
+    # it queues events coming back from the agent. Then our caller can get calling "get_events"
+    # to retrieve from the queue. This lets them run multiple requests by making separate "get_events"                    
+    # calls for separate requests.
+    def start_request(
+        self, 
+        request: str, 
+        run_id: Optional[str] = None,
+        debug: DebugLevel = DebugLevel(DebugLevel.OFF),
+    ) -> str: # returns the request_id
+        self.debug = debug
+        self.queue_done_sentinel = "QUEUE_DONE"
+
+        # Initialize new request
+        request_obj = Prompt(
+            self.name,
+            request,
+            debug=self.debug,
+            depth=0,
+        )
+
+        # Re-initialize run tracking if continuing a run
+        if run_id and self.run_manager:
+            self.init_run_tracking(self.db_path, run_id)
+
+        remote_gen = self._agent.handlePromptOrResume.remote(
+            request_obj,
+        )
+        def producer(queue, remote_gen):
+            for remote_next in remote_gen:
+                event = ray.get(remote_next)
+                queue.put(event)
+            queue.put(self.queue_done_sentinel)
+        queue = Queue()
+        self.request_queues[request_obj.request_id] = queue
+
+        t = threading.Thread(target=producer, args=(queue, remote_gen))
+        t.start()
+        return request_obj.request_id
+
+    def get_events(self, request_id: str) -> Generator[Event, Any, Any]:
+        queue = self.request_queues[request_id]
+        while True:
+            event = queue.get()
+            if event == self.queue_done_sentinel:
+                break
+            yield event
+            time.sleep(0.01)
+    
+    def init_run_tracking(self, db_path: Optional[str] = None, run_id: Optional[str] = None):
+        from .run_manager import init_run_tracking
+        if db_path:
+            self.db_path = db_path
+            self.run_manager = init_run_tracking(self, db_path=db_path, resume_run_id=run_id)
+        else:
+            self.run_manager = init_run_tracking(self, resume_run_id=run_id)
+
+    def get_db_manager(self) -> DatabaseManager:
+        if self.db_path:
+            db_manager = DatabaseManager(self.db_path)
+        else:
+            db_manager = DatabaseManager()
+        return db_manager
+
+    def get_runs(self) -> list[Run]:
+        db_manager = self.get_db_manager()
+        
+        try:
+            return db_manager.get_runs_by_agent(self.name)
+        except Exception as e:
+            print(f"Error getting runs: {e}")
+            return []
+        
+    def get_run_logs(self, run_id: str) -> list[RunLog]:
+        db_manager = self.get_db_manager()
+        
+        try:
+            return db_manager.get_run_logs(run_id)
+        except Exception as e:
+            print(f"Error getting run logs: {e}")
+            return []
+   
     def next_turn(
         self,
         request: str,
+        request_id: str = None,
         continue_result: dict = {},
         debug: DebugLevel = DebugLevel(DebugLevel.OFF),
     ) -> Generator[Event, Any, Any]:
@@ -994,3 +1292,13 @@ class RayFacadeAgent:
 
     def get_history(self):
         return ray.get(self._agent.get_history.remote())
+        
+    def set_run_tracking(self, enabled: bool, user_id: str = "default") -> None: #TODO: create a real user_id
+        """Enable or disable run tracking for this agent"""
+        if enabled and not self.run_manager:
+            from .run_manager import init_run_tracking
+            self.run_manager = init_run_tracking(self, user_id)
+        elif not enabled and self.run_manager:
+            from .run_manager import disable_run_tracking
+            disable_run_tracking(self)
+            self.run_manager = None

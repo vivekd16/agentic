@@ -16,8 +16,11 @@ from chonkie import SemanticChunker
 from fastembed import TextEmbedding
 from rich.console import Console
 
-from agentic.utils.file_reader import get_last_path_component
+from agentic.utils.file_reader import get_last_path_component, read_file
 from agentic.utils.fingerprint import generate_fingerprint
+from agentic.utils.summarizer import generate_document_summary
+
+GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 def init_weaviate() -> WeaviateClient:
     """Initialize and return Weaviate client"""
@@ -127,6 +130,106 @@ def init_chunker(threshold: float, delimiters: str) -> SemanticChunker:
         threshold=threshold,
         delim=delimiters.split(",")
     )
+
+from rich.status import Status as RichStatus
+# Make a no op context manager to replace 'Status' one:
+class NOOPStatus:
+    def __init__(self, message: str, **kwargs):
+        self.message = message
+    def __enter__(self):
+        print(self.message)
+        return self
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
+Status = NOOPStatus
+
+def rag_index_file(
+    file_path: str,
+    index_name: str,
+    chunk_threshold: float = 0.5,
+    chunk_delimiters: str = ". ,! ,? ,\n",
+    embedding_model: str = "BAAI/bge-small-en-v1.5",
+    client: WeaviateClient|None = None,
+    ignore_errors: bool = False,
+    distance_metric: VectorDistances = VectorDistances.COSINE,
+):
+    """Index a file using configurable Weaviate Embedded and chunking parameters"""
+
+    console = Console()
+    try:
+        with Status("[bold green]Initializing Weaviate..."):
+            if client is None:
+                client = init_weaviate()
+            create_collection(client, index_name, distance_metric)
+            
+        with Status("[bold green]Initializing models..."):
+            embed_model = init_embedding_model(embedding_model)
+            chunker = init_chunker(chunk_threshold, chunk_delimiters)
+            
+        with Status(f"[bold green]Processing {file_path}...", console=console):
+            text, mime_type = read_file(str(file_path))
+            metadata = prepare_document_metadata(file_path, text, mime_type, GPT_DEFAULT_MODEL)
+
+        console.print(f"[bold green]Indexing {file_path}...")
+
+        collection = client.collections.get(index_name)
+        exists, status = check_document_exists(
+            collection, 
+            metadata["document_id"],
+            metadata["fingerprint"]
+        )
+        
+        if status == "unchanged":
+            console.print(f"[yellow]⏩ Document '{metadata['filename']}' unchanged[/yellow]")
+            return
+        elif status == "duplicate":
+            console.print(f"[yellow]⚠️ Content already exists under different filename[/yellow]")
+            return
+        elif status == "changed":
+            console.print(f"[yellow]🔄 Updating changed document '{metadata['filename']}'[/yellow]")
+            collection.data.delete_many(
+                where=Filter.by_property("document_id").equal(metadata["document_id"])
+            )
+
+        with Status("[bold green]Generating document summary...", console=console):
+            metadata["summary"] = generate_document_summary(
+                text=text[:12000],
+                mime_type=mime_type,
+                model=GPT_DEFAULT_MODEL
+            )
+        
+        chunks = chunker(text)
+        chunks_text = [chunk.text for chunk in chunks]
+        if not chunks_text:
+            if ignore_errors:
+                return client
+            raise ValueError("No text chunks generated from document")
+        
+        batch_size = 128
+        embeddings = []
+        with Status("[bold green]Generating embeddings..."):
+            for i in range(0, len(chunks_text), batch_size):
+                batch = chunks_text[i:i+batch_size]
+                embeddings.extend(list(embed_model.embed(batch)))
+        
+        with Status("[bold green]Indexing chunks..."), collection.batch.dynamic() as batch:
+            for i, chunk in enumerate(chunks):
+                vector = embeddings[i].tolist()
+                batch.add_object(
+                    properties={
+                        **metadata,
+                    "content": chunk.text,
+                    "chunk_index": i,
+                    },
+                    vector=vector
+                )
+                
+        console.print(f"[bold green]✅ Indexed {len(chunks)} chunks in {index_name}")
+    finally:
+        pass
+    return client
+        
 
 def delete_document_from_index(
     collection: Any,
@@ -281,41 +384,47 @@ def search_collection(
     alpha: float = 0.5
 ) -> List[Dict]:
     """Search documents with hybrid search support"""
-    # Generate query vector using our embedding model
-    query_vector = list(embed_model.embed([query]))[0].tolist()
-    
-    search_params = {
-        "limit": limit,
-        "return_metadata": ["distance", "score"] if hybrid else ["distance"],
-        "return_properties": ["filename", "content", "source_url", "timestamp"]
-    }
-    
-    if filters and len(filters) == 1:
-        key, value = next(iter(filters.items()))
-        search_params["filters"] = Filter.by_property(key).equal(value)
-    
-    if hybrid:
-        result = collection.query.hybrid(
-            query=query,
-            vector=query_vector,  # Provide pre-computed vector
-            alpha=alpha,
-            fusion_type=HybridFusion.RELATIVE_SCORE,
-            **search_params
-        )
-    else:
-        result = collection.query.near_vector(
-            near_vector=query_vector,
-            **search_params
-        )
-    
-    return [
-        {
-            "filename": obj.properties.get("filename", "Unknown"),
-            "content": obj.properties.get("content", ""),
-            "source_url": obj.properties.get("source_url", ""),
-            "timestamp": obj.properties.get("timestamp", ""),
-            "distance": obj.metadata.distance if hasattr(obj.metadata, 'distance') else None,
-            "score": obj.metadata.score if hasattr(obj.metadata, 'score') else None
+    try:
+        # Generate query vector using our embedding model
+        query_vector = list(embed_model.embed([query]))[0].tolist()
+        
+        search_params = {
+            "limit": limit,
+            "return_metadata": ["distance", "score"] if hybrid else ["distance"],
+            "return_properties": ["filename", "content", "source_url", "timestamp"]
         }
-        for obj in result.objects
-    ] 
+        
+        if filters and len(filters) == 1:
+            key, value = next(iter(filters.items()))
+            try:
+                search_params["filters"] = Filter.by_property(key).equal(value)
+            except Exception as e:
+                return [{"error": f"Invalid filter: {str(e)}"}]
+        
+        if hybrid:
+            result = collection.query.hybrid(
+                query=query,
+                vector=query_vector,
+                alpha=alpha,
+                fusion_type=HybridFusion.RELATIVE_SCORE,
+                **search_params
+            )
+        else:
+            result = collection.query.near_vector(
+                near_vector=query_vector,
+                **search_params
+            )
+        
+        return [
+            {
+                "filename": obj.properties.get("filename", "Unknown"),
+                "content": obj.properties.get("content", ""),
+                "source_url": obj.properties.get("source_url", ""),
+                "timestamp": obj.properties.get("timestamp", ""),
+                "distance": obj.metadata.distance if hasattr(obj.metadata, 'distance') else None,
+                "score": obj.metadata.score if hasattr(obj.metadata, 'score') else None
+            }
+            for obj in result.objects
+        ]
+    except Exception as e:
+        return [{"error": f"Search failed: {str(e)}"}] 

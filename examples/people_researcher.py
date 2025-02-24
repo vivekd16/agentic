@@ -38,7 +38,7 @@ Finally, write an extensive background report on the person, focusing on their c
 and last 3 roles.
 """,
     max_tokens=10000,
-    model="openai/gpt-4o-mini",
+    model="openai/gpt-4o",
     tools=[
         get_profile,
         Agent(
@@ -60,8 +60,10 @@ people_researcher = Agent(
 You do research on people. Given a name and a company:
 1. Search for matching profiles on linkedin.
 2. If you find multiple matches, please ask the user which one they are interested in.
-3. Now call the Person Report Writer and pass in the linked profile URL.
+3. Now call the Person Report Writer and pass in the linked profile URL. Print the report and the linkedin profile URL.
 """,
+    #model="lm_studio/qwen2.5-7b-instruct-1m",
+    #model="lm_studio/deepseek-r1-distill-qwen-7B",
     tools=[search_profiles, get_human_input, handoff(person_report_writer)],
 )
 

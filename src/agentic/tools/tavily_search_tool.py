@@ -62,14 +62,18 @@ class TavilySearchTool:
         return pd.DataFrame(results["results"])
 
     async def perform_web_search(
-        self, query: str, include_images: bool = False, run_context: RunContext = None
-    ) -> pd.DataFrame | PauseForInputResult:
+        self, 
+        query: str, 
+        include_images: bool = False, 
+        include_content: bool = False,
+        run_context: RunContext = None
+    ) -> List[dict]:
         """Returns a web search result pages and images using the Tavily search engine. Anything
-         related to news should use the query_for_news function.
+         related to news should use the query_for_news function. Set 'include_content' to return the full page contents.
         Don't use the "site:" filter unless requested explicitly to do so.
         """
 
-        api_key = run_context.get_secret("TAVILY_API_KEY", self.api_key)
+        api_key = self.api_key or run_context.get_secret("TAVILY_API_KEY")
 
         max_results: int = 8
         """Max search results to return, default is 5"""
@@ -107,14 +111,8 @@ class TavilySearchTool:
         response.raise_for_status()
         results = response.json()
 
-        df = pd.DataFrame(results["results"])
-        if "images" in results:
-            new_rows = pd.DataFrame(
-                {"url": results["images"], "title": ["image"] * len(results["images"])}
-            )
-
         # Concatenate the new rows to the existing DataFrame
-        return pd.concat([df, new_rows], ignore_index=True)
+        return results['results'] + results.get('images', [])
 
     async def tavily_download_pages(
         self, run_context: RunContext, urls: list[str], include_images: bool = False
@@ -137,3 +135,46 @@ class TavilySearchTool:
             )
 
         return response.json()
+
+    def _deduplicate_and_format_sources(self, sources_list, max_tokens_per_source, include_raw_content=True) -> str:
+        """
+        Takes a list of search responses and formats them into a readable string.
+        Limits the raw_content to approximately max_tokens_per_source.
+    
+        Args:
+            search_responses: List of search response dicts, each containing:
+                - query: str
+                - results: List of dicts with fields:
+                    - title: str
+                    - url: str
+                    - content: str
+                    - score: float
+                    - raw_content: str|None
+            max_tokens_per_source: int
+            include_raw_content: bool
+                
+        Returns:
+            str: Formatted string with deduplicated sources
+        """
+        # Deduplicate by URL
+        unique_sources = {source['url']: source for source in sources_list}
+
+        # Format output
+        formatted_text = "Sources:\n\n"
+        for i, source in enumerate(unique_sources.values(), 1):
+            formatted_text += f"Source {source['title']}:\n===\n"
+            formatted_text += f"URL: {source['url']}\n===\n"
+            formatted_text += f"Most relevant content from source: {source['content']}\n===\n"
+            if include_raw_content:
+                # Using rough estimate of 4 characters per token
+                char_limit = max_tokens_per_source * 4
+                # Handle None raw_content
+                raw_content = source.get('raw_content', '')
+                if raw_content is None:
+                    raw_content = ''
+                    print(f"Warning: No raw_content found for source {source['url']}")
+                if len(raw_content) > char_limit:
+                    raw_content = raw_content[:char_limit] + "... [truncated]"
+                formatted_text += f"Full source content limited to {max_tokens_per_source} tokens: {raw_content}\n\n"
+                    
+        return formatted_text.strip()

@@ -14,6 +14,15 @@ from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
 from agentic.common import RunContext
+import logging  
+
+# Configure logging  
+logging.basicConfig(  
+    level=logging.INFO,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)  
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Set the log format  
+    datefmt="%Y-%m-%d %H:%M:%S",  # Set the date format  
+)  
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -50,7 +59,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
     openai_api_key: str = ""
     meeting_baas_api_key: str = ""
 
-    def __init__(self):
+    def __init__(self, webhook_addr = ""):
         self.db_path = "meetings.db"
         # Do not initialize engine here, will be done when needed.
         self.Session = None
@@ -58,6 +67,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         self._initialized = False
         self._vector_store = None
         self._rag_initialized = False
+        self.webhook_addr = webhook_addr
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -65,7 +75,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self.get_transcript,
             self.get_summary,
             self.list_meetings,
-            self.get_meeting_status,
+            self.get_meeting_info,
             self.answer_question,
             self.process_webhook
         ]
@@ -120,7 +130,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "Content-Type": "application/json",
                 "x-meeting-baas-api-key": self.meeting_baas_api_key
             }
-            
+            run_context.api_endpoint = self.webhook_addr
             webhook_url = run_context.get_webhook_endpoint("process_webhook")
 
             data = {
@@ -176,45 +186,40 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "message": f"Error joining meeting: {str(e)}"
             }
 
-    def get_transcript(self, meeting_id: str) -> dict:
-        """Get the transcript for a specific meeting"""
-        try:
-            session = self._get_session()
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
+    def get_transcript(self, meeting_id: str) -> dict:  
+        """Get the transcript for a specific meeting and save it to the database if not already present"""  
+        try:  
+            session = self._get_session()  
+            meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
             
-            if not meeting:
-                return {"status": "error", "message": "Meeting not found"}
+            if not meeting:  
+                return {"status": "error", "message": "Meeting not found"}  
+            
+            if not meeting.transcript:  
+                # Fetch transcript from MeetingBaaS API  
+                if not self.meeting_baas_api_key:  
+                    self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")  
+                    
+                headers = {"x-meeting-baas-api-key": self.meeting_baas_api_key}  
+                response = requests.get(  
+                    f"https://api.meetingbaas.com/bots/meeting_data",  
+                    headers=headers,  
+                    params={"bot_id": meeting_id}  
+                )  
                 
-            if not meeting.transcript:
-                headers = {
-                    "x-meeting-baas-api-key": self.meeting_baas_api_key
-                }
-                response = requests.get(
-                    f"https://api.meetingbaas.com/bots/meeting_data",
-                    headers=headers,
-                    params={"bot_id": meeting_id}
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    meeting.transcript = json.dumps(data["bot_data"]["transcripts"])
-                    session.commit()
-                else:
-                    return {
-                        "status": "error",
-                        "message": "Failed to fetch transcript from API"
-                    }
+                if response.status_code == 200:  
+                    data = response.json()  
+                    transcripts = json.dumps(data.get("bot_data", {}).get("transcripts", []))  
+                    meeting.transcript = transcripts  
+                    session.commit()  
+                else:  
+                    return {"status": "error", "message": f"Failed to fetch transcript: {response.text}"}  
             
-            return {
-                "status": "success",
-                "transcript": json.loads(meeting.transcript)
-            }
-            
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error getting transcript: {str(e)}"
-            }
+            return {"status": "success", "transcript": json.loads(meeting.transcript)}  
+        
+        except Exception as e:  
+            return {"status": "error", "message": f"Error fetching transcript: {str(e)}"}  
+
 
     def _ensure_openai_initialized(self):
         """Ensure OpenAI client is properly initialized"""
@@ -316,43 +321,48 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "message": f"Error listing meetings: {str(e)}"
             }
 
-    def get_meeting_status(self, meeting_id: str) -> dict:
-        """Get the current status of a meeting"""
-        try:
-            session = self._get_session()
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
+    def get_meeting_info(self, meeting_id: str) -> dict:  
+        """  
+        Retrieve detailed information about a specific meeting.  
+        Includes metadata, transcript, and summary if available.  
+        """  
+        try:  
+            # Establish a database session  
+            session = self._get_session()  
+            meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
             
-            if not meeting:
-                return {"status": "error", "message": "Meeting not found"}
-                
-            headers = {
-                "x-meeting-baas-api-key": self.meeting_baas_api_key
-            }
-            response = requests.get(
-                f"https://api.meetingbaas.com/bots/{meeting_id}/status",
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                status_data = response.json()
-                meeting.status = status_data["status"]
-                session.commit()
-                
-                return {
-                    "status": "success",
-                    "meeting_status": status_data["status"]
-                }
-            else:
-                return {
-                    "status": "error",
-                    "message": f"Failed to fetch meeting status: {response.text}"
-                }
-            
-        except Exception as e:
-            return {
-                "status": "error", 
-                "message": f"Error getting meeting status: {str(e)}"
-            }
+            # Check whether the meeting exists  
+            if not meeting:  
+                return {"status": "error", "message": f"Meeting with ID '{meeting_id}' not found"}  
+
+            # Fetch meeting metadata  
+            meeting_info = {  
+                "id": meeting.id,  
+                "name": meeting.name or "Untitled",  
+                "start_time": meeting.start_time,  
+                "end_time": meeting.end_time,  
+                "duration": str(timedelta(seconds=meeting.duration)) if meeting.duration else "Unknown",  
+                "status": meeting.status,  
+            }  
+
+            # Fetch transcript  
+            transcript_result = self.get_transcript(meeting_id)  
+            if transcript_result["status"] == "success":  
+                meeting_info["transcript"] = transcript_result["transcript"]  
+            else:  
+                meeting_info["transcript_error"] = transcript_result["message"]  
+
+            # Fetch summary  
+            summary_result = self.get_summary(meeting_id)  
+            if summary_result["status"] == "success":  
+                meeting_info["summary"] = summary_result["summary"]  
+            else:  
+                meeting_info["summary_error"] = summary_result["message"]  
+
+            return {"status": "success", "meeting_info": meeting_info}  
+
+        except Exception as e:  
+            return {"status": "error", "message": f"Error fetching meeting info: {str(e)}"}
 
     def answer_question(self, meeting_id: str, question: str) -> dict:
         """Answer a question related to a specific meeting"""
@@ -384,58 +394,97 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "message": f"Error answering question: {str(e)}"
             }
 
-    def process_webhook(self, webhook_data: dict) -> dict:
-        """Process webhook data received from meetingbaas.
+    def process_webhook(self, webhook_data: dict) -> dict:  
+        """  
+        Process webhook data received from MeetingBaaS.  
+
+        This function parses the webhook data and updates the meeting object in the database.  
         
-        Args:
-            webhook_data: The webhook data received from meetingbaas
+        Args:  
+            webhook_data (dict): The webhook data received from MeetingBaaS.  
             
-        Returns:
-            dict: The processed webhook data
-        """
-        try:
-            session = self._get_session()
-            meeting_id = webhook_data.get("bot_id")
+        Returns:  
+            dict: A dictionary containing the processing status and any updated meeting information.  
+        """  
+        session = None  
+        try:  
+            session = self._get_session()  
+            meeting_id = webhook_data.get("bot_id")  
+
+            if not meeting_id:  
+                return {  
+                    "status": "error",  
+                    "message": "No bot_id found in webhook data"  
+                }  
+
+            # Fetch the meeting from the database.  
+            meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
+            if not meeting:  
+                return {  
+                    "status": "error",  
+                    "message": f"Meeting with ID {meeting_id} not found"  
+                }  
+
+            event_type = webhook_data.get("event", "unknown_event")  
+            logger.info(f"Processing webhook for Meeting ID: {meeting_id}, Event: {event_type}")  
+
+            # Detailed handling logic based on event type.  
+            if event_type == "complete":  
+                logger.info(f"Webhook indicates meeting '{meeting_id}' is complete")  
+
+                # Update recording URL and transcript from bot data.  
+                bot_data = webhook_data.get("bot_data", {})  
+                if bot_data:  
+                    # Save the transcript.  
+                    meeting.transcript = json.dumps(bot_data.get("transcripts", []))  
+
+                    # Save the recording URL (if available).  
+                    meeting.recording_url = bot_data.get("mp4", None)  
+
+                # Set end time and calculate duration.  
+                meeting.end_time = datetime.now().isoformat()  
+                if meeting.start_time:  
+                    start_dt = datetime.fromisoformat(meeting.start_time)  
+                    end_dt = datetime.fromisoformat(meeting.end_time)  
+                    meeting.duration = int((end_dt - start_dt).total_seconds())  
+                
+                # Fetch or generate a summary if needed.  
+                if not meeting.summary and meeting.transcript:  
+                    summary_result = self.get_summary(meeting_id)  
+                    if summary_result.get("status") == "success":  
+                        meeting.summary = summary_result["summary"]  
+
+                meeting.status = "completed"  
+
+            elif event_type == "failed":  
+                error_code = webhook_data.get("error", "UnknownError")  
+                logger.warning(f"Webhook indicates meeting '{meeting_id}' failed with error: {error_code}")  
+                meeting.status = "failed"  
             
-            if not meeting_id:
-                return {
-                    "status": "error",
-                    "message": "No bot_id found in webhook data"
-                }
+            elif event_type == "bot.status_change":  
+                status_code = webhook_data.get("status", {}).get("code", "unknown_status")  
+                logger.info(f"Bot status changed for meeting '{meeting_id}', new status: {status_code}")  
+                meeting.status = status_code  
             
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
-            if not meeting:
-                return {
-                    "status": "error",
-                    "message": "Meeting not found"
-                }
-            
-            # Update meeting status if provided
-            if "status" in webhook_data:
-                meeting.status = webhook_data["status"]
-            
-            # Update end time if meeting has ended
-            if webhook_data.get("status") == "ended":
-                meeting.end_time = datetime.now().isoformat()
-                if meeting.start_time:
-                    start = datetime.fromisoformat(meeting.start_time)
-                    end = datetime.fromisoformat(meeting.end_time)
-                    meeting.duration = int((end - start).total_seconds())
-            
-            # Update recording URL if provided
-            if "recording_url" in webhook_data:
-                meeting.recording_url = webhook_data["recording_url"]
-            
-            session.commit()
-            
-            return {
-                "status": "success",
-                "message": "Webhook data processed successfully",
-                "meeting_id": meeting_id
-            }
-            
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error processing webhook: {str(e)}"
-            }
+            else:  
+                logger.warning(f"Unhandled webhook event type: {event_type} for meeting: {meeting_id}")  
+
+            # Commit all updates to the database.  
+            session.commit()  
+
+            return {  
+                "status": "success",  
+                "message": f"Webhook processed successfully for event '{event_type}'",  
+                "meeting_id": meeting_id  
+            }  
+
+        except Exception as e:  
+            logger.error(f"Error processing webhook: {str(e)}")  
+            return {  
+                "status": "error",  
+                "message": f"Error processing webhook: {str(e)}",  
+                "meeting_id": webhook_data.get("bot_id", "unknown")  
+            }  
+        finally:  
+            if session:  
+                session.close()

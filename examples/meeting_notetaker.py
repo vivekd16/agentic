@@ -25,7 +25,7 @@ meeting_manager = Agent(
             - Call the Meeting Summarizer for transcripts and summaries.  
             - Use answer_question for specific queries about meeting content.  
             """,
-    tools=[MEETING_BAAS_Tool()],
+    tools=[MEETING_BAAS_Tool(webhook_addr="https://b476x3fh.use.devtunnels.ms:3000")],
     model="openai/gpt-4o-mini"
 )
 

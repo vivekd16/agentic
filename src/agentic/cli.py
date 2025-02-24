@@ -252,7 +252,7 @@ def serve(filename: str = typer.Argument(default="", show_default=False)):
         path = runner.serve()
 
     # Busy loop until ctrl-c or ctrl-d
-    os.system(f"open http://0.0.0.0:8086{path}/docs")
+    #os.system(f"open http://0.0.0.0:8086{path}/docs")
 
     while True:
         time.sleep(1)

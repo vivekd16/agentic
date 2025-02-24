@@ -66,7 +66,8 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self.get_summary,
             self.list_meetings,
             self.get_meeting_status,
-            self.answer_question
+            self.answer_question,
+            self.process_webhook
         ]
 
     def _initialize_rag(self):
@@ -381,4 +382,60 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             return {
                 "status": "error",
                 "message": f"Error answering question: {str(e)}"
+            }
+
+    def process_webhook(self, webhook_data: dict) -> dict:
+        """Process webhook data received from meetingbaas.
+        
+        Args:
+            webhook_data: The webhook data received from meetingbaas
+            
+        Returns:
+            dict: The processed webhook data
+        """
+        try:
+            session = self._get_session()
+            meeting_id = webhook_data.get("bot_id")
+            
+            if not meeting_id:
+                return {
+                    "status": "error",
+                    "message": "No bot_id found in webhook data"
+                }
+            
+            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
+            if not meeting:
+                return {
+                    "status": "error",
+                    "message": "Meeting not found"
+                }
+            
+            # Update meeting status if provided
+            if "status" in webhook_data:
+                meeting.status = webhook_data["status"]
+            
+            # Update end time if meeting has ended
+            if webhook_data.get("status") == "ended":
+                meeting.end_time = datetime.now().isoformat()
+                if meeting.start_time:
+                    start = datetime.fromisoformat(meeting.start_time)
+                    end = datetime.fromisoformat(meeting.end_time)
+                    meeting.duration = int((end - start).total_seconds())
+            
+            # Update recording URL if provided
+            if "recording_url" in webhook_data:
+                meeting.recording_url = webhook_data["recording_url"]
+            
+            session.commit()
+            
+            return {
+                "status": "success",
+                "message": "Webhook data processed successfully",
+                "meeting_id": meeting_id
+            }
+            
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error processing webhook: {str(e)}"
             }

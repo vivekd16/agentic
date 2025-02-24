@@ -35,7 +35,12 @@ Visits the docs: https://supercog-ai.github.io/agentic/
 
 ## Pre-built agents you can run today
 
-### [Agent Operator](https://github.com/supercog-ai/agentic/blob/main/examples/operator_agent.py)
+### [OSS Deep Researcher](https://github.com/supercog-ai/agentic/blob/main/examples/oss_deep_research.py)
+
+Perform complex research on any topic. Adapted from the LangChain version (but you can actually
+understand the code).
+
+### [Agent Operator](https://github.com/supercog-ai/agentic/blob/main/examples/oss_operator.py)
 
 ...full browser automation, including using authenticated sessions...
 

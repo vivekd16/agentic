@@ -52,12 +52,14 @@ class Prompt(Event):
     # is called, so we set it then.
     debug: DebugLevel
     request_id: str
-    
+    request_context: dict = {}
+
     def __init__(
         self,
         agent: str,
         message: str,
         debug: DebugLevel,
+        request_context: dict = {},
         depth: int = 0,
         ignore_result: bool = False,
         request_id: str = None,
@@ -69,6 +71,7 @@ class Prompt(Event):
             "depth": depth,
             "debug": debug,
             "ignore_result": ignore_result,
+            "request_context": request_context,
         }
         data["request_id"] = request_id if request_id else uuid.uuid4().hex
 
@@ -219,6 +222,8 @@ class FinishCompletion(Event):
     def response(self) -> Message:
         return self.payload
 
+    def __str__(self):
+        return f"[{self.agent}] {self.payload}, tokens: {self.metadata}"
 
 class TurnEnd(Event):
     def __init__(
@@ -236,6 +241,9 @@ class TurnEnd(Event):
     def result(self):
         return self.messages[-1]["content"]
 
+    def set_result(self, result: Any):
+        self.messages[-1]['content'] = result
+
     @property
     def run_context(self):
         return self.payload["run_context"]
@@ -245,6 +253,13 @@ class TurnEnd(Event):
             return self._indent(f"[{self.agent}: finished turn]")
         return super().print(debug_level)
 
+class TurnCancelled(Event):
+    def __init__(self, agent: str, depth: int = 0):
+        super().__init__(agent=agent, type="turn_cancelled", payload={}, depth=depth)
+
+class TurnCancelledError(Exception):
+    def __init__(self):
+        super().__init__(f"Turn cancelled")
 
 class SetState(Event):
     def __init__(self, agent: str, payload: Any, depth: int = 0):

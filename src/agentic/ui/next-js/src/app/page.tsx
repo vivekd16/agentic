@@ -36,7 +36,9 @@ export default function Home() {
       setError(null);
       setSelectedRunLogs(undefined);
       
-      const agentPaths = await agenticApi.getAvailableAgents();
+      // TODO: Handle multiple agents
+      const availAgents = await agenticApi.getAvailableAgents();
+      const agentPaths = [availAgents[0]];
       const agentDetails = await Promise.all(
         agentPaths.map(async (path) => {
           const info = await agenticApi.getAgentInfo(path);

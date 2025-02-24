@@ -120,22 +120,18 @@ const EventLogs: React.FC<EventLogsProps> = ({ events, onClose, className = "" }
     // Special handling for tool_result with fixed horizontal scrolling
     if (event.type === 'tool_result') {
       return (
-        <ScrollArea className="w-full max-h-96">
-          <pre className="text-xs bg-muted/30 p-2 rounded whitespace-pre-wrap">
-            {typeof event.payload === 'string' 
-              ? event.payload 
-              : JSON.stringify(event.payload, null, 2)}
-          </pre>
-        </ScrollArea>
+        <pre className="text-xs bg-muted/30 p-2 rounded whitespace-pre-wrap" style={{wordBreak: 'break-word'}}>
+          {typeof event.payload === 'string' 
+            ? event.payload 
+            : JSON.stringify(event.payload, null, 2)}
+        </pre>
       );
     }
     
     return (
-      <ScrollArea className="w-full max-h-96">
-        <pre className="text-xs bg-muted/30 p-2 rounded whitespace-pre-wrap">
-          {JSON.stringify(event.payload, null, 2)}
-        </pre>
-      </ScrollArea>
+      <pre className="text-xs bg-muted/30 p-2 rounded whitespace-pre-wrap" style={{wordBreak: 'break-word'}}>
+        {JSON.stringify(event.payload, null, 2)}
+      </pre>
     );
   };
 

@@ -73,7 +73,7 @@ export const agenticApi = {
   },
 
   // Stream events from an agent
-  streamEvents: (agentPath: string, requestId: string, onEvent: (event: AgentEvent) => void) => {
+  streamEvents: (agentPath: string, agentName: string, requestId: string, onEvent: (event: AgentEvent) => void) => {
     // Get the base URL dynamically
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8086';
     const eventSource = new EventSource(
@@ -85,7 +85,9 @@ export const agenticApi = {
       try {
         const data = JSON.parse(event.data);
         onEvent(data);
-        if (data.type === 'turn_end') {
+        // Close the event source when the agent's turn ends
+        if (data.type === 'turn_end' && agentName === data.agent) {
+          console.log('Closing event source');
           eventSource.close();
         }
       } catch (error) {

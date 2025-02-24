@@ -1,7 +1,6 @@
 from typing import Any, Callable, Optional, Dict
 import requests
 from datetime import datetime, timedelta
-from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String, Integer, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -36,10 +35,8 @@ class Meeting(Base):
     name="MeetingTool",
     description="A tool for managing video meetings, recording transcripts, and generating summaries",
     dependencies=[
-        Dependency("openai", type="pip", version="1.63.2"),
-        Dependency("langchain", type="pip", version="0.3.19"),
-        Dependency("langchain-community", type="pip", version="0.3.17"),
-        Dependency("chromadb", type="pip", version="0.6.3")
+        Dependency("langchain-openai", type="pip", version="0.3.6"),
+        Dependency("langchain-chroma", type="pip", version="0.2.2")
     ],
     config_requirements=[
         ConfigRequirement("MEETINGBAAS_API_KEY", description="MEETINGBAAS API key", required=True),
@@ -52,7 +49,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
     openai_api_key: str = ""
     meeting_baas_api_key: str = ""
 
-    def __init__(self):
+    def __init__(self, webhook_addr = ""):
         self.db_path = "meetings.db"
         # Do not initialize engine here, will be done when needed.
         self.Session = None
@@ -60,6 +57,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         self._initialized = False
         self._vector_store = None
         self._rag_initialized = False
+        self.webhook_addr = webhook_addr
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -121,6 +119,8 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "x-meeting-baas-api-key": self.meeting_baas_api_key
             }
             
+            webhook_url = f"{self.webhook_addr}/webhook/{self.id}/{self.run_context.tenant_id}/{self.run_context.user_id}/{self.run_context.run_id}"
+
             data = {
                 "meeting_url": meeting_url,
                 "bot_name": bot_name,
@@ -134,6 +134,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "automatic_leave": {
                     "waiting_room_timeout": 600
                 },
+                "webhook_url": webhook_url
             }
             
             response = requests.post(

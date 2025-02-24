@@ -1,5 +1,7 @@
 # Agentic
 
+![Screenshot 2025-02-24 at 12 13 31 PM](https://github.com/user-attachments/assets/9aeba0df-82b9-4c75-bb7a-d4fdacddfb29)
+
 Agentic makes it easy to create AI agents - autonomous software programs that understand natural language
 and can use tools to do work on your behalf.
 

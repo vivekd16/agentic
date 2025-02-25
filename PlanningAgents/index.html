@@ -8,13 +8,9 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/REST_API/">
+        <link rel="canonical" href="https://supercog.ai/agentic/PlanningAgents/">
       
       
-        <link rel="prev" href="../Models/">
-      
-      
-        <link rel="next" href="../PROJECT_STRUCTURE/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +18,7 @@
     
     
       
-        <title>REST API - Agentic Docs</title>
+        <title>Planning Agents - Agentic Docs</title>
       
     
     
@@ -63,6 +59,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#planning-agents" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -95,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              REST API
+              Planning Agents
             
           </span>
         </div>
@@ -311,17 +312,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../REST_API/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -331,7 +325,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -416,6 +409,8 @@
   
   
   
+    
+  
   
 </nav>
                   </div>
@@ -431,47 +426,9 @@
 
 
 
-  <h1>REST API</h1>
-
-<p>Agentic includes built-in support for your agent to expose a <strong>REST API</strong> using <em>FastAPI</em>. This API
-is an alternative way to use your agent besides the command line.</p>
-<p>To start the API server, using the <code>serve</code> method on <code>AgentRunner</code>:</p>
-<div class="codehilite"><pre><span></span><code>AgentRunner(agent).serve()
-</code></pre></div>
-
-<p>Note that you will need to add some idle loop to prevent your program from existing. For convenience
-you can start the API server with the CLI:</p>
-<div class="codehilite"><pre><span></span><code>agentic serve examples/basic_agent.py
-</code></pre></div>
-
-<p>It may be useful to enable lots of (server side) logging:</p>
-<div class="codehilite"><pre><span></span><code>AGENTIC_DEBUG=all agentic serve examples/basic_agent.py
-</code></pre></div>
-
-<p>The AgentRunner runs a <em>FastAPI</em> service that exposes an interface to your agent.</p>
-<p>There is a discovery endpoint which lists all agent paths:</p>
-<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/_discovery
-</code></pre></div>
-
-<p>This will list <code>/basic_agent</code> as an available path.</p>
-<p>Your agent will expose endpoints at:</p>
-<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/&lt;name of agent&gt;
-</code></pre></div>
-
-<p>like:</p>
-<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/basic_agent
-</code></pre></div>
-
-<p>visit the embedded <code>/docs</code> page for quick testing:</p>
-<div class="codehilite"><pre><span></span><code>http://0.0.0.0:8086/basic_agent/docs
-</code></pre></div>
-
-<p>Some of the main endpoints include:</p>
-<div class="codehilite"><pre><span></span><code>GET /describe           Get the agent spec
-POST /process           Start a request
-GET /getevents          SSE stream events from a request
-GET /stream_request     Process and stream events in one call
-</code></pre></div>
+<h1 id="planning-agents">Planning Agents</h1>
+<p>A "plan and execute" agent runs an explicit planning step. This step generates
+a plan of execution, which is then processed </p>
 
 
 

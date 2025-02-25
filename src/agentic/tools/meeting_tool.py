@@ -4,16 +4,14 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Column, String, Integer, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import openai
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
+from openai import OpenAI
 import json, os
 
 from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
 from agentic.common import RunContext
+from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model
 import logging  
 
 # Configure logging  
@@ -45,8 +43,7 @@ class Meeting(Base):
     name="MeetingTool",
     description="A tool for managing video meetings, recording transcripts, and generating summaries",
     dependencies=[
-        Dependency("langchain-openai", type="pip", version="0.3.6"),
-        Dependency("langchain-chroma", type="pip", version="0.2.2")
+        Dependency("openai", type="pip", version="1.63.2")
     ],
     config_requirements=[
         ConfigRequirement("MEETINGBAAS_API_KEY", description="MEETINGBAAS API key", required=True),
@@ -56,10 +53,8 @@ class Meeting(Base):
 
 
 class MEETING_BAAS_Tool(BaseAgenticTool):
-    openai_api_key: str = ""
-    meeting_baas_api_key: str = ""
 
-    def __init__(self, webhook_addr = ""):
+    def __init__(self):
         self.db_path = "meetings.db"
         # Do not initialize engine here, will be done when needed.
         self.Session = None
@@ -67,7 +62,9 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         self._initialized = False
         self._vector_store = None
         self._rag_initialized = False
-        self.webhook_addr = webhook_addr
+        self.webhook_addr = ""
+        self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
+        self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -83,11 +80,10 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
     def _initialize_rag(self):
         """Initialize the RAG components"""
         if not self._rag_initialized:
-            self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
-            self._vector_store = Chroma(
-                collection_name="meeting_summaries",
-                embedding_function=OpenAIEmbeddings(openai_api_key=self.openai_api_key)
-            )
+            self._weaviate_client = init_weaviate()
+            create_collection(self._weaviate_client, "meeting_summaries")
+            self._vector_store = self._weaviate_client.collections.get("meeting_summaries")
+            self._embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
             self._rag_initialized = True
 
     def _get_session(self):
@@ -108,9 +104,8 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         state['_initialized'] = False
         state['_vector_store'] = None
         state['_rag_initialized'] = False
-        # Don't pickle API keys
-        state['openai_api_key'] = ""
-        state['meeting_baas_api_key'] = ""
+        state['_weaviate_client'] = None
+        state['_embed_model'] = None
         return state
 
     def __setstate__(self, state):
@@ -124,12 +119,14 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         bot_name: str = "Meeting Assistant"
     ) -> dict:
         """Join a video meeting and start recording"""
-        self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
+        logger.info(self.meeting_baas_api_key)
+        
         try:
             headers = {
                 "Content-Type": "application/json",
                 "x-meeting-baas-api-key": self.meeting_baas_api_key
             }
+            self.webhook_addr = os.environ.get("DEVTUNNEL_HOST")
             run_context.api_endpoint = self.webhook_addr
             webhook_url = run_context.get_webhook_endpoint("process_webhook")
 
@@ -221,12 +218,6 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             return {"status": "error", "message": f"Error fetching transcript: {str(e)}"}  
 
 
-    def _ensure_openai_initialized(self):
-        """Ensure OpenAI client is properly initialized"""
-        if not self.openai_api_key:
-            self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
-            openai.api_key = self.openai_api_key
-
     def get_summary(self, meeting_id: str) -> dict:
         """Generate a detailed summary of the meeting"""
         try:
@@ -243,25 +234,28 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                     speaker = entry['speaker']
                     formatted_transcript += f"{speaker}: {words}\n"
 
-            summary_prompt = """
-            Please provide a detailed summary of this meeting transcript. Include:
-            1. Main topics discussed
-            2. Key decisions made
-            3. Action items and assignments
-            4. Important points raised by each participant
-            5. Timeline of major discussion points
-            Format the summary in clear sections with headers.
-            """
-            
-            self._ensure_openai_initialized()
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[{"role": "system", "content": summary_prompt},
-                          {"role": "user", "content": formatted_transcript}],
-                temperature=0
+            system_prompt = """
+                                Please provide a detailed summary of this meeting transcript. Include:
+                                1. Main topics discussed
+                                2. Key decisions made
+                                3. Action items and assignments
+                                4. Important points raised by each participant
+                                5. Timeline of major discussion points
+                                Format the summary in clear sections with headers.
+
+                                """
+
+            client = OpenAI(api_key=self.openai_api_key)
+
+            response = client.beta.chat.completions.parse(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": formatted_transcript},
+                ]
             )
             
-            detailed_summary = response.choices[0].message.content
+            detailed_summary = response.choices[0].message.parsed
             
             session = self._get_session()
             meeting = session.query(Meeting).filter_by(id=meeting_id).first()
@@ -269,18 +263,36 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 meeting.summary = detailed_summary
                 session.commit()
             
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=200
-            )
-            chunks = text_splitter.split_text(detailed_summary)
-            
             # Initialize RAG if needed
             self._initialize_rag()
-            self._vector_store.add_texts(
-                texts=chunks,
-                metadatas=[{"meeting_id": meeting_id, "type": "summary"}] * len(chunks)
-            )
+            
+            # Use chonkie for semantic chunking (imported via rag_helper)
+            from chonkie import SemanticChunker
+            chunker = SemanticChunker(threshold=0.5, delim=[". ", "! ", "? ", "\n"])
+            chunks = chunker(detailed_summary)
+            chunks_text = [chunk.text for chunk in chunks]
+            
+            # Generate embeddings for chunks
+            embeddings = list(self._embed_model.embed(chunks_text))
+            
+            # Index chunks in Weaviate
+            with self._vector_store.batch.dynamic() as batch:
+                for i, chunk in enumerate(chunks):
+                    vector = embeddings[i].tolist()
+                    batch.add_object(
+                        properties={
+                            "content": chunk.text,
+                            "document_id": meeting_id,
+                            "chunk_index": i,
+                            "filename": f"meeting_{meeting_id}_summary",
+                            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            "mime_type": "text/plain",
+                            "source_url": "None",
+                            "summary": "Meeting summary chunk",
+                            "fingerprint": meeting_id,
+                        },
+                        vector=vector
+                    )
             
             return {
                 "status": "success",
@@ -372,17 +384,16 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 return meeting_summary_result
                 
             summary = meeting_summary_result["summary"]
-            
-            self._ensure_openai_initialized()
-            response = openai.ChatCompletion.create(
+            client = OpenAI(api_key = self.openai_api_key)
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": f"Question: {question}\n\nSummary: {summary}"}
+                    {"role": "user", "content": f"Question: {question}\n\nSummary: {summary}"},
                 ],
-                temperature=0.5
+                temperature=0
             )
-            
+
             return {
                 "status": "success",
                 "answer": response.choices[0].message.content
@@ -485,6 +496,3 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "message": f"Error processing webhook: {str(e)}",  
                 "meeting_id": webhook_data.get("bot_id", "unknown")  
             }  
-        finally:  
-            if session:  
-                session.close()

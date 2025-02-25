@@ -38,10 +38,7 @@ dependencies = [
     "httpx>=0.28.1",
     "unicodedata2>=16.0.0",
     "sse-starlette>=2.2.1",
-    "sqlmodel>=0.0.22",
-    "langchain-openai (>=0.3.6,<0.4.0)",
-    "langchain-chroma (>=0.2.2,<0.3.0)",
-    "langchain (>=0.3.19,<0.4.0)",
+    "sqlmodel>=0.0.22"
 ]
 
 [project.optional-dependencies]

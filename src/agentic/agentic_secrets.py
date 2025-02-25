@@ -138,7 +138,13 @@ class SecretManager:
     def get_required_secret(self, name) -> str:
         val = self.get_secret(name)
         if val is None:
-            raise ValueError(f"Secret '{name}' is not set")
+            raise ValueError(
+                f"Secret '{name}' is not set. "
+                f"You can set it using:\n"
+                f"1. Environment variable: export {name}=your_value\n"
+                f"2. Using agentic_secrets.set_secret('{name}', 'your_value')\n"
+                f"3. Or add it to your .env file"
+            )
         return val
 
     def delete_secret(self, name):

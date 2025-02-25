@@ -13,3 +13,11 @@ class BaseAgenticTool(ABC):
     def get_tools(self) -> list[Callable]:
         """Forward method that should be implemented by subclasses."""
         pass
+    
+    def __getstate__(self):
+        """Custom serialization for Ray."""
+        state = {}
+        for key, value in self.__dict__.items():
+            if not key.startswith('_'):
+                state[key] = value
+        return state

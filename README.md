@@ -1,5 +1,7 @@
 # Agentic
 
+<p align="center"><a href="https://discord.gg/access-enjoyers"><img src="https://discordapp.com/api/guilds/1230687725150146620/widget.png?style=banner2" alt="Join our Discord!"></a></p>
+
 ![Screenshot 2025-02-24 at 12 13 31 PM](https://github.com/user-attachments/assets/9aeba0df-82b9-4c75-bb7a-d4fdacddfb29)
 
 Agentic makes it easy to create AI agents - autonomous software programs that understand natural language

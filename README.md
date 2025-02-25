@@ -1,6 +1,6 @@
 # Agentic
 
-<p align="center"><a href="https://discord.gg/access-enjoyers"><img src="https://discordapp.com/api/guilds/1230687725150146620/widget.png?style=banner2" alt="Join our Discord!"></a></p>
+<p align="center"><a href="https://discord.gg/EmPGShjmGu"><img height="60px" src="https://user-images.githubusercontent.com/31022056/158916278-4504b838-7ecb-4ab9-a900-7dc002aade78.png" alt="Join our Discord!"></a></p>
 
 ![Screenshot 2025-02-24 at 12 13 31 PM](https://github.com/user-attachments/assets/9aeba0df-82b9-4c75-bb7a-d4fdacddfb29)
 

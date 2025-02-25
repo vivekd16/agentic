@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AgentChat from '@/components/AgentChat';
 import AgentSidebar from '@/components/AgentSidebar';
+import QRCode from '@/components/QRCode';
 import { agenticApi, AgentInfo, RunLog } from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -114,6 +115,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen">
+      <QRCode 
+        src="/qr-code.png" 
+        alt="Agentic QR Code"
+        width={140}
+        height={140}
+      />
       {/* Mobile Sidebar */}
       <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
         <SheetTrigger asChild>

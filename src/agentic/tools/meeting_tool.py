@@ -63,8 +63,16 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         self._vector_store = None
         self._rag_initialized = False
         self.webhook_addr = ""
-        self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
-        self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
+        try:
+            self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
+        except ValueError as e:
+            self.openai_api_key = None
+        try:
+            
+            self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
+        except ValueError as e:
+            logger.error(f"Error initializing MEETING_BAAS_Tool: {e}")
+            self.meeting_baas_api_key = None
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -94,19 +102,6 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self.Session = sessionmaker(bind=self._engine)
             self._initialized = True
         return self.Session()
-
-    def __getstate__(self):
-        """Custom serialization for Ray."""
-        state = self.__dict__.copy()
-        # Remove unpicklable entries
-        state['Session'] = None
-        state['_engine'] = None
-        state['_initialized'] = False
-        state['_vector_store'] = None
-        state['_rag_initialized'] = False
-        state['_weaviate_client'] = None
-        state['_embed_model'] = None
-        return state
 
     def __setstate__(self, state):
         """Custom deserialization for Ray."""
@@ -495,4 +490,4 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "status": "error",  
                 "message": f"Error processing webhook: {str(e)}",  
                 "meeting_id": webhook_data.get("bot_id", "unknown")  
-            }  
+            }

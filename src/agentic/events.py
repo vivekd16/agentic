@@ -146,7 +146,7 @@ class ToolResult(Event):
 
 
 class ToolOutput(Event):
-    result: Any
+    result: Optional[Any] = None # make Pydantic not complain when we super.init
 
     def __init__(self, agent: str, name: str, result: Any, depth: int = 0):
         super().__init__(agent=agent, type="tool_result", payload=name, depth=depth)

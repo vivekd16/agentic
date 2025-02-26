@@ -15,7 +15,10 @@
 # For each report section we call 'process_section' which does content gathering and writing
 # for each section.
 #
-# You can run at the command line with:
+### RUNNING ###
+#
+# You need a TAVILY_API_KEY, and the API key for whatever model you are using, like OPENAI_API_KEY.
+# Set these in your environment or use `agentic set-secret` to set them.
 #
 #   python examples/oss_deep_research.py
 #
@@ -43,7 +46,6 @@ from agentic.agentic_secrets import agentic_secrets
 from agentic.models import GPT_4O_MINI, CLAUDE, GPT_4O
 from agentic.events import Event, ChatOutput
 from agentic.tools.tavily_search_tool import TavilySearchTool
-
 
 # These can take any Litellm model path [see https://supercog-ai.github.io/agentic/Models/]
 # Or use aliases 'GPT_4O' or 'CLAUDE'

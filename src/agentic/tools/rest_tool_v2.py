@@ -1,4 +1,4 @@
-from typing import Callable, Any, Optional, Dict, Awaitable, Union
+from typing import Callable, Any, Optional, Dict, Awaitable, Union, AsyncGenerator
 from io import BytesIO
 from PIL import Image
 import requests
@@ -22,6 +22,7 @@ from typing import Dict, Optional, Any
 
 from .base import BaseAgenticTool
 from agentic.tools.registry import tool_registry, Dependency
+from agentic.events import ToolOutput
 from agentic.common import RunContext
 
 with tool_registry.safe_imports():
@@ -173,7 +174,8 @@ class RESTAPIToolV2(BaseAgenticTool):
         password: str | None = None,
         token: str | None = None,
         token_name: str = "Bearer",
-    ):
+        run_context: RunContext|None=None,
+    ) -> AsyncGenerator[Any, Any]:
         """Constructs an auth_config object to use with later requests.
         auth_type is one of: basic, bearer, token, or parameter
         For "basic" provide the username and password.
@@ -183,26 +185,32 @@ class RESTAPIToolV2(BaseAgenticTool):
         Any value can refer to ENV VARS using ${KEY} syntax.
         Returns the variable name of the auth config for use in request calls.
         """
-        request = AsyncRequestBuilder("", logger_func=self.run_context.info)
+        if not run_context:
+            return
+        
+        async def logger_func(msg: str):
+            print(msg)
+
+        request = AsyncRequestBuilder("", logger_func=logger_func)
 
         auth_type = auth_type.lower()
 
         if auth_type == "basic":
-            username = self.run_context.resolve_secrets(username or "")
-            password = self.run_context.resolve_secrets(password or "")
+            username = run_context.get_secret(username or "")
+            password = run_context.get_secret(password or "")
             request = request.with_basic_auth(username, password)
-            self.run_context.info("Basic Auth: {} / {}".format(username, password))
+            yield run_context.log(f"Basic Auth: {username} / {password}")
         elif auth_type in ["bearer", "token"]:
-            token = self.run_context.resolve_secrets(token or "")
+            token = run_context.get_secret(token or "")
             request = request.with_bearer_token(token, token_name)
-            self.run_context.info(f"[token] {token_name}: {token}")
+            yield run_context.log(f"[token] {token_name}: {token}")
         elif auth_type == "parameter":
-            token = self.run_context.resolve_secrets(token or "")
+            token = run_context.get_secret(token or "")
             if token:
                 request = request.with_auth_param(token_name, token)
             else:
                 raise ValueError(f"Token value is empty.")
-            self.run_context.info(f"[param] {token_name}: {token}")
+            yield run_context.log(f"[param] {token_name}: {token}")
         elif auth_type == "none":
             pass
         else:
@@ -210,7 +218,7 @@ class RESTAPIToolV2(BaseAgenticTool):
 
         name = f"auth_{random.randint(1000,9999)}"
         self.request_map[name] = request
-        return name
+        yield name
 
     def add_request_header(self, auth_config_var: str, name: str, value: str) -> str:
         """Add a header to the auth config which was created already."""
@@ -226,6 +234,7 @@ class RESTAPIToolV2(BaseAgenticTool):
         url: str,
         params: dict = {},
         auth_config_var: Optional[str] = "",
+        run_context: RunContext|None=None,
     ):
         """Invoke the GET REST endpoint on the indicate URL. If the endpoints requires
         authentication then call 'prepare_auth_config' first and pass the config name to this function.
@@ -238,7 +247,7 @@ class RESTAPIToolV2(BaseAgenticTool):
                     f"Auth config '{auth_config_var}' not found. Must call prepare_auth_config first."
                 )
         else:
-            request = AsyncRequestBuilder("", logger_func=self.run_context.info)
+            request = AsyncRequestBuilder("", logger_func=run_context.info)
 
         response = await request.get(url, params=params)
 
@@ -255,7 +264,7 @@ class RESTAPIToolV2(BaseAgenticTool):
             params = json.loads(params)
 
         if not auth_config_var:
-            request = AsyncRequestBuilder("", logger_func=self.run_context.info)
+            request = AsyncRequestBuilder("", logger_func=run_context.info)
         else:
             request = self.request_map.get(auth_config_var)
             if request is None:
@@ -296,7 +305,7 @@ class RESTAPIToolV2(BaseAgenticTool):
                 if request is None:
                     raise ValueError(f"Request '{auth_config_var}' not found.")
             else:
-                request = AsyncRequestBuilder("", logger_func=self.run_context.info)
+                request = AsyncRequestBuilder("", logger_func=run_context.info)
 
             # Convert params to URL-encoded string if it's not already
             if isinstance(params, dict):
@@ -345,7 +354,7 @@ class RESTAPIToolV2(BaseAgenticTool):
             if request is None:
                 raise ValueError(f"Request '{auth_config_var}' not found.")
         else:
-            request = AsyncRequestBuilder("", logger_func=self.run_context.info)
+            request = AsyncRequestBuilder("", logger_func=run_context.info)
 
         response = await request.delete(url)
         return await self.process_response(response)
@@ -384,7 +393,7 @@ class RESTAPIToolV2(BaseAgenticTool):
         else:
             df = pd.json_normalize(json)
             df.replace({np.nan: ""}, inplace=True)
-            return self.get_dataframe_preview(df)
+            return df
 
     def clean_json_data(self, data):
         if isinstance(data, dict):

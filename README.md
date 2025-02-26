@@ -108,6 +108,20 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
 You only need to set the API keys for the models you plan to use. For example, if you're only using OpenAI models, you only need to set `OPENAI_API_KEY`.
 
+### Tests and docs
+
+Run tests:
+
+    pytest
+
+Preview docs locally:
+
+    mkdocs serve
+
+Deploy the docs:
+
+    mkdocs gh-deploy
+
 ## Why does this exist?
 
 Yup, there's a lot of agent frameworks. But many of these are "gen 1" frameworks - designed
@@ -121,10 +135,9 @@ Some reasons why Agentic is different:
 calling directly into the LLM API (the OpenAI _completion_ API via _Litellm_).
 - Logging is **built-in** and usable out of the box. Trace agent runs, tool calls, and LLM completions
 with ability to control the right level of detail.
-- Very simple and well designed abstractions with just a few nouns: Agent, Tool, Run, Pipeline. You can easily
-build complex agent teams and flows, but don't have to assemble the _computational graph_ by hand.
-- Agents are asynchronous and generate typed events, not just text. Consuming an event stream
-allows lots of rich interactions and different media types.
+- Well designed abstractions with just a few nouns: Agent, Tool, Thread, Run. Stop assembling
+the _computational graph_ out of toothpicks.
+- Rich event system goes beyond text so agents can work with data and media.
 - Event streams can have _multiple channels_, so your agent can "run in the background" and
 still notify you of what is happening.
 - Human-in-the-loop is built into the framework, not hacked in. An agent can wait indefinitely,

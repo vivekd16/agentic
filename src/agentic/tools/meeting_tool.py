@@ -11,7 +11,7 @@ from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
 from agentic.common import RunContext
-from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model
+from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker
 import logging  
 
 # Configure logging  
@@ -262,8 +262,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self._initialize_rag()
             
             # Use chonkie for semantic chunking (imported via rag_helper)
-            from chonkie import SemanticChunker
-            chunker = SemanticChunker(threshold=0.5, delim=[". ", "! ", "? ", "\n"])
+            chunker = init_chunker(threshold=0.5, delim=".,!,?,\n")
             chunks = chunker(detailed_summary)
             chunks_text = [chunk.text for chunk in chunks]
             
@@ -374,24 +373,39 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
     def answer_question(self, meeting_id: str, question: str) -> dict:
         """Answer a question related to a specific meeting"""
         try:
+            self._initialize_rag()
+        
+            # First try to get relevant chunks from vector store
+            if self._vector_store:
+                # Search for relevant chunks in the vector database
+                query_embedding = self._embed_model.embed(question)
+                search_results = self._vector_store.query.near_vector(
+                    vector=query_embedding.tolist(),
+                    limit=3,
+                    return_properties=["content", "document_id"],
+                    where={"document_id": meeting_id}
+                )
+                
+                if search_results.objects:
+                    # Return the relevant chunks as context
+                    context_chunks = [obj.properties["content"] for obj in search_results.objects]
+                    return {
+                        "status": "success",
+                        "context": "\n\n".join(context_chunks),
+                        "source": "vector_search"
+                    }
+            
+            # Fallback to using the full summary if vector search fails or returns no results
             meeting_summary_result = self.get_summary(meeting_id)
             if meeting_summary_result["status"] == "error":
                 return meeting_summary_result
                 
             summary = meeting_summary_result["summary"]
-            client = OpenAI(api_key = self.openai_api_key)
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": f"Question: {question}\n\nSummary: {summary}"},
-                ],
-                temperature=0
-            )
-
+            
             return {
                 "status": "success",
-                "answer": response.choices[0].message.content
+                "context": summary,
+                "source": "full_summary"
             }
             
         except Exception as e:

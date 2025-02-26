@@ -74,12 +74,14 @@ class RayAgentRunner:
             except:
                 pass
 
-    def turn(self, request: str) -> str:
+    def turn(self, request: str, print_all_events: bool = False) -> str:
         """Runs the agent and waits for the turn to finish, then returns the results
         of all output events as a single string."""
         results = []
         for event in self.facade.next_turn(request, debug=self.debug):
-            if self._should_print(event):
+            if print_all_events:
+                print(event.__dict__)
+            if self._should_print(event, ignore_depth=True):
                 results.append(str(event))
 
         return "".join(results)
@@ -87,10 +89,10 @@ class RayAgentRunner:
     def __lshift__(self, prompt: str):
         print(self.turn(prompt))
 
-    def _should_print(self, event: Event) -> bool:
+    def _should_print(self, event: Event, ignore_depth: bool = False) -> bool:
         if self.debug.debug_all():
             return True
-        if event.is_output and event.depth == 0:
+        if event.is_output and (ignore_depth or event.depth == 0):
             return True
         elif isinstance(event, ToolError):
             return self.debug != ""

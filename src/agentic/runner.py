@@ -126,10 +126,10 @@ class RayAgentRunner:
         continue_result = {}
         saved_completions = []
 
-        background_request = threading.Event()
         def handle_sigint(signum, frame):
             print("[cancelling run]\n")
             self.facade.cancel()
+            raise KeyboardInterrupt
 
         signal.signal(signal.SIGINT, handle_sigint)
 
@@ -148,15 +148,10 @@ class RayAgentRunner:
                     time.sleep(0.3)  # in case log messages are gonna come
                     continue
 
-                if background_request.is_set():
-                    break
                 request_id = self.facade.start_request(line, debug=self.debug).request_id
-                background_request.clear()
 
                 for event in self.facade.get_events(request_id):
-                    if background_request.is_set():
-                        background_request.clear()
-                        threading.Thread(target=self.watch_background_request, args=(request_id,), daemon=True).start()                   
+                    if self.facade.is_cancelled():
                         break
                     continue_result = {}
                     if event is None:
@@ -167,7 +162,6 @@ class RayAgentRunner:
                             replies[key] = input(f"\n{value}\n:> ")
                         continue_result = replies
                     elif isinstance(event, FinishCompletion):
-                        print(">>>> COMPLETED: ",event)
                         saved_completions.append(event)
                     if self._should_print(event):
                         print(str(event), end="")
@@ -185,15 +179,6 @@ class RayAgentRunner:
             except Exception as e:
                 traceback.print_exc()
                 print(f"Error: {e}")
-
-    def watch_background_request(self, request_id: str):
-        for event in self.facade.get_events(request_id):
-            if event is None:
-                break
-            if self._should_print(event):
-                print(f"{Colors.LIGHT_GRAY}{str(event)}{Colors.ENDC}", end="")
-            time.sleep(0.1)
-        print()
 
     @staticmethod
     def report_usages(completions: list[FinishCompletion]):

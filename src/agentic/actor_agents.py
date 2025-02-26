@@ -239,11 +239,6 @@ class ActorBaseAgent:
                 )
                 args = {}
 
-            # debug_print(
-            #    self.debug.debug_tools(),
-            #    f"Processing tool call: ", name, " with arguments:\n", args,
-            # )
-
             func = function_map[name]
             if __CTX_VARS_NAME__ in func.__code__.co_varnames:
                 args[__CTX_VARS_NAME__] = run_context
@@ -251,6 +246,7 @@ class ActorBaseAgent:
             events.append(ToolCall(self.name, name, args))
 
             # Call the function!!
+            raw_result = None
             try:
                 if asyncio.iscoroutinefunction(function_map[name]):
                     # Wrap async functions in asyncio.run
@@ -267,6 +263,19 @@ class ActorBaseAgent:
                             raw_result = child_event
                         else:
                             events.append(child_event)
+                    if raw_result is None:
+                        # Take last event as the function result
+                        raw_result = events.pop()
+
+                elif inspect.isasyncgenfunction(function_map[name]):
+                    # Run the async function in an event loop and yield events
+                    async def run_async_gen():
+                        async for event in function_map[name](**args):
+                            events.append(event)
+                    asyncio.run(run_async_gen())
+                    # take the last yielded value as the function result
+                    raw_result = events.pop()
+
                 else:
                     raw_result = function_map[name](**args)
             except Exception as e:
@@ -274,9 +283,12 @@ class ActorBaseAgent:
                 # Join all lines and split them to get individual lines
                 full_traceback = "".join(tb_list).strip().split("\n")
                 # Get the last 3 lines (or all if less than 3)
-                last_three = (
-                    full_traceback[-3:] if len(full_traceback) >= 3 else full_traceback
-                )
+                if self.debug.debug_all():
+                    last_three = full_traceback
+                else:
+                    last_three = (
+                        full_traceback[-3:] if len(full_traceback) >= 3 else full_traceback
+                    )
                 raw_result = f"Tool error: {name}: {last_three}"
 
                 events.append(ToolError(self.name, name, raw_result, self.depth))
@@ -305,6 +317,11 @@ class ActorBaseAgent:
                 arguments=tool_call.function.arguments,
                 _request_id=tool_call.id,
             )
+
+            # Functions can queue log events when they run, and we publish after
+            for log_event in run_context.get_logs():
+                events.append(log_event)
+            run_context.reset_logs()
 
             events.append(ToolResult(self.name, name, result.value))
 
@@ -377,6 +394,7 @@ class ActorBaseAgent:
                 self._callbacks['handle_turn_start'](actor_message, state['run_context'])
                 
             state['debug'] = actor_message.debug
+            self.debug = actor_message.debug
             state['depth'] = actor_message.depth
             self.history.append({"role": "user", "content": actor_message.payload})
             yield PromptStarted(self.name, actor_message.payload, state['depth'])

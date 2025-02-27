@@ -1138,6 +1138,9 @@ class RayFacadeAgent:
     def is_cancelled(self):
         return self.cancelled
     
+    def uncancel(self):
+        self.cancelled = False
+
     def list_tools(self) -> list[str]:
         """Gets the current tool list from the running agent"""
         return ray.get(self._agent.list_tools.remote())
@@ -1226,6 +1229,7 @@ class RayFacadeAgent:
         self, 
         request: str, 
         request_context: dict = {},
+        continue_result: dict = {},
         run_id: Optional[str] = None,
         debug: DebugLevel = DebugLevel(DebugLevel.OFF),
     ) -> StartRequestResponse: # returns the request_id and run_id
@@ -1249,15 +1253,15 @@ class RayFacadeAgent:
         # Re-initialize run tracking
         self.init_run_tracking(self.db_path, run_id)
 
-        def producer(queue, request_obj):
+        def producer(queue, request_obj, continue_result):
             depthLocal.depth = request_obj.depth
-            for event in self.next_turn(request_obj):
+            for event in self.next_turn(request_obj, continue_result=continue_result):
                 queue.put(event)
             queue.put(self.queue_done_sentinel)
         queue = Queue()
         self.request_queues[request_obj.request_id] = queue
 
-        t = threading.Thread(target=producer, args=(queue, request_obj))
+        t = threading.Thread(target=producer, args=(queue, request_obj, continue_result))
         t.start()
         return StartRequestResponse(request_id=request_obj.request_id, run_id=self.run_id)
 

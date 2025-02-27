@@ -150,7 +150,11 @@ class RayAgentRunner:
                     time.sleep(0.3)  # in case log messages are gonna come
                     continue
 
-                request_id = self.facade.start_request(line, debug=self.debug).request_id
+                request_id = self.facade.start_request(
+                    line, 
+                    debug=self.debug, 
+                    continue_result=continue_result
+                ).request_id
 
                 for event in self.facade.get_events(request_id):
                     if self.facade.is_cancelled():
@@ -167,6 +171,7 @@ class RayAgentRunner:
                         saved_completions.append(event)
                     if self._should_print(event):
                         print(str(event), end="")
+                self.facade.uncancel()
                 print()
                 time.sleep(0.3)
                 if not continue_result:

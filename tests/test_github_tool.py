@@ -152,6 +152,7 @@ async def test_create_and_get_pull_request(github_tool, run_context):
         base="main"
     )
     
+    # Get pull requests
     prs = await github_tool.get_pull_requests(run_context, state='open')
     assert prs['status'] == 'success'
     assert isinstance(prs['results'], list)

@@ -140,6 +140,23 @@ async def test_create_and_delete_repository(github_tool, run_context):
     assert delete_result['status'] == 'success'
 
 @pytest.mark.asyncio
+async def test_create_and_get_pull_request(github_tool, run_context):
+    # Note: This test assumes your test repository has at least two branches
+    # You might need to modify the head and base branch names
+    
+    create_result = await github_tool.create_pull_request(
+        run_context,
+        title="Test PR from Integration Tests",
+        body="This is a test pull request created by automated tests",
+        head="dev",
+        base="main"
+    )
+    
+    prs = await github_tool.get_pull_requests(run_context, state='open')
+    assert prs['status'] == 'success'
+    assert isinstance(prs['results'], list)
+
+@pytest.mark.asyncio
 async def test_get_pr_reviews(github_tool, run_context):
     reviews_result = await github_tool.get_pr_reviews(
         run_context,

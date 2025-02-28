@@ -65,12 +65,7 @@ If you need more information from the user to complete a request, use the get_hu
 # To run the agent in a REPL
 if __name__ == "__main__":
     # Set up the Airbnb calendar URL if not already set
-    if not agentic_secrets.get_secret("AIRBNB_CALENDAR_URL"):
-        print("AIRBNB_CALENDAR_URL not found in secrets. Please enter your Airbnb calendar URL:")
-        print("(Find this by going to your Airbnb host dashboard > Calendar > Availability > Connect to another website)")
-        calendar_url = input("> ")
-        agentic_secrets.set_secret("AIRBNB_CALENDAR_URL", calendar_url)
-    
+
     # Run the agent
     runner = AgentRunner(airbnb_agent)
     runner.repl_loop()

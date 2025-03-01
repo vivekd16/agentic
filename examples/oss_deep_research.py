@@ -30,6 +30,14 @@
 #
 #   agentic webui
 #
+#
+# Examples:
+#
+# "A report on the history of golden retrievers and their presence in popular culture"
+#
+# "A market comparison for e-foils, including popular manufacturers and models, plus customer reviews"
+
+
 
 import asyncio
 from typing import Generator
@@ -123,6 +131,12 @@ class WorkflowAgent(RayFacadeAgent):
             model=WRITER_MODEL
         )
 
+        self.final_reference_writer = Agent(
+            name="Final Reference Writer",
+            instructions="{{FINAL_REFERENCE_WRITER}}",
+            model=WRITER_MODEL
+        )
+
     def next_turn(
         self,
         request: str|Prompt,
@@ -138,12 +152,6 @@ class WorkflowAgent(RayFacadeAgent):
 
         # Yield the initial prompt
         yield PromptStarted(self.name, {"content": self.topic})
-
-        # run_context = RunContext(
-        #     agent=self.name,
-        #     run_id=request_id,
-        #     context=request_context,
-        # )
 
         feedback = continue_result.get("feedback", "")
         if feedback != "true" or self.sections is None:
@@ -176,6 +184,7 @@ class WorkflowAgent(RayFacadeAgent):
             Please provide feedback on the following report plan. \n\n{preview_report(self.sections.sections)}\n
             Does the report plan meet your needs? Pass 'true' to approve the report plan or provide feedback to regenerate the report plan:
             """
+
             yield WaitForInput(
                 self.name, 
                 {"feedback": msg}
@@ -183,14 +192,15 @@ class WorkflowAgent(RayFacadeAgent):
             return
 
         # FOR TESTING ONLY: limit report to 1 section
-        #sections.sections = sections.sections[:1]
+        #self.sections.sections = self.sections.sections[:1]
 
         # Do web research and writing for each section in turn
-        for section in self.sections.sections:
-            yield from self.process_section(section)
+        for idx, section in enumerate(self.sections.sections):
+            yield from self.process_section(section, idx)
 
         # Format complete report
         draft_report = format_sections(self.sections.sections)
+        yield ChatOutput(self.name, {"content": f"REPORT DRAFT:\n{draft_report}\n\nWriting final report...\n"})
 
         # Rewrite the report sections with hindsight of the entire content of the report
         finals = []
@@ -206,7 +216,14 @@ class WorkflowAgent(RayFacadeAgent):
             )
             finals.append(report_section)
         
-        report = "\n".join(finals)
+        sources = yield from self.final_reference_writer.final_result(
+            "Generate a list of important sources referenced from the full report content.",
+            {
+                "report_context": draft_report
+            }
+        )
+
+        report = "\n".join(finals) + "\n\n" + sources
         yield ChatOutput(
             self.name, 
             {
@@ -220,7 +237,7 @@ class WorkflowAgent(RayFacadeAgent):
             run_context=None,
         )
 
-    def process_section(self, section: "Section", report_context: str = None) -> Generator:
+    def process_section(self, section: "Section", index: int, report_context: str = None) -> Generator:
         """Handle the complete processing of a single section"""
         # Generates web queries to gather content for each section
         queries = yield from self.section_query_planner.final_result(
@@ -230,9 +247,13 @@ class WorkflowAgent(RayFacadeAgent):
                 "num_queries": 2
             },
         )
+        msg = f"Research queries for section {index+1} - {section.name}:\n" + "\n".join([q.search_query for q in queries.queries]) + "\n\n"
+        yield ChatOutput(self.section_query_planner.name, {"content": msg})
 
         # Get web content
         web_context = self.query_web_content(queries)
+
+        yield ChatOutput(self.section_query_planner.name, {"content": f"Writing section {index+1}...\n\n"})
 
         # Write the section
         section.content = yield from self.section_writer.final_result(

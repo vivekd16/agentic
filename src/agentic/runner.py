@@ -165,7 +165,11 @@ class RayAgentRunner:
                     elif isinstance(event, WaitForInput):
                         replies = {}
                         for key, value in event.request_keys.items():
-                            replies[key] = input(f"\n{value}\n:> ")
+                            if '\n' not in value:
+                                replies[key] = input(f"\n{value}\n:> ")
+                            else:
+                                print(f"\n{value}\n")
+                                replies[key] = input(":> ")
                         continue_result = replies
                     elif isinstance(event, FinishCompletion):
                         saved_completions.append(event)

@@ -2,6 +2,8 @@
 title: Deep Research example - Golden Retrievers
 prompt: A report on the history of golden retrievers and their presence in popular culture
 feedback: Include a comparison to golden doodles
+planner_model: gpt-4o
+writer_model: gpt-4o-mini
 ---
 # The History and Cultural Significance of Golden Retrievers
 

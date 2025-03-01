@@ -35,7 +35,7 @@
 #
 # "A report on the history of golden retrievers and their presence in popular culture"
 #
-# "A market comparison for e-foils, including popular manufacturers and models, plus customer reviews"
+# "A product comparison for e-foils, including popular manufacturers and models, plus customer reviews. Focus on the mid-market of quality products with reasonable prices."
 
 
 
@@ -44,7 +44,7 @@ from typing import Generator
 from pprint import pprint
 from typing import Any, Generator, Dict, List
 from pydantic import BaseModel, Field
-
+from datetime import datetime
 
 from agentic.common import Agent, AgentRunner, cached_call, RunContext
 from agentic.actor_agents import RayFacadeAgent
@@ -58,7 +58,7 @@ from agentic.tools.tavily_search_tool import TavilySearchTool
 # These can take any Litellm model path [see https://supercog-ai.github.io/agentic/Models/]
 # Or use aliases 'GPT_4O' or 'CLAUDE'
 PLANNER_MODEL = GPT_4O
-WRITER_MODEL = GPT_4O_MINI
+WRITER_MODEL = CLAUDE
 
 class Section(BaseModel):
     name: str = Field(
@@ -98,7 +98,10 @@ class WorkflowAgent(RayFacadeAgent):
             name="Report Query Planner",
             instructions="{{REPORT_QUERY_PLANNER}}",
             model=PLANNER_MODEL,
-            result_model=Queries
+            result_model=Queries,
+            # Some research is sensitive to the date, and without telling the LLM the date it
+            # may assume its training cut-off date.
+            memories=[f"The current date is {datetime.now().strftime('%Y-%m-%d')}"]
         )
 
         # Generates the report plan, takes initial query results as input
@@ -113,7 +116,7 @@ class WorkflowAgent(RayFacadeAgent):
         self.section_query_planner = Agent(
             name="Section Query Planner",
             instructions="{{SECTION_QUERY_PLANNER}}",
-            model=WRITER_MODEL,
+            model=PLANNER_MODEL,
             result_model=Queries
         )
         

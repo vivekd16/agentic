@@ -184,7 +184,7 @@ class RayAgentRunner:
                 readline.write_history_file(hist)
             except EOFError:
                 print("\nExiting REPL.")
-                break
+                sys.exit(0)
             except KeyboardInterrupt:
                 print("\nKeyboardInterrupt. Type 'exit()' to quit.")
             except Exception as e:

@@ -40,7 +40,7 @@
 
 
 import asyncio
-from typing import Generator
+from typing import Generator, Optional
 from pprint import pprint
 from typing import Any, Generator, Dict, List
 from pydantic import BaseModel, Field
@@ -54,6 +54,7 @@ from agentic.agentic_secrets import agentic_secrets
 from agentic.models import GPT_4O_MINI, CLAUDE, GPT_4O
 from agentic.events import Event, ChatOutput, WaitForInput, PromptStarted, TurnEnd
 from agentic.tools.tavily_search_tool import TavilySearchTool
+from agentic.tools.playwright import PlaywrightTool
 
 # These can take any Litellm model path [see https://supercog-ai.github.io/agentic/Models/]
 # Or use aliases 'GPT_4O' or 'CLAUDE'
@@ -80,19 +81,26 @@ class Sections(BaseModel):
     )
 
 
-class WorkflowAgent(RayFacadeAgent):
+class DeepResearchAgent(RayFacadeAgent):
     sections: Sections|None = None
     topic: str = ""
 
-    def __init__(self, name: str="OSS Deep Research", model: str=GPT_4O_MINI):
+    def __init__(self, name: str="OSS Deep Research", model: str=GPT_4O_MINI, playwright_fallback: bool = False):
         super().__init__(
             name, 
             welcome="I am the OSS Deep Research agent. Please provide me with a topic to research.",
             model=model,
         )
         self.tavily_tool = TavilySearchTool(api_key=agentic_secrets.get_required_secret("TAVILY_API_KEY"))
-        self.add_tool(self.tavily_tool)
+
+        ## CONFIGURATION
+        self.num_queries = 4
+        self.playwright_fallback: bool = True
+        self.sections_limit: Optional[int] = None  # For testing, limit the number of sections generated
         
+        if self.playwright_fallback:
+            self.playwright_tool = PlaywrightTool()
+
         # Generates web queries to popular initial context from which to generate the report plan
         self.query_planner = Agent(
             name="Report Query Planner",
@@ -134,6 +142,7 @@ class WorkflowAgent(RayFacadeAgent):
             model=WRITER_MODEL
         )
 
+        # Generates the source reference list for the final report
         self.final_reference_writer = Agent(
             name="Final Reference Writer",
             instructions="{{FINAL_REFERENCE_WRITER}}",
@@ -163,14 +172,14 @@ class WorkflowAgent(RayFacadeAgent):
                 "Generate search queries that will help with planning the sections of the report.",
                 request_context={
                     "topic": self.topic, 
-                    "num_queries": 2
+                    "num_queries": self.num_queries
                 }
             )
             msg = f"Initial research queries:\n" + "\n".join([q.search_query for q in queries.queries]) + "\n\n"
             yield ChatOutput(self.query_planner.name, {"content": msg})
 
             # Get initial web content
-            content = self.query_web_content(queries)
+            content = self.query_web_content(queries, run_context=RunContext(self.name))
 
             # Plan the report sections
             self.sections = yield from self.section_planner.final_result(
@@ -189,13 +198,13 @@ class WorkflowAgent(RayFacadeAgent):
             """
 
             yield WaitForInput(
-                self.name, 
-                {"feedback": msg}
+               self.name, 
+               {"feedback": msg}
             )
             return
 
-        # FOR TESTING ONLY: limit report to 1 section
-        #self.sections.sections = self.sections.sections[:1]
+        if self.sections_limit:
+            self.sections.sections = self.sections.sections[:self.sections_limit]
 
         # Do web research and writing for each section in turn
         for idx, section in enumerate(self.sections.sections):
@@ -230,7 +239,7 @@ class WorkflowAgent(RayFacadeAgent):
         yield ChatOutput(
             self.name, 
             {
-                "content": "## Here is your completed report:\n\n" + report + "\n\n"
+                "content": "\n## Here is your completed report:\n\n" + report + "\n\n"
             }
         )
 
@@ -247,14 +256,14 @@ class WorkflowAgent(RayFacadeAgent):
             "Generate search queries on the provided topic.",
             request_context={
                 "section_topic": section.description, 
-                "num_queries": 2
+                "num_queries": self.num_queries
             },
         )
         msg = f"Research queries for section {index+1} - {section.name}:\n" + "\n".join([q.search_query for q in queries.queries]) + "\n\n"
         yield ChatOutput(self.section_query_planner.name, {"content": msg})
 
         # Get web content
-        web_context = self.query_web_content(queries)
+        web_context = self.query_web_content(queries, run_context=RunContext(self.name))
 
         yield ChatOutput(self.section_query_planner.name, {"content": f"Writing section {index+1}...\n\n"})
 
@@ -269,16 +278,43 @@ class WorkflowAgent(RayFacadeAgent):
             }
         )
 
-    def query_web_content(self, queries: "Queries") -> str:
-        async def _query_web_content(queries: Queries) -> str:
+    def query_web_content(self, queries: "Queries", run_context) -> str:
+        content_max = 20000
+
+        async def _query_web_content(queries: Queries, missing_results: list[str]) -> str:
             all_results = []
             for query in queries.queries:
-                res = await self.tavily_tool.perform_web_search(query.search_query, include_content=True)
-                content = self.tavily_tool._deduplicate_and_format_sources(res, 10000)
+                missing_pages = []
+                res = await self.tavily_tool.perform_web_search(
+                    query.search_query, 
+                    include_content=True
+                )
+                content = self.tavily_tool._deduplicate_and_format_sources(
+                    res, 
+                    content_max, 
+                    missing_pages_list=missing_pages
+                )
                 all_results.append(content)
+                missing_results.extend(missing_pages)
             return "\n".join(all_results)
-        return asyncio.run(_query_web_content(queries))
+        
+        missing_pages = []
+        content = asyncio.run(_query_web_content(queries, missing_pages))
 
+        # Use playwright browser for missing pages
+        if (
+            self.playwright_fallback and 
+            len(missing_pages) > 0 and 
+            len(content) < content_max
+        ):
+            max_playwright_pages = 3
+            content_tuples = self.playwright_tool.download_pages(run_context, missing_pages[:max_playwright_pages])
+            for _, title, page_content in content_tuples:
+                if page_content:
+                    content += f"\n\n===\n{title}\n===\n{page_content}\n\n"
+                    if len(content) >= content_max:
+                        break
+        return content
 
 class SearchQuery(BaseModel):
     search_query: str = Field(None, description="Query for web search.")
@@ -321,7 +357,17 @@ Content:
     return formatted_str
 
 
-deep_researcher = WorkflowAgent(name="OSS Deep Research", model=GPT_4O_MINI)
+deep_researcher = DeepResearchAgent(name="OSS Deep Research")
+# router = Agent(
+#     name="OSS Deep Research Dispatcher",
+#     welcome=deep_researcher.welcome,
+#     instructions="""
+# Gather information for generating a research report. 
+# You will need the topic, how long the report should be (short, medium, or long). When
+# you have all the details then call the 'deep_researcher' agent to generate the report.
+# """,
+#     tools=[deep_researcher],
+# )
 
 if __name__ == "__main__":
     AgentRunner(deep_researcher).repl_loop()

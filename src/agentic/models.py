@@ -1,8 +1,9 @@
 # Standard model identifiers
-CLAUDE = "anthropic/claude-3-5-sonnet-20240620"
+CLAUDE = "anthropic/claude-3-5-sonnet-latest"
 GPT_4O_MINI = "gpt-4o-mini"  # Default model
 GPT_4O = "openai/gpt-4o"
 GPT_O1 = "openai/gpt-o1"
+GEMINI_FLASH = "gemini/gemini-2.0-flash"
 
 # LM Studio model identifiers (using litellm's built-in support)
 LMSTUDIO_QWEN = "lm_studio/qwen2.5-7b-instruct-1m"

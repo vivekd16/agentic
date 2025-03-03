@@ -358,16 +358,6 @@ Content:
 
 
 deep_researcher = DeepResearchAgent(name="OSS Deep Research")
-# router = Agent(
-#     name="OSS Deep Research Dispatcher",
-#     welcome=deep_researcher.welcome,
-#     instructions="""
-# Gather information for generating a research report. 
-# You will need the topic, how long the report should be (short, medium, or long). When
-# you have all the details then call the 'deep_researcher' agent to generate the report.
-# """,
-#     tools=[deep_researcher],
-# )
 
 if __name__ == "__main__":
     AgentRunner(deep_researcher).repl_loop()

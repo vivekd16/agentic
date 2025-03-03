@@ -1,7 +1,6 @@
 import os
 from typing import Callable, List
 from playwright.sync_api import sync_playwright, Browser, Page
-import base64
 import time
 
 # required packages:
@@ -171,10 +170,10 @@ class PlaywrightTool(BaseAgenticTool):
         # and then close it when it's done.
         results = []
         for page in pages:
-            print("Navigating to page: ", page)
+            print("[playwright navigate] ", page)
             title = self.navigate_to_url(run_context, page)
             if title:
-                print(f"Grabbing page {page} with playwright")
+                print(f"[playwright extract] {title}")
                 page_content = self.extract_text(run_context, page)
                 results.append((page, title, page_content))
             else:

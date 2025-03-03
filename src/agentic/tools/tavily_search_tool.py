@@ -135,10 +135,17 @@ class TavilySearchTool:
 
         return response.json()
 
-    def _deduplicate_and_format_sources(self, sources_list, max_tokens_per_source, include_raw_content=True) -> str:
+    def _deduplicate_and_format_sources(
+            self, 
+            sources_list, 
+            max_tokens_per_source, 
+            include_raw_content=True,
+            missing_pages_list: list = [],
+        ) -> str:
         """
         Takes a list of search responses and formats them into a readable string.
-        Limits the raw_content to approximately max_tokens_per_source.
+        Limits the raw_content to approximately max_tokens_per_source. If raw_content is not returned
+        from Tavily then the page is added to the missing_pages_list.
     
         Args:
             search_responses: List of search response dicts, each containing:
@@ -171,7 +178,8 @@ class TavilySearchTool:
                 raw_content = source.get('raw_content', '')
                 if raw_content is None:
                     raw_content = ''
-                    #print(f"Warning: No raw_content found for source {source['url']}")
+                    print(f"Warning: No raw_content found for source {source['url']}")
+                    missing_pages_list.append(source['url'])
                 if len(raw_content) > char_limit:
                     raw_content = raw_content[:char_limit] + "... [truncated]"
                 formatted_text += f"Full source content limited to {max_tokens_per_source} tokens: {raw_content}\n\n"

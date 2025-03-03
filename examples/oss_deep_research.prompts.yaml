@@ -140,10 +140,16 @@ SECTION_WRITER: >
 FINAL_SECTION_WRITER: >
   You are an expert technical writer crafting a section that synthesizes information from the rest of the report.
 
+  <Report topic>
+  {{ topic }}
+  </Report topic>
+
+  <Section name>
+  {{ section_name }}
+  </Section name>
+
   <Section topic> 
-
   {{ section_topic }}
-
   </Section topic>
 
   <Available report content>
@@ -177,9 +183,6 @@ FINAL_SECTION_WRITER: >
       - Use `1.` for ordered lists
       - Ensure proper indentation and spacing
   - End with specific next steps or implications
-  - End with ### Sources that references the below source material formatted as:
-    - List each source with title, date, and URL
-    - Format: `- Title : URL`
 
   Writing Approach:
   - Use concrete details over general statements
@@ -188,9 +191,23 @@ FINAL_SECTION_WRITER: >
   </Task>
 
   <Quality Checks>
-  - For introduction: 50-100 word limit, # for report title, no structural elements
-  - For conclusion: 100-150 word limit, ## for section title, only ONE structural element at most
+  - For introduction: 50-100 word limit, # for report title, no structural elements, no sources section
+  - For conclusion: 100-150 word limit, ## for section title, only ONE structural element at most, no sources section
   - Markdown format
   - Do not include word count or any preamble in your response
   </Quality Checks>
 
+FINAL_REFERENCE_WRITER: >
+  You are an expert technical writer crafting a section that synthesizes information from the rest of the report.
+
+  <Available report content>
+  {{ report_context }}
+  </Available report content>
+
+  <Task>
+  Your goal is to generate a list, MAX 5, of the most important sources referenced from the full report content.
+    - End with ### Sources that references the below source material formatted as:
+      - List each source with title, date, and URL
+      - Format: `- Title : URL`
+    Include a MAXIMUM of 5 sources.
+  </Task>

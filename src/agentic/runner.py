@@ -165,7 +165,11 @@ class RayAgentRunner:
                     elif isinstance(event, WaitForInput):
                         replies = {}
                         for key, value in event.request_keys.items():
-                            replies[key] = input(f"\n{value}\n:> ")
+                            if '\n' not in value:
+                                replies[key] = input(f"\n{value}\n:> ")
+                            else:
+                                print(f"\n{value}\n")
+                                replies[key] = input(":> ")
                         continue_result = replies
                     elif isinstance(event, FinishCompletion):
                         saved_completions.append(event)
@@ -180,7 +184,7 @@ class RayAgentRunner:
                 readline.write_history_file(hist)
             except EOFError:
                 print("\nExiting REPL.")
-                break
+                sys.exit(0)
             except KeyboardInterrupt:
                 print("\nKeyboardInterrupt. Type 'exit()' to quit.")
             except Exception as e:

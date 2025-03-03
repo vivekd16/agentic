@@ -1,8 +1,8 @@
+import { Bot,Plus } from 'lucide-react';
+import React from 'react';
 
 import RunsTable from '@/components/RunsTable';
-import { AgentInfo, RunLog } from '@/lib/api';
-import { Button } from "@/components/ui/button";
-import { Plus, Bot } from "lucide-react";
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -11,26 +11,23 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
-// Updated AgentSidebar interface
 interface AgentSidebarProps {
-  agents: { path: string; info: AgentInfo; }[];
+  agents: { path: string; info: Api.AgentInfo; }[];
   selectedAgent: string;
-  onSelectAgent: (path: string) => void;
+  onSelectAgent: (_path: string) => void;
   onNewChat: () => void;
-  onRunSelected: (logs: RunLog[]) => void;
-  refreshKey?: number;
+  onRunSelected: (_runId: string) => void;
 }
 
-export default function AgentSidebar({ 
+const AgentSidebar: React.FC<AgentSidebarProps> = ({ 
   agents, 
   selectedAgent, 
   onSelectAgent, 
   onNewChat,
   onRunSelected,
-  refreshKey = 0
-}: AgentSidebarProps) {
+}) => {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b space-y-4">
@@ -40,7 +37,7 @@ export default function AgentSidebar({
           onClick={onNewChat}
         >
           <Plus className="h-4 w-4" />
-          New Chat
+          New Thread
         </Button>
         <Select value={selectedAgent} onValueChange={onSelectAgent}>
           <SelectTrigger className="w-full">
@@ -48,7 +45,7 @@ export default function AgentSidebar({
               <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4" />
                 <span className="truncate">
-                  {agents.find(a => a.path === selectedAgent)?.info.name || "Select Agent"}
+                  {agents.find(a => a.path === selectedAgent)?.info.name || 'Select Agent'}
                 </span>
               </div>
             </SelectValue>
@@ -73,9 +70,10 @@ export default function AgentSidebar({
           agentPath={selectedAgent}
           className="flex-1 border-t pt-4"
           onRunSelected={onRunSelected}
-          refreshKey={refreshKey}
         />
       )}
     </div>
   );
 }
+
+export default AgentSidebar;

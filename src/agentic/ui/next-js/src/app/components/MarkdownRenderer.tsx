@@ -1,11 +1,11 @@
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 const MarkdownComponents = {
   // Style code blocks
   code(props: any) {
-    const {children, className, node, ...rest} = props;
-    const match = /language-(\w+)/.exec(className || '');
+    const {children, className, ...rest} = props;
     return (
       <pre className="bg-muted/50 p-4 rounded-lg overflow-auto">
         <code className={className} {...rest}>
@@ -49,7 +49,7 @@ interface MarkdownRendererProps {
   content: string;
 }
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -59,3 +59,5 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     </ReactMarkdown>
   );
 }
+
+export  default MarkdownRenderer;

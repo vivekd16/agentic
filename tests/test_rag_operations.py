@@ -23,6 +23,7 @@ from agentic.utils.rag_helper import (
 )
 from agentic.utils.file_reader import read_file
 
+@pytest.mark.rag
 @pytest.fixture
 def temp_weaviate_dir() -> Generator[Path, None, None]:
     """Create temporary directory for Weaviate data"""
@@ -30,6 +31,7 @@ def temp_weaviate_dir() -> Generator[Path, None, None]:
     yield temp_dir
     shutil.rmtree(temp_dir)
 
+@pytest.mark.rag
 @pytest.fixture
 def weaviate_client(temp_weaviate_dir: Path) -> Generator[WeaviateClient, None, None]:
     """Initialize Weaviate client with temporary storage"""
@@ -45,6 +47,7 @@ def weaviate_client(temp_weaviate_dir: Path) -> Generator[WeaviateClient, None, 
                 raise
             time.sleep(2)  # Wait before retry
 
+@pytest.mark.rag
 @pytest.fixture
 def test_collection(weaviate_client: WeaviateClient) -> str:
     """Create test collection with sample documents"""
@@ -98,6 +101,7 @@ def test_collection(weaviate_client: WeaviateClient) -> str:
     
     return collection_name
 
+@pytest.mark.rag
 def test_vector_search(weaviate_client: WeaviateClient, test_collection: str):
     """Test vector search functionality"""
     collection = weaviate_client.collections.get(test_collection)
@@ -116,6 +120,7 @@ def test_vector_search(weaviate_client: WeaviateClient, test_collection: str):
     assert all("distance" in result for result in results)
     assert all(result["distance"] is not None for result in results)
 
+@pytest.mark.rag
 def test_hybrid_search(weaviate_client: WeaviateClient, test_collection: str):
     """Test hybrid search functionality"""
     collection = weaviate_client.collections.get(test_collection)
@@ -136,6 +141,7 @@ def test_hybrid_search(weaviate_client: WeaviateClient, test_collection: str):
     assert all("score" in result for result in results)
     assert all(result["score"] is not None for result in results)
 
+@pytest.mark.rag
 def test_filtered_search(weaviate_client: WeaviateClient, test_collection: str):
     """Test search with filters"""
     collection = weaviate_client.collections.get(test_collection)
@@ -152,6 +158,7 @@ def test_filtered_search(weaviate_client: WeaviateClient, test_collection: str):
     assert len(results) > 0
     assert all(result["filename"] == "ml_basics.txt" for result in results)
 
+@pytest.mark.rag
 def test_search_empty_collection(weaviate_client: WeaviateClient):
     """Test search on empty collection"""
     empty_collection = "empty_test"
@@ -167,6 +174,7 @@ def test_search_empty_collection(weaviate_client: WeaviateClient):
     
     assert len(results) == 0
 
+@pytest.mark.rag
 def test_search_with_invalid_filter(weaviate_client: WeaviateClient, test_collection: str):
     """Test search with invalid filter"""
     collection = weaviate_client.collections.get(test_collection)
@@ -184,6 +192,7 @@ def test_search_with_invalid_filter(weaviate_client: WeaviateClient, test_collec
     assert "error" in results[0]
     assert "Invalid filter" in results[0]["error"] or "Search failed" in results[0]["error"]
 
+@pytest.mark.rag
 def test_hybrid_search_parameters(weaviate_client: WeaviateClient, test_collection: str):
     """Test hybrid search with different alpha values"""
     collection = weaviate_client.collections.get(test_collection)
@@ -209,6 +218,7 @@ def test_hybrid_search_parameters(weaviate_client: WeaviateClient, test_collecti
     # Results should be different due to different alpha values
     assert vector_biased != keyword_biased
 
+@pytest.mark.rag
 def test_search_result_metadata(weaviate_client: WeaviateClient, test_collection: str):
     """Test completeness of search result metadata"""
     collection = weaviate_client.collections.get(test_collection)
@@ -237,6 +247,7 @@ def test_search_result_metadata(weaviate_client: WeaviateClient, test_collection
         assert field in result
         assert result[field] is not None
 
+@pytest.mark.rag
 @pytest.fixture
 def sample_text_file(tmp_path):
     """Create a sample text file for testing"""
@@ -245,11 +256,13 @@ def sample_text_file(tmp_path):
     file_path.write_text(content)
     return str(file_path)
 
+@pytest.mark.rag
 @pytest.fixture
 def sample_url_content():
     """Mock URL content for testing"""
     return "This is content from a URL"
 
+@pytest.mark.rag
 def test_prepare_document_metadata(sample_text_file):
     """Test document metadata preparation"""
     text = "Sample content"
@@ -267,6 +280,7 @@ def test_prepare_document_metadata(sample_text_file):
     assert metadata["mime_type"] == "text/plain"
     assert metadata["source_url"] == "None"
 
+@pytest.mark.rag
 def test_prepare_url_metadata(sample_url_content):
     """Test URL metadata preparation"""
     url = "https://example.com/doc.pdf"
@@ -281,6 +295,7 @@ def test_prepare_url_metadata(sample_url_content):
     assert metadata["source_url"] == url
     assert metadata["mime_type"] == "application/pdf"
 
+@pytest.mark.rag
 def test_document_existence_check(weaviate_client: WeaviateClient, test_collection: str):
     """Test document existence checking"""
     collection = weaviate_client.collections.get(test_collection)
@@ -307,6 +322,7 @@ def test_document_existence_check(weaviate_client: WeaviateClient, test_collecti
     assert exists
     assert status == "unchanged"
 
+@pytest.mark.rag
 def test_delete_document(weaviate_client: WeaviateClient, test_collection: str):
     """Test document deletion"""
     collection = weaviate_client.collections.get(test_collection)
@@ -322,6 +338,7 @@ def test_delete_document(weaviate_client: WeaviateClient, test_collection: str):
     # Verify deletion
     assert get_document_metadata(collection, doc_id) is None
 
+@pytest.mark.rag
 def test_list_documents(weaviate_client: WeaviateClient, test_collection: str):
     """Test document listing"""
     collection = weaviate_client.collections.get(test_collection)
@@ -335,6 +352,7 @@ def test_list_documents(weaviate_client: WeaviateClient, test_collection: str):
         assert "chunk_count" in doc
         assert doc["chunk_count"] > 0
 
+@pytest.mark.rag
 def test_show_document(weaviate_client: WeaviateClient, test_collection: str):
     """Test document metadata retrieval"""
     collection = weaviate_client.collections.get(test_collection)
@@ -349,6 +367,7 @@ def test_show_document(weaviate_client: WeaviateClient, test_collection: str):
     assert "total_chunks" in metadata
     assert metadata["total_chunks"] > 0
 
+@pytest.mark.rag
 def test_rename_index(weaviate_client: WeaviateClient, test_collection: str):
     """Test index renaming"""
     new_name = "renamed_collection"
@@ -370,11 +389,13 @@ def test_rename_index(weaviate_client: WeaviateClient, test_collection: str):
     documents = list_documents_in_collection(collection)
     assert len(documents) > 0
 
+@pytest.mark.rag
 @pytest.fixture
 def test_url() -> str:
     """URL fixture for testing"""
     return "https://raw.githubusercontent.com/deepseek-ai/DeepSeek-R1/refs/heads/main/README.md"
 
+@pytest.mark.rag
 def test_list_indexes(weaviate_client: WeaviateClient, test_collection: str):
     """Test index listing"""
     indexes = list_collections(weaviate_client)
@@ -382,6 +403,7 @@ def test_list_indexes(weaviate_client: WeaviateClient, test_collection: str):
     # Collection names are case-sensitive
     assert test_collection.lower() in [idx.lower() for idx in indexes]
 
+@pytest.mark.rag
 def test_url_document_operations(weaviate_client: WeaviateClient, test_collection: str, test_url: str):
     """Test URL document operations including metadata, existence check, and indexing"""
     from agentic.cli import index_file

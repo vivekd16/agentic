@@ -929,9 +929,23 @@ class DynamicFastAPIHandler:
         return {"status": "success", "result": result}
 
     @app.get("/asset/{run_id}/{file_id}")
-    async def get_asset(self, run_id: str, file_id: str) -> Response:
+    async def get_asset(self, run_id: str, file_id: str) -> FastApiResponse:
         try:
-            # Get the file from Ray's object store using the provided ID
+            # First verify this asset was generated as part of this run
+            db_manager = DatabaseManager()
+            run_logs = db_manager.get_run_logs(run_id)
+            
+            # Check if there's any AssetGenerated event with this file_id in the run logs
+            asset_event_exists = any(
+                log.event_name == "asset_generated" and 
+                log.event.get("file_id") == file_id
+                for log in run_logs
+            )
+            
+            if not asset_event_exists:
+                raise HTTPException(status_code=403, detail="Access denied: Asset not associated with this run")
+            
+            # Once verified, retrieve the file from Ray's object store
             file_content = ray.get(ray.ObjectRef(binascii.unhexlify(file_id)))
             
             # Check if we have a FileResult with metadata
@@ -947,6 +961,9 @@ class DynamicFastAPIHandler:
                 content=file_content,
                 media_type="application/octet-stream"
             )
+        except HTTPException:
+            # Re-raise HTTP exceptions
+            raise
         except Exception as e:
             raise HTTPException(status_code=404, detail=f"Asset not found: {str(e)}")
 

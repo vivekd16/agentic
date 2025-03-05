@@ -56,6 +56,8 @@ class BrowserUseTool:
             return agentic_secrets.get_required_secret("GEMINI_API_KEY")
         elif model.startswith("gpt") or model.startswith("openai"):
             return agentic_secrets.get_required_secret("OPENAI_API_KEY")
+        elif model.startswith("anthropic") or model.startswith("claude"):
+            return agentic_secrets.get_required_secret("ANTHROPIC_API_KEY")
         else:
             # For other models, try to infer the API key name
             provider = model.split("/")[0] if "/" in model else model.split("-")[0]

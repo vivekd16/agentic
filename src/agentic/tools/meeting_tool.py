@@ -293,7 +293,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self._initialize_rag()
             
             # Use chonkie for semantic chunking (imported via rag_helper)
-            chunker = init_chunker(threshold=0.5, delim=".,!,?,\n")
+            chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
             chunks = chunker(detailed_summary)
             chunks_text = [chunk.text for chunk in chunks]
             

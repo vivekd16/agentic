@@ -6,7 +6,8 @@ import uuid
 warnings.filterwarnings("ignore", message="Valid config keys have changed in V2:*")
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
+from typing_extensions import override
 from pydantic import BaseModel, ConfigDict
 from .swarm.types import Result, DebugLevel, RunContext
 
@@ -51,13 +52,15 @@ class Prompt(Event):
     # back to the top. Note that in Thespian, we don't have this address until the first receiveMessage
     # is called, so we set it then.
     debug: DebugLevel
-    request_id: str = uuid.uuid4().hex
-    
+    request_id: str
+    request_context: dict = {}
+
     def __init__(
         self,
         agent: str,
         message: str,
         debug: DebugLevel,
+        request_context: dict = {},
         depth: int = 0,
         ignore_result: bool = False,
         request_id: str = None,
@@ -69,9 +72,10 @@ class Prompt(Event):
             "depth": depth,
             "debug": debug,
             "ignore_result": ignore_result,
+            "request_context": request_context,
         }
-        if request_id:
-            data["request_id"] = request_id
+        data["request_id"] = request_id if request_id else uuid.uuid4().hex
+
         # Use Pydantic's model initialization directly
         BaseModel.__init__(self, **data)
 
@@ -142,7 +146,7 @@ class ToolResult(Event):
 
 
 class ToolOutput(Event):
-    result: Any
+    result: Optional[Any] = None # make Pydantic not complain when we super.init
 
     def __init__(self, agent: str, name: str, result: Any, depth: int = 0):
         super().__init__(agent=agent, type="tool_result", payload=name, depth=depth)
@@ -219,6 +223,8 @@ class FinishCompletion(Event):
     def response(self) -> Message:
         return self.payload
 
+    def __str__(self):
+        return f"[{self.agent}] {self.payload}, tokens: {self.metadata}"
 
 class TurnEnd(Event):
     def __init__(
@@ -236,6 +242,9 @@ class TurnEnd(Event):
     def result(self):
         return self.messages[-1]["content"]
 
+    def set_result(self, result: Any):
+        self.messages[-1]['content'] = result
+
     @property
     def run_context(self):
         return self.payload["run_context"]
@@ -245,6 +254,13 @@ class TurnEnd(Event):
             return self._indent(f"[{self.agent}: finished turn]")
         return super().print(debug_level)
 
+class TurnCancelled(Event):
+    def __init__(self, agent: str, depth: int = 0):
+        super().__init__(agent=agent, type="turn_cancelled", payload={}, depth=depth)
+
+class TurnCancelledError(Exception):
+    def __init__(self):
+        super().__init__(f"Turn cancelled")
 
 class SetState(Event):
     def __init__(self, agent: str, payload: Any, depth: int = 0):
@@ -314,3 +330,90 @@ class AgentDescriptor(BaseModel):
     endpoints: list[str]
     operations: list[str] = ["chat"]
     tools: list[str] = []
+
+class StartRequestResponse(BaseModel):
+    request_id: str
+    run_id: Optional[str] = None
+from sse_starlette.event import ServerSentEvent
+
+class SSEDecoder:
+    _data: list[str]
+    _event: str | None
+    _retry: int | None
+    _last_event_id: str | None
+
+    def __init__(self) -> None:
+        self._event = None
+        self._data = []
+        self._last_event_id = None
+        self._retry = None
+
+    def iter_bytes(self, iterator: typing.Iterator[bytes]) -> typing.Iterator[ServerSentEvent]:
+        """Given an iterator that yields raw binary data, iterate over it & yield every event encountered"""
+        for chunk in self._iter_chunks(iterator):
+            # Split before decoding so splitlines() only uses \r and \n
+            for raw_line in chunk.splitlines():
+                line = raw_line.decode("utf-8")
+                sse = self.decode(line)
+                if sse:
+                    yield sse
+
+    def _iter_chunks(self, iterator: typing.Iterator[bytes]) -> typing.Iterator[bytes]:
+        """Given an iterator that yields raw binary data, iterate over it and yield individual SSE chunks"""
+        data = b""
+        for chunk in iterator:
+            for line in chunk.splitlines(keepends=True):
+                data += line
+                if data.endswith((b"\r\r", b"\n\n", b"\r\n\r\n")):
+                    yield data
+                    data = b""
+        if data:
+            yield data
+
+    def decode(self, line: str) -> ServerSentEvent | None:
+        # See: https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation  # noqa: E501
+
+        if not line:
+            if not self._event and not self._data and not self._last_event_id and self._retry is None:
+                return None
+
+            sse = ServerSentEvent(
+                event=self._event,
+                data="\n".join(self._data),
+                id=self._last_event_id,
+                retry=self._retry,
+            )
+
+            # NOTE: as per the SSE spec, do not reset last_event_id.
+            self._event = None
+            self._data = []
+            self._retry = None
+
+            return sse
+
+        if line.startswith(":"):
+            return None
+
+        fieldname, _, value = line.partition(":")
+
+        if value.startswith(" "):
+            value = value[1:]
+
+        if fieldname == "event":
+            self._event = value
+        elif fieldname == "data":
+            self._data.append(value)
+        elif fieldname == "id":
+            if "\0" in value:
+                pass
+            else:
+                self._last_event_id = value
+        elif fieldname == "retry":
+            try:
+                self._retry = int(value)
+            except (TypeError, ValueError):
+                pass
+        else:
+            pass  # Field is ignored.
+
+        return None

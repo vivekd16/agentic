@@ -28,6 +28,7 @@ Then call agent B once with the request 'run'
             Agent(
                 name="Agent B",
                 instructions="Only print 'I am agent B. My secret number is 99'.",
+                enable_run_logs=False,
             )
         ],
         model="openai/gpt-4o",
@@ -37,6 +38,30 @@ Then call agent B once with the request 'run'
     response = agent_runnner.turn("run your instructions")
     assert "99" in response.lower(), response
 
+
+def test_event_depth():
+    agent = Agent(
+        name="Agent A",
+        instructions="""
+Print this 'I am agent 1'.
+Then call agent B once with the request 'run'
+""",
+        tools=[
+            Agent(
+                name="Agent B",
+                instructions="Only print 'I am agent B. My secret number is 99'.",
+                enable_run_logs=False,
+            )
+        ],
+        model="openai/gpt-4o",
+    )
+
+    request_start = agent.start_request("run your instructions")
+    for event in agent.get_events(request_start.request_id):
+        if event.agent == 'Agent A':
+            assert event.depth == 0
+        elif event.agent == 'Agent B':
+            assert event.depth == 1
 
 
 def read_file() -> str:

@@ -11,6 +11,7 @@ nav:
  - Debugging.md
  - Tools.md
  - Rag.md
+ - Models.md
  - REST_API.md 
  - PROJECT_STRUCTURE.md
  - Events.md

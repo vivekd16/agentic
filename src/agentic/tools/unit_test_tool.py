@@ -3,6 +3,7 @@ import os
 from typing import Callable
 
 from .base import BaseAgenticTool
+from agentic.common import RunContext
 
 # A dummy tool created just for unit testing
 
@@ -20,6 +21,9 @@ class UnitTestingTool(BaseAgenticTool):
             self.read_state_file,
             self.test_using_async_call,
             self.read_story_log,
+            self.sync_function_with_logging,
+            self.sync_function_direct_logging,
+            self.async_function_with_logging,
         ]
 
     def sleep_for_time(self, seconds: int):
@@ -55,3 +59,18 @@ class UnitTestingTool(BaseAgenticTool):
         """Reads and returns the story log content."""
         await asyncio.sleep(0.2)
         return self.story_log
+
+    def sync_function_with_logging(self, run_context: RunContext):
+        """ A function that logs to the run context. """
+        run_context.log("Something interesting happened: ", "thing1", "thing2")
+        return "can you see the logs?"
+
+    def sync_function_direct_logging(self, run_context: RunContext):
+        """ A function that logs directly via yield. """
+        yield run_context.log("Something interesting happened: ", "thing1", "thing2")
+        return "I yielded a log message"
+    
+    async def async_function_with_logging(self, run_context: RunContext):
+        """ An async function that logs to the run context. """
+        yield run_context.log("ASYNC interesting happened: ", "thing1", "thing2")
+        yield "can you see the logs?"

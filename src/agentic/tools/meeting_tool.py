@@ -12,7 +12,7 @@ from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
 from agentic.common import RunContext
-from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model
+from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker
 import logging  
 
 # Configure logging  
@@ -64,8 +64,16 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
         self._vector_store = None
         self._rag_initialized = False
         self.webhook_addr = ""
-        self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
-        self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
+        try:
+            self.openai_api_key = agentic_secrets.get_required_secret("OPENAI_API_KEY")
+        except ValueError as e:
+            self.openai_api_key = None
+        try:
+            
+            self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
+        except ValueError as e:
+            logger.error(f"Error initializing MEETING_BAAS_Tool: {e}")
+            self.meeting_baas_api_key = None
 
     def get_tools(self) -> list[Callable]:
         return [
@@ -95,19 +103,6 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self.Session = sessionmaker(bind=self._engine)
             self._initialized = True
         return self.Session()
-
-    def __getstate__(self):
-        """Custom serialization for Ray."""
-        state = self.__dict__.copy()
-        # Remove unpicklable entries
-        state['Session'] = None
-        state['_engine'] = None
-        state['_initialized'] = False
-        state['_vector_store'] = None
-        state['_rag_initialized'] = False
-        state['_weaviate_client'] = None
-        state['_embed_model'] = None
-        return state
 
     def __setstate__(self, state):
         """Custom deserialization for Ray."""
@@ -279,8 +274,7 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self._initialize_rag()
             
             # Use chonkie for semantic chunking (imported via rag_helper)
-            from chonkie import SemanticChunker
-            chunker = SemanticChunker(threshold=0.5, delim=[". ", "! ", "? ", "\n"])
+            chunker = init_chunker(threshold=0.5, delim=".,!,?,\n")
             chunks = chunker(detailed_summary)
             chunks_text = [chunk.text for chunk in chunks]
             
@@ -391,24 +385,39 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
     def answer_question(self, meeting_id: str, question: str) -> dict:
         """Answer a question related to a specific meeting"""
         try:
+            self._initialize_rag()
+        
+            # First try to get relevant chunks from vector store
+            if self._vector_store:
+                # Search for relevant chunks in the vector database
+                query_embedding = self._embed_model.embed(question)
+                search_results = self._vector_store.query.near_vector(
+                    vector=query_embedding.tolist(),
+                    limit=3,
+                    return_properties=["content", "document_id"],
+                    where={"document_id": meeting_id}
+                )
+                
+                if search_results.objects:
+                    # Return the relevant chunks as context
+                    context_chunks = [obj.properties["content"] for obj in search_results.objects]
+                    return {
+                        "status": "success",
+                        "context": "\n\n".join(context_chunks),
+                        "source": "vector_search"
+                    }
+            
+            # Fallback to using the full summary if vector search fails or returns no results
             meeting_summary_result = self.get_summary(meeting_id)
             if meeting_summary_result["status"] == "error":
                 return meeting_summary_result
                 
             summary = meeting_summary_result["summary"]
-            client = OpenAI(api_key = self.openai_api_key)
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": f"Question: {question}\n\nSummary: {summary}"},
-                ],
-                temperature=0
-            )
-
+            
             return {
                 "status": "success",
-                "answer": response.choices[0].message.content
+                "context": summary,
+                "source": "full_summary"
             }
             
         except Exception as e:
@@ -564,11 +573,3 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "status": "error",  
                 "message": f"Error processing webhook: {str(e)}",  
                 "meeting_id": webhook_data.get("bot_id", "unknown")  
-            }  
-        finally:
-            # Always close the session
-            if session:
-                try:
-                    session.close()
-                except:
-                    pass

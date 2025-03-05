@@ -37,6 +37,14 @@ class DebugLevel:
                 level = ""
         self.level = str(level)
 
+    def raise_level(self, other_level: "DebugLevel"):
+        if self.debug_all():
+            return
+        if other_level.debug_all():
+            self.level = "all"
+        elif other_level.level != "":
+            self.level = ",".join(set(self.level.split(",")).union(set(other_level.level.split(","))))
+
     def debug_tools(self):
         return self.level == "all" or "tools" in self.level
 
@@ -72,6 +80,7 @@ class RunContext:
         self.debug_level = debug_level
         self.run_id = run_id
         self.api_endpoint = api_endpoint
+        self._log_queue: list = []
 
     def __getitem__(self, key):
         return self._context.get(key, None)
@@ -82,8 +91,9 @@ class RunContext:
     def __setitem__(self, key, value):
         self._context[key] = value
 
-    def update(self, context: dict):
+    def update(self, context: dict) -> "RunContext":
         self._context.update(context)
+        return self
 
     def get_agent(self) -> "Agent":
         return self.agent
@@ -92,6 +102,24 @@ class RunContext:
         return settings.get(
             self.agent_name + "/" + key, settings.get(key, self.get(key, default))
         )
+
+    def log(self, *args):
+        """ Makes and returns a ToolOutput event. You can ignore the return value and let
+            the system automatically publish log messages queued during the tool call. """
+        from agentic.events import ToolOutput
+        import inspect
+
+        caller_frame = inspect.currentframe().f_back
+        caller_name = inspect.getframeinfo(caller_frame).function
+        event = ToolOutput(self.agent_name, caller_name, result=" ".join(map(str, args)))
+        self._log_queue.append(event)
+        return event
+    
+    def get_logs(self):
+        return self._log_queue
+    
+    def reset_logs(self):
+        self._log_queue = []
 
     def set_setting(self, key, value):
         settings.set(self.agent_name + "/" + key, value)

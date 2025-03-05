@@ -17,5 +17,6 @@ from .base import BaseAgenticTool
 # ]
 
 from .registry import tool_registry, Dependency, Tool
+from ..events import ToolOutput
 
 __all__ = ["tool_registry", "Dependency", "Tool"]

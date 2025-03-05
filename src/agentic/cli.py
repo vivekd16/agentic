@@ -163,7 +163,7 @@ Get the names and descriptions from the top 20 models in this list:
 @app.command()
 def ui():
     """Runs the agentic UI"""
-    os.execvp("streamlit", ["streamlit", "run", "src/agentic/ui/chat.py"])
+    os.execvp("streamlit", ["streamlit", "run", "src/agentic/ui/app.py"])
 
 @app.command()
 def webui():
@@ -247,12 +247,15 @@ def serve(filename: str = typer.Argument(default="", show_default=False)):
             return []
 
     agent_instances = find_agent_instances(filename)
+    if len(agent_instances) == 0:
+        typer.echo(f"No agent instances found in {filename}. Make sure to create at least one agent at module scope.")
+        raise typer.Exit(1)
     for agent in agent_instances:
         runner = AgentRunner(agent)
         path = runner.serve()
 
     # Busy loop until ctrl-c or ctrl-d
-    os.system(f"open http://0.0.0.0:8086{path}/docs")
+    #os.system(f"open http://0.0.0.0:8086{path}/docs")
 
     while True:
         time.sleep(1)
@@ -477,6 +480,7 @@ def list_indexes():
     )
 
     console = Console()
+    client = None
     try:
         with Status("[bold green]Initializing Weaviate...", console=console):
             client = init_weaviate()

@@ -24,7 +24,10 @@ agent = Agent(
     name="OSS Operator",
     welcome="I am your open source Operator. What task would you like me to perform?",
     instructions="You have a browsing tool function which can browse websites and take actions.",
-    model="gemini/gemini-2.0-flash",
+    #model="gemini/gemini-2.0-flash",
+    #model="openai/gpt-4o-mini",
+    model="openai/gpt-4o",
+
     tools=[
         BrowserUseTool(
             chrome_instance_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',

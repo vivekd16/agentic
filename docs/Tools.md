@@ -171,7 +171,7 @@ the value so that the human doesn't get interrupted again on the next run, via `
 If you want your agent to request "human input" directly, there is a convenience `HumanInterruptTool`
 available.
 
-### Generating Events
+### Generating Events / Logging
 
 Remember that when you agent is running, it emits a stream of well-typed [events](./Events.md).
 It is possible for tool functions to also generate events. In this case these events will be
@@ -181,15 +181,59 @@ from your function is returned to the LLM.
 A classic use case is generating logging events from a function:
 
 ```
-    def long_running_function(self) -> str:
+    def long_running_function(self, run_context) -> str:
         """ Runs a long operation and returns the result. """
         for x in range():
-            yield ToolOutput(f"working on row {x})
+            yield ToolOutput(run_context.agent_name, "long_running_function", f"working on row {x})
             ... do some work
 
         return "The work is done! Thanks for waiting."
 ```
 
+Building the event is toilsome, so `run_context` has a convenience method:
+
+    yield run_context.log("Something interesting happened: ", param2, param2)
+
+This builds and returns the `ToolOutput` event for you.
+
+Note that this style works for synchronous functions, but not async. In the async
+case you need to yield the return value:
+
+```
+    async def long_running_function(self) -> str:
+        """ Runs a long operation and returns the result. """
+        for x in range():
+            yield run_context.log(f"working on row {x})
+            ... do some work
+
+        yield "The work is done! Thanks for waiting."
+```
+
+The generator is the right approach for true long-running tools, because otherwise your agent
+cannot emit any status info while the function is running. However, for short-running functions
+that still want to do logging, it is annoying to have to implement a generator.
+
+So for convenience, you can log into the `run_context` instead:
+
+```
+    def my_func_with_logging(self, run_context: RunContext) -> str:
+        """ An interesting functions. """
+        for x in range():
+            run_context.log(f"working on row {x})
+            ... do some work
+
+        return "The work is done! Thanks for waiting."
+```
+Note that we didn't `yield` the log object. After your function returns, the system will 
+automatically publish the `ToolOutput` events from any messages logged by your function, 
+and then proceed to process the function result.
+
 
 **Adding tools dynamically**
 
+You can add a tool to an agent at any time:
+
+
+    agent.add_tool(tool)
+
+and it will be availabe to the agent the next time it runs.

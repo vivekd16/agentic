@@ -564,11 +564,4 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "status": "error",  
                 "message": f"Error processing webhook: {str(e)}",  
                 "meeting_id": webhook_data.get("bot_id", "unknown")  
-            }  
-        finally:
-            # Always close the session
-            if session:
-                try:
-                    session.close()
-                except:
-                    pass
+            }

@@ -104,9 +104,28 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
             self._initialized = True
         return self.Session()
 
+    def __getstate__(self):
+        """Custom serialization for Ray."""
+        state = self.__dict__.copy()
+        # Remove non-serializable objects
+        state.pop('_weaviate_client', None)
+        state.pop('_vector_store', None)
+        state.pop('_embed_model', None)
+        state.pop('_engine', None)
+        state.pop('Session', None)
+        return state
+
     def __setstate__(self, state):
         """Custom deserialization for Ray."""
         self.__dict__.update(state)
+        # Ensure initialization attributes are set
+        self._initialized = False
+        self._engine = None
+        self.Session = None
+        self._rag_initialized = False
+        self._vector_store = None
+        self._weaviate_client = None
+        self._embed_model = None
 
     def join_meeting(
         self, 
@@ -573,4 +592,4 @@ class MEETING_BAAS_Tool(BaseAgenticTool):
                 "status": "error",  
                 "message": f"Error processing webhook: {str(e)}",  
                 "meeting_id": webhook_data.get("bot_id", "unknown")  
-            }  
+            }

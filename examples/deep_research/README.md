@@ -116,6 +116,23 @@ This agent uses `Agent.result_model` which allows us to specify a Pydantic model
 that the result of running our ReAct agent should conform to. This uses _structured outputs_
 from our LLM to force the agent result to match our schema.
 
+## Agent orchestration
+
+There are two common approaches to building AI agents these days: simple _ReAct_ agents which
+rely on the LLM to determine the process steps, and "workflow agents" which rely on deterministic
+code to drive the process.
+
+This agent demonstrates "orchestration in code". The _Agentic_ framework itself isn't really
+involved - it simply defines the top-level API (`next_turn`) and set of publishable events.
+
+Contrast this with the _LangGraph_ implementation which relies on building a _graph_ and
+orchestrating the ReAct agets from the graph. I am wildy unconvinced that the graph offers
+much advantage over our simpler approach.
+
+An area for research is how to enhance our framework to support _plan and execute_ style
+agents in a more standardized way. Please read the [pipeline problem](./pipeline_problem.md) for a litte more discussion
+on this topic.
+
 ## Further work
 
 Checkout some of the example reports in this folder to get a sense of the output
@@ -124,7 +141,7 @@ from the agent. And if you generate a cool prompt and report - please share it!
 * Using Playwright fallback definitely produces more content and detail, although
 results vary by topic.
 
-* Some other agents are including support for other search APIs beyond Tavily, and
+* Some other projects are including support for other search APIs beyond Tavily, and
 for specialized content access like **https://arxiv.org/**. These would all be 
 good additions.
 

@@ -62,6 +62,7 @@ from agentic.events import (
     DebugLevel,
     ToolError,
     StartRequestResponse,
+    OauthFlowRequest,
 )
 from agentic.db.models import Run, RunLog
 from agentic.tools.registry import tool_registry
@@ -463,7 +464,18 @@ class ActorBaseAgent:
             yield from events
 
             if partial_response.last_tool_result:
-                if isinstance(partial_response.last_tool_result, PauseForInputResult):
+                # Tool returns OauthFlowRequest
+                if isinstance(partial_response.last_tool_result, OauthFlowRequest):
+                    # Store context to resume later
+                    self.paused_context = AgentPauseContext(
+                        orig_history_length=init_len,
+                        tool_partial_response=partial_response,
+                        tool_function=partial_response.last_tool_result.tool_function
+                    )
+                    # Pass OAuth request up to client
+                    yield partial_response.last_tool_result
+                    return
+                elif isinstance(partial_response.last_tool_result, PauseForInputResult):
                     self.paused_context = AgentPauseContext(
                         orig_history_length=init_len,
                         tool_partial_response=partial_response,

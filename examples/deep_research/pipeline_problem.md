@@ -46,11 +46,16 @@ and your inputs and outputs are basically untyped dicts. Can you tell at a glanc
 what this code is supposed to do?
 
 ```
-example
+retrieval_chain = (
+    {"context": retriever, "question": RunnablePassthrough()}
+    | prompt
+    | model
+    | StrOutputParser()
+)
 ```
 
 Recognizing that simple pipelines wouldn't be enough to support more complex control
-flow for agents, Langchain (the co) introduced Langgraph.
+flow for agents, Langchain (the company) introduced LangGraph.
 
 ### LangGraph
 

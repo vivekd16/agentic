@@ -1,6 +1,7 @@
 import { Bot, CircleDashed,History, ListTodo, PlayCircle, Send, User } from 'lucide-react';
 import React, { useEffect, useRef,useState } from 'react';
 
+import AgentPromptButtons from '@/components/AgentPromptButtons';
 import BackgroundTasks from '@/components/BackgroundTasks';
 import EventLogs from '@/components/EventLogs';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
@@ -27,6 +28,9 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
   const [backgroundTasks, setBackgroundTasks] = useState<Ui.BackgroundTask[]>([]);
   const [showBackgroundPanel, setShowBackgroundPanel] = useState<boolean>(false);
   const [showEventLogs, setShowEventLogs] = useState<boolean>(false);
+  const [userHasSentMessage, setUserHasSentMessage] = useState<boolean>(false);
+  const [isAgentResponding, setIsAgentResponding] = useState(false);
+
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -61,90 +65,108 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
     scrollToBottom();
   }, [messages]);
 
+  // Set userHasSentMessage to true if messages exist
+  useEffect(() => {
+    if (messages.length > 0) {
+      setUserHasSentMessage(true);
+    }
+  }, [messages]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+// Handle prompt button click
+const handlePromptButtonClick = (promptText: string) => {
+  setInput(promptText);
+  setIsAgentResponding(true);
+  // Automatically submit the form
+  handleSubmit(new Event('submit') as unknown as React.FormEvent, false, promptText);
+};
+
+// Handle form submission
+const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, customInput?: string) => {
+  e.preventDefault();
+  const userInput = customInput || input;
+  if (!userInput.trim()) return;
+  
+  setInput('');
+  setUserHasSentMessage(true);
+  
+  if (isBackground) {
+    // Handle background task
+    const userMessage = { role: 'user' as const, content: userInput };
+    const agentMessage = { role: 'agent' as const, content: '' };
     
-    const userInput = input;
-    setInput('');
+    const newTask: Ui.BackgroundTask = {
+      id: `task-${Date.now()}`,
+      completed: false,
+      messages: [userMessage, agentMessage],
+      currentStreamContent: ''
+    };
     
-    if (isBackground) {
-      // Handle background task
-      const userMessage = { role: 'user' as const, content: userInput };
-      const agentMessage = { role: 'agent' as const, content: '' };
-      
-      const newTask: Ui.BackgroundTask = {
-        id: `task-${Date.now()}`,
-        completed: false,
-        messages: [userMessage, agentMessage],
-        currentStreamContent: ''
-      };
-      
-      setBackgroundTasks(prev => [...prev, newTask]);
-      setShowBackgroundPanel(true);
-      if (showEventLogs) setShowEventLogs(false);
-      
-      const response = await sendBackgroundPrompt(
-        userInput,
-        currentRunId,
-        // Update message content as it streams in
-        (requestId, content) => {
-          setBackgroundTasks(prev => prev.map(task => {
-            if (task.id === newTask.id || task.id === requestId) {
-              return {
-                ...task,
-                id: requestId, // Update with real ID
-                currentStreamContent: content,
-                messages: [
-                  task.messages[0],
-                  { role: 'agent', content }
-                ]
-              };
-            }
-            return task;
-          }));
-        },
-        // Mark as completed when done
-        (requestId) => {
-          setBackgroundTasks(prev => prev.map(task => 
-            task.id === requestId 
-              ? { ...task, completed: true }
-              : task
-          ));
-        }
-      );
-      
-      // If response failed, show error
-      if (!response) {
+    setBackgroundTasks(prev => [...prev, newTask]);
+    setShowBackgroundPanel(true);
+    if (showEventLogs) setShowEventLogs(false);
+    
+    const response = await sendBackgroundPrompt(
+      userInput,
+      currentRunId,
+      // Update message content as it streams in
+      (requestId, content) => {
+        setBackgroundTasks(prev => prev.map(task => {
+          if (task.id === newTask.id || task.id === requestId) {
+            return {
+              ...task,
+              id: requestId, // Update with real ID
+              currentStreamContent: content,
+              messages: [
+                task.messages[0],
+                { role: 'agent', content }
+              ]
+            };
+          }
+          return task;
+        }));
+      },
+      // Mark as completed when done
+      (requestId) => {
         setBackgroundTasks(prev => prev.map(task => 
-          task.id === newTask.id
-            ? { ...task, completed: true, messages: [...task.messages.slice(0, 1), { role: 'agent', content: 'Error: Failed to get response from agent' }] }
+          task.id === requestId 
+            ? { ...task, completed: true }
             : task
         ));
+        setIsAgentResponding(false);
       }
-    } else {
-      // Handle foreground task - we just need to send the prompt
-      // Messages will be derived from events in the useChat hook
-      const response = await sendPrompt(
-        userInput,
-        currentRunId,
-        // This callback is used for streaming updates
-        () => {},
-        // Callback when complete
-        onRunComplete
-      );
-      
-      // If response failed, we could handle error here
-      if (!response) {
-        console.error('Failed to get response from agent');
-      }
+    );
+    
+    // If response failed, show error
+    if (!response) {
+      setBackgroundTasks(prev => prev.map(task => 
+        task.id === newTask.id
+          ? { ...task, completed: true, messages: [...task.messages.slice(0, 1), { role: 'agent', content: 'Error: Failed to get response from agent' }] }
+          : task
+      ));
+      setIsAgentResponding(false);
     }
-  };
+  } else {
+    // Handle foreground task - we just need to send the prompt
+    // Messages will be derived from events in the useChat hook
+    const response = await sendPrompt(
+      userInput,
+      currentRunId,
+      // This callback is used for streaming updates
+      () => {},
+      // Callback when complete
+      onRunComplete
+    );
+    setIsAgentResponding(false);
+    // If response failed, we could handle error here
+    if (!response) {
+      console.error('Failed to get response from agent');
+    }
+  }
+};
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -168,6 +190,8 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
 
   // Combine purpose message with derived messages
   const displayMessages = [...defaultPurpose, ...messages];
+  
+  const showPromptButtons = !isAgentResponding && agentInfo.prompts && Object.keys(agentInfo.prompts).length > 0;;
 
   return (
     <div className="flex h-full relative">
@@ -228,7 +252,25 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
                     !msg.content && idx === displayMessages.length - 1 ? (
                       <CircleDashed className="h-4 w-4 animate-spin flex-shrink-0" />
                     ) : (
-                      <MarkdownRenderer content={msg.content} />
+                      <>
+                        <MarkdownRenderer content={msg.content} />
+                        
+                        {/* Add prompt buttons under the agent's first message when no user messages yet */}
+                        {showPromptButtons && agentInfo.prompts && idx === displayMessages.length - 1 ? (
+                          Object.entries(agentInfo.prompts).map(([label, promptText], index) => (
+                            <Button
+                              key={index}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePromptButtonClick(promptText as string)}
+                            >
+                              {label}
+                            </Button>
+                          ))
+                        ) : (
+                          <></>
+                        )}
+                      </>
                     )
                   )}
                 </div>

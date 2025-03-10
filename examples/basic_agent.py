@@ -10,6 +10,10 @@ agent = Agent(
     instructions="You are a helpful assistant.",
     model="openai/gpt-4o-mini",
     tools=[WeatherTool()],
+    prompts = {
+        "NYC": "What is the weather in New York City?",
+        "LA": "What is the weather in Los Angeles?",
+    }
 )
 
 if __name__ == "__main__":

@@ -12,6 +12,13 @@ declare namespace Api {
     endpoints: string[];
     operations: string[];
     tools: string[];
+    prompts?: Array<string>;
+  }
+
+  export interface PromptButton {
+    text: string;
+    label?: string;
+    icon?: string;
   }
   
   interface SendPromptResponse {

@@ -240,7 +240,7 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
                     </AvatarFallback>
                   </Avatar>
                 )}
-                
+
                 <div className={`rounded-lg p-4 max-w-[80%] ${
                   msg.role === 'user' 
                     ? 'bg-primary text-primary-foreground'
@@ -252,25 +252,7 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
                     !msg.content && idx === displayMessages.length - 1 ? (
                       <CircleDashed className="h-4 w-4 animate-spin flex-shrink-0" />
                     ) : (
-                      <>
-                        <MarkdownRenderer content={msg.content} />
-                        
-                        {/* Add prompt buttons under the agent's first message when no user messages yet */}
-                        {showPromptButtons && agentInfo.prompts && idx === displayMessages.length - 1 ? (
-                          Object.entries(agentInfo.prompts).map(([label, promptText], index) => (
-                            <Button
-                              key={index}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePromptButtonClick(promptText as string)}
-                            >
-                              {label}
-                            </Button>
-                          ))
-                        ) : (
-                          <></>
-                        )}
-                      </>
+                      <MarkdownRenderer content={msg.content} />
                     )
                   )}
                 </div>
@@ -284,9 +266,31 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
                 )}
               </div>
             ))}
+
             <div ref={messagesEndRef} />
+
+            {/* Separate container for prompt buttons, aligned with agent messages */}
+            {showPromptButtons && agentInfo.prompts ? (
+              <div className="flex justify-start pl-11 mt-2"> 
+                {/* Adjust `pl-11` to match the left padding/margin of the agent messages */}
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(agentInfo.prompts).map(([label, promptText], index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePromptButtonClick(promptText as string)}
+                      className="m-1"
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </ScrollArea>
+
 
         <CardContent className="p-4 border-t">
           <form onSubmit={(e) => handleSubmit(e, false)} className="flex gap-2">

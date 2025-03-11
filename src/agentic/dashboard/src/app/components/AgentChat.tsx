@@ -1,7 +1,6 @@
-import { Bot, CircleDashed,History, ListTodo, PlayCircle, Send, User } from 'lucide-react';
+import { Bot, CircleDashed,History, ListTodo, PlayCircle, Send, User, MessageSquarePlus} from 'lucide-react';
 import React, { useEffect, useRef,useState } from 'react';
 
-import AgentPromptButtons from '@/components/AgentPromptButtons';
 import BackgroundTasks from '@/components/BackgroundTasks';
 import EventLogs from '@/components/EventLogs';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
@@ -28,7 +27,6 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
   const [backgroundTasks, setBackgroundTasks] = useState<Ui.BackgroundTask[]>([]);
   const [showBackgroundPanel, setShowBackgroundPanel] = useState<boolean>(false);
   const [showEventLogs, setShowEventLogs] = useState<boolean>(false);
-  const [userHasSentMessage, setUserHasSentMessage] = useState<boolean>(false);
   const [isAgentResponding, setIsAgentResponding] = useState(false);
 
   
@@ -65,13 +63,6 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
     scrollToBottom();
   }, [messages]);
 
-  // Set userHasSentMessage to true if messages exist
-  useEffect(() => {
-    if (messages.length > 0) {
-      setUserHasSentMessage(true);
-    }
-  }, [messages]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -91,7 +82,6 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
   if (!userInput.trim()) return;
   
   setInput('');
-  setUserHasSentMessage(true);
   
   if (isBackground) {
     // Handle background task
@@ -191,7 +181,7 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
   // Combine purpose message with derived messages
   const displayMessages = [...defaultPurpose, ...messages];
   
-  const showPromptButtons = !isAgentResponding && agentInfo.prompts && Object.keys(agentInfo.prompts).length > 0;;
+  const showPromptButtons = !isAgentResponding && agentInfo.prompts && Object.keys(agentInfo.prompts).length > 0 && messages.length == 0;
 
   return (
     <div className="flex h-full relative">
@@ -282,6 +272,7 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
                       onClick={() => handlePromptButtonClick(promptText as string)}
                       className="m-1"
                     >
+                      <MessageSquarePlus className="h-4 w-4" />
                       {label}
                     </Button>
                   ))}

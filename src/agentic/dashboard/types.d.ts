@@ -14,12 +14,6 @@ declare namespace Api {
     tools: string[];
     prompts?: Array<string>;
   }
-
-  export interface PromptButton {
-    text: string;
-    label?: string;
-    icon?: string;
-  }
   
   interface SendPromptResponse {
     request_id: string;

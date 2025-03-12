@@ -27,8 +27,6 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
   const [backgroundTasks, setBackgroundTasks] = useState<Ui.BackgroundTask[]>([]);
   const [showBackgroundPanel, setShowBackgroundPanel] = useState<boolean>(false);
   const [showEventLogs, setShowEventLogs] = useState<boolean>(false);
-  const [isAgentResponding, setIsAgentResponding] = useState(false);
-
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -70,7 +68,6 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
 // Handle prompt button click
 const handlePromptButtonClick = (promptText: string) => {
   setInput(promptText);
-  setIsAgentResponding(true);
   // Automatically submit the form
   handleSubmit(new Event('submit') as unknown as React.FormEvent, false, promptText);
 };
@@ -126,7 +123,6 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
             ? { ...task, completed: true }
             : task
         ));
-        setIsAgentResponding(false);
       }
     );
     
@@ -137,7 +133,6 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
           ? { ...task, completed: true, messages: [...task.messages.slice(0, 1), { role: 'agent', content: 'Error: Failed to get response from agent' }] }
           : task
       ));
-      setIsAgentResponding(false);
     }
   } else {
     // Handle foreground task - we just need to send the prompt
@@ -150,7 +145,6 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
       // Callback when complete
       onRunComplete
     );
-    setIsAgentResponding(false);
     // If response failed, we could handle error here
     if (!response) {
       console.error('Failed to get response from agent');
@@ -181,7 +175,7 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
   // Combine purpose message with derived messages
   const displayMessages = [...defaultPurpose, ...messages];
   
-  const showPromptButtons = !isAgentResponding && agentInfo.prompts && Object.keys(agentInfo.prompts).length > 0 && messages.length == 0;
+  const showPromptButtons = agentInfo.prompts && Object.keys(agentInfo.prompts).length > 0 && messages.length === 0;
 
   return (
     <div className="flex h-full relative">
@@ -270,7 +264,6 @@ const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, c
                       variant="outline"
                       size="sm"
                       onClick={() => handlePromptButtonClick(promptText as string)}
-                      className="m-1"
                     >
                       <MessageSquarePlus className="h-4 w-4" />
                       {label}

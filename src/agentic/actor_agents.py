@@ -970,6 +970,7 @@ class DynamicFastAPIHandler:
             tools=self.agent_facade.list_tools(),
             endpoints=["/process", "/getevents", "/describe"],
             operations=["chat"],
+            prompts=self.agent_facade.prompts,
         )
 
     # FIXME: DRY this with Runner
@@ -1029,10 +1030,12 @@ class RayFacadeAgent:
         result_model: Type[BaseModel]|None = None,
         debug: DebugLevel = DebugLevel(os.environ.get("AGENTIC_DEBUG") or ""),
         mock_settings: dict = None,  # Add mock_settings parameter
+        prompts: Optional[dict[str, str]] = None,
     ):
         self.name = name
         self.welcome = welcome or f"Hello, I am {name}."
         self.model = model or "gpt-4o-mini"
+        self.prompts = prompts or {}  # Store the prompts dictionary
         caller_frame = inspect.currentframe()
         self.cancelled: bool = False
         if caller_frame:
@@ -1094,6 +1097,29 @@ class RayFacadeAgent:
                     ray.get(self._agent.set_mock_params.remote(pattern, response, tools_dict))
                 except Exception as e:
                     print(f"Warning: Failed to set mock params on remote agent: {e}")
+
+    @property
+    def prompt(self) -> dict[str, str]:
+        """Dictionary of prompt templates that can be used for pre-defined interactions."""
+        return self.prompts
+
+    def _check_for_prompt_match(self, user_input: str) -> str:
+        """Check if user input matches a prompt key and return the corresponding content if it does."""
+        if not self.prompts:
+            return user_input
+            
+        # Check if the input exactly matches a prompt key
+        if user_input in self.prompts:
+            return self.prompts[user_input]
+            
+        # Check if the input matches a prompt key when lowercase
+        lower_input = user_input.lower()
+        for key, value in self.prompts.items():
+            if lower_input == key.lower():
+                return value
+                
+        # No match found, return original input
+        return user_input
 
     def _init_base_actor(self, instructions: str):
         # Process instructions if provided
@@ -1290,6 +1316,9 @@ class RayFacadeAgent:
             depthLocal.depth = 0
         else:
             depthLocal.depth += 1
+
+        if isinstance(request, str):            
+            request = self._check_for_prompt_match(request)
 
         # Initialize new request
         request_obj = Prompt(

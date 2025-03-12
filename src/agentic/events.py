@@ -2,6 +2,7 @@
 import warnings
 import typing
 import uuid
+from typing import Dict
 
 warnings.filterwarnings("ignore", message="Valid config keys have changed in V2:*")
 
@@ -334,6 +335,7 @@ class AgentDescriptor(BaseModel):
     endpoints: list[str]
     operations: list[str] = ["chat"]
     tools: list[str] = []
+    prompts: Dict[str, str] = {}
 
 class StartRequestResponse(BaseModel):
     request_id: str

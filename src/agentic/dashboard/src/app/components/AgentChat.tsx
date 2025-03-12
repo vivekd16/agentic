@@ -1,4 +1,4 @@
-import { Bot, CircleDashed,History, ListTodo, PlayCircle, Send, User } from 'lucide-react';
+import { Bot, CircleDashed,History, ListTodo, PlayCircle, Send, User, MessageSquarePlus} from 'lucide-react';
 import React, { useEffect, useRef,useState } from 'react';
 
 import BackgroundTasks from '@/components/BackgroundTasks';
@@ -65,86 +65,92 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+// Handle prompt button click
+const handlePromptButtonClick = (promptText: string) => {
+  setInput(promptText);
+  // Automatically submit the form
+  handleSubmit(new Event('submit') as unknown as React.FormEvent, false, promptText);
+};
+
+// Handle form submission
+const handleSubmit = async (e: React.FormEvent, isBackground: boolean = false, customInput?: string) => {
+  e.preventDefault();
+  const userInput = customInput || input;
+  if (!userInput.trim()) return;
+  
+  setInput('');
+  
+  if (isBackground) {
+    // Handle background task
+    const userMessage = { role: 'user' as const, content: userInput };
+    const agentMessage = { role: 'agent' as const, content: '' };
     
-    const userInput = input;
-    setInput('');
+    const newTask: Ui.BackgroundTask = {
+      id: `task-${Date.now()}`,
+      completed: false,
+      messages: [userMessage, agentMessage],
+      currentStreamContent: ''
+    };
     
-    if (isBackground) {
-      // Handle background task
-      const userMessage = { role: 'user' as const, content: userInput };
-      const agentMessage = { role: 'agent' as const, content: '' };
-      
-      const newTask: Ui.BackgroundTask = {
-        id: `task-${Date.now()}`,
-        completed: false,
-        messages: [userMessage, agentMessage],
-        currentStreamContent: ''
-      };
-      
-      setBackgroundTasks(prev => [...prev, newTask]);
-      setShowBackgroundPanel(true);
-      if (showEventLogs) setShowEventLogs(false);
-      
-      const response = await sendBackgroundPrompt(
-        userInput,
-        currentRunId,
-        // Update message content as it streams in
-        (requestId, content) => {
-          setBackgroundTasks(prev => prev.map(task => {
-            if (task.id === newTask.id || task.id === requestId) {
-              return {
-                ...task,
-                id: requestId, // Update with real ID
-                currentStreamContent: content,
-                messages: [
-                  task.messages[0],
-                  { role: 'agent', content }
-                ]
-              };
-            }
-            return task;
-          }));
-        },
-        // Mark as completed when done
-        (requestId) => {
-          setBackgroundTasks(prev => prev.map(task => 
-            task.id === requestId 
-              ? { ...task, completed: true }
-              : task
-          ));
-        }
-      );
-      
-      // If response failed, show error
-      if (!response) {
+    setBackgroundTasks(prev => [...prev, newTask]);
+    setShowBackgroundPanel(true);
+    if (showEventLogs) setShowEventLogs(false);
+    
+    const response = await sendBackgroundPrompt(
+      userInput,
+      currentRunId,
+      // Update message content as it streams in
+      (requestId, content) => {
+        setBackgroundTasks(prev => prev.map(task => {
+          if (task.id === newTask.id || task.id === requestId) {
+            return {
+              ...task,
+              id: requestId, // Update with real ID
+              currentStreamContent: content,
+              messages: [
+                task.messages[0],
+                { role: 'agent', content }
+              ]
+            };
+          }
+          return task;
+        }));
+      },
+      // Mark as completed when done
+      (requestId) => {
         setBackgroundTasks(prev => prev.map(task => 
-          task.id === newTask.id
-            ? { ...task, completed: true, messages: [...task.messages.slice(0, 1), { role: 'agent', content: 'Error: Failed to get response from agent' }] }
+          task.id === requestId 
+            ? { ...task, completed: true }
             : task
         ));
       }
-    } else {
-      // Handle foreground task - we just need to send the prompt
-      // Messages will be derived from events in the useChat hook
-      const response = await sendPrompt(
-        userInput,
-        currentRunId,
-        // This callback is used for streaming updates
-        () => {},
-        // Callback when complete
-        onRunComplete
-      );
-      
-      // If response failed, we could handle error here
-      if (!response) {
-        console.error('Failed to get response from agent');
-      }
+    );
+    
+    // If response failed, show error
+    if (!response) {
+      setBackgroundTasks(prev => prev.map(task => 
+        task.id === newTask.id
+          ? { ...task, completed: true, messages: [...task.messages.slice(0, 1), { role: 'agent', content: 'Error: Failed to get response from agent' }] }
+          : task
+      ));
     }
-  };
+  } else {
+    // Handle foreground task - we just need to send the prompt
+    // Messages will be derived from events in the useChat hook
+    const response = await sendPrompt(
+      userInput,
+      currentRunId,
+      // This callback is used for streaming updates
+      () => {},
+      // Callback when complete
+      onRunComplete
+    );
+    // If response failed, we could handle error here
+    if (!response) {
+      console.error('Failed to get response from agent');
+    }
+  }
+};
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -168,6 +174,8 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
 
   // Combine purpose message with derived messages
   const displayMessages = [...defaultPurpose, ...messages];
+  
+  const showPromptButtons = agentInfo.prompts && Object.keys(agentInfo.prompts).length > 0 && messages.length === 0;
 
   return (
     <div className="flex h-full relative">
@@ -216,7 +224,7 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
                     </AvatarFallback>
                   </Avatar>
                 )}
-                
+
                 <div className={`rounded-lg p-4 max-w-[80%] ${
                   msg.role === 'user' 
                     ? 'bg-primary text-primary-foreground'
@@ -242,9 +250,31 @@ const AgentChat: React.FC<AgentChatProps> = ({ agentPath, agentInfo, currentRunI
                 )}
               </div>
             ))}
+
             <div ref={messagesEndRef} />
+
+            {/* Separate container for prompt buttons, aligned with agent messages */}
+            {showPromptButtons && agentInfo.prompts ? (
+              <div className="flex justify-start pl-11 mt-2"> 
+                {/* Adjust `pl-11` to match the left padding/margin of the agent messages */}
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(agentInfo.prompts).map(([label, promptText], index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePromptButtonClick(promptText as string)}
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </ScrollArea>
+
 
         <CardContent className="p-4 border-t">
           <form onSubmit={(e) => handleSubmit(e, false)} className="flex gap-2">

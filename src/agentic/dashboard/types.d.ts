@@ -12,6 +12,7 @@ declare namespace Api {
     endpoints: string[];
     operations: string[];
     tools: string[];
+    prompts?: Array<string>;
   }
   
   interface SendPromptResponse {

@@ -8,13 +8,9 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/Events/">
+        <link rel="canonical" href="https://supercog.ai/agentic/CLI/">
       
       
-        <link rel="prev" href="../PROJECT_STRUCTURE/">
-      
-      
-        <link rel="next" href="../AGENTIC_MANIFESTO/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +18,7 @@
     
     
       
-        <title>Event system - Agentic Docs</title>
+        <title>Agentic CLI - Agentic Docs</title>
       
     
     
@@ -64,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#event-system" class="md-skip">
+        <a href="#agentic-cli" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Event system
+              Agentic CLI
             
           </span>
         </div>
@@ -340,6 +336,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../Dashboard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Dashboard
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../PROJECT_STRUCTURE/" class="md-nav__link">
         
   
@@ -358,31 +375,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Event system
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../EVENTS/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -392,53 +388,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#agent-execution-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      Agent execution flow
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#agent-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      Agent pipeline
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#chat-history" class="md-nav__link">
-    <span class="md-ellipsis">
-      Chat history
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -484,41 +433,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#agent-execution-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      Agent execution flow
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#agent-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      Agent pipeline
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#chat-history" class="md-nav__link">
-    <span class="md-ellipsis">
-      Chat history
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -533,64 +447,27 @@
 
 
 
-<h1 id="event-system">Event system</h1>
-<p>Events have a <code>depth</code> attribute which indicates how deep is the agent that is
-generating the event. So the top agent generates <code>depth=0</code>, the first level 
-sub-agent generates at <code>depth=1</code> and so forth. </p>
-<p>Agents publish events whenever they are asked to do something. For a single
-agent this mechanism is simple:</p>
-<div class="codehilite"><pre><span></span><code><span class="n">caller</span><span class="w">      </span><span class="o">---</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">--&gt;</span><span class="w">     </span><span class="n">agent</span>
-<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="o">---</span><span class="w">     </span><span class="o">|</span>
-</code></pre></div>
+<h1 id="agentic-cli">Agentic CLI</h1>
+<p>Commands:</p>
+<div class="codehilite"><pre><span></span><code><span class="o">--</span><span class="n">help</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">Get</span><span class="w"> </span><span class="n">help</span>
 
-<p>However, once agents start calling other agents, it gets more complicated. Our general
-rules is that ALL events published at any level should bubble up back to the original
-caller. This is to maximize the caller's visibility into what the system is doing:</p>
-<div class="codehilite"><pre><span></span><code><span class="n">caller</span><span class="w">      </span><span class="o">---</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">--&gt;</span><span class="w">     </span><span class="n">agent</span><span class="w"> </span><span class="n">A</span><span class="w">               </span><span class="n">agent</span><span class="w"> </span><span class="n">B</span>
-<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="n">event1</span><span class="w"> </span><span class="o">---</span><span class="w">    </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">    </span><span class="o">---</span><span class="w"> </span><span class="n">call</span><span class="w"> </span><span class="n">B</span><span class="w"> </span><span class="o">-&gt;</span><span class="w">      </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">     </span><span class="o">&lt;--</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">--</span><span class="w">    </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">---</span><span class="w">   </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
-</code></pre></div>
+<span class="n">models</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">list</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">popular</span><span class="w"> </span><span class="n">LLM</span><span class="w"> </span><span class="n">models</span>
+<span class="n">list</span><span class="w">            </span><span class="o">-</span><span class="w"> </span><span class="n">List</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">settings</span><span class="o">.</span>
+<span class="n">set</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Set</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="n">value</span><span class="o">.</span>
+<span class="n">get</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Get</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="n">value</span><span class="o">.</span>
+<span class="n">delete</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">Delete</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="n">value</span><span class="o">.</span>
 
-<p>Each event has an agent <code>name</code> property, and <code>depth</code> property which indicates how far down 
-in the call tree the event originated.</p>
-<p>So the caller will get these two events:</p>
-<div class="codehilite"><pre><span></span><code>event1 (Agent A, depth=0)
-event2 (Agent B, depth=1)
-</code></pre></div>
+<span class="n">list</span><span class="o">-</span><span class="n">secrets</span><span class="w">    </span><span class="n">List</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">secrets</span><span class="o">.</span>
+<span class="n">set</span><span class="o">-</span><span class="n">secret</span><span class="w">      </span><span class="n">Set</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">secret</span><span class="o">.</span>
+<span class="n">get</span><span class="o">-</span><span class="n">secret</span><span class="w">      </span><span class="n">Get</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">secret</span><span class="o">.</span>
+<span class="n">delete</span><span class="o">-</span><span class="n">secret</span><span class="w">   </span><span class="n">Delete</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">secret</span><span class="o">.</span>
 
-<p>This allows the caller to ignore sub-agent execution if it prefers.</p>
-<h2 id="agent-execution-flow">Agent execution flow</h2>
-<p>When you call agent A, it may execute agent B, plus agent C, and they in turn
-may call other agents.</p>
-<p>If you want to observe all events from the entire execution tree, then you should
-implement logic to record the recept of events from each distinct agent, and then
-make sure to wait for the <code>TurnEnd</code> message from each one. </p>
-<h2 id="agent-pipeline">Agent pipeline</h2>
-<p>To implement "pipeline semantics", agents can "hand off" from one to another. In this
-case the sub-agent will assume the original caller of the first agent, and will assume
-its <code>depth</code> as well:</p>
-<div class="codehilite"><pre><span></span><code><span class="n">caller</span><span class="w">      </span><span class="o">---</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">--&gt;</span><span class="w">     </span><span class="n">agent</span><span class="w"> </span><span class="n">A</span><span class="w">               </span><span class="n">agent</span><span class="w"> </span><span class="n">B</span>
-<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="n">event1</span><span class="w"> </span><span class="o">---</span><span class="w">    </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">                           </span><span class="o">|</span><span class="w">  </span><span class="o">---</span><span class="w">  </span><span class="o">*</span><span class="n">handoff</span><span class="o">*</span><span class="w"> </span><span class="n">B</span><span class="w"> </span><span class="o">-&gt;</span><span class="w">  </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="n">turnend</span><span class="o">:</span><span class="w"> </span><span class="n">A</span><span class="w"> </span><span class="o">--</span><span class="w"> </span><span class="o">|</span><span class="w">                       </span><span class="o">|</span><span class="w">                </span>
-<span class="w">  </span><span class="o">|</span><span class="w">                                                   </span><span class="o">|</span>
-<span class="w">  </span><span class="o">|</span><span class="w">         </span><span class="o">&lt;--</span><span class="w"> </span><span class="o">----------------------</span><span class="w"> </span><span class="nf">event</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">--</span><span class="w">     </span><span class="o">|</span>
-</code></pre></div>
+<span class="n">ollama</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">List</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">latest</span><span class="w"> </span><span class="n">popular</span><span class="w"> </span><span class="n">models</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">Ollama</span><span class="o">.</span><span class="w"> </span><span class="n">Use</span><span class="w"> </span><span class="s2">&quot;ollama pull &lt;model&gt; to download.</span>
+<span class="n">claude</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">Runs</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">completion</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">Anthropic</span><span class="s1">&#39;s Claude sonnet model</span>
+<span class="n">gpt</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Runs</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">completion</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">OpenAI</span><span class="s1">&#39;s GPT-4o-mini model. Use --model to override.</span>
 
-<p>So the caller will get events like this:</p>
-<div class="codehilite"><pre><span></span><code>event1 (Agent A, depth=0)
-event2 (Agent B, depth=0)
+<span class="n">webui</span><span class="w">              </span><span class="o">-</span><span class="w"> </span><span class="n">Runs</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">agentic</span><span class="w"> </span><span class="n">NextJS</span><span class="w"> </span><span class="n">UI</span>
 </code></pre></div>
-
-<h2 id="chat-history">Chat history</h2>
-<p>A typical interactive agent is built with <em>chat history</em> which maintains the history
-of interactions over the life of a session.</p>
 
 
 

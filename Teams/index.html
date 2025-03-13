@@ -8,13 +8,9 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/Rag/">
+        <link rel="canonical" href="https://supercog.ai/agentic/Teams/">
       
       
-        <link rel="prev" href="../Tools/">
-      
-      
-        <link rel="next" href="../Models/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +18,7 @@
     
     
       
-        <title>RAG Support - Agentic Docs</title>
+        <title>Teams of agents - Agentic Docs</title>
       
     
     
@@ -64,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#rag-support" class="md-skip">
+        <a href="#teams-of-agents" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              RAG Support
+              Teams of agents
             
           </span>
         </div>
@@ -274,19 +270,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../Rag/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -296,7 +283,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -447,6 +433,41 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#using-in-a-workflow-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using in a workflow agent
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-should-i-use-agent-teams" class="md-nav__link">
+    <span class="md-ellipsis">
+      When should I use agent teams?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unified-event-stream" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unified event stream
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -461,64 +482,73 @@
 
 
 
-<h1 id="rag-support">RAG Support</h1>
-<p>Agentic has a basic RAG feature set built on the <a href="https://weaviate.io/">Weaviate</a> vector database.</p>
-<p>You can manage vectorstore indexes using the CLI:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1"># Chunk a file, calculate chunk embeddings, and add them to the vectorstore</span>
-agentic<span class="w"> </span>index_file<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path&gt;
-
-<span class="c1"># Remove all the chunks of a file from the vector store</span>
-agentic<span class="w"> </span>delete_document<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
-
-<span class="c1"># list the indexes</span>
-agentic<span class="w"> </span>list-indexes
-
-<span class="c1"># rename an index</span>
-agentic<span class="w"> </span>rename-index<span class="w"> </span>&lt;from<span class="w"> </span>name&gt;<span class="w"> </span>&lt;to<span class="w"> </span>name&gt;
-
-<span class="c1"># delete a whole index</span>
-agentic<span class="w"> </span>delete-index<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
-
-<span class="c1"># List the documents in a vector store</span>
-agentic<span class="w"> </span>list-documents<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
-
-<span class="c1"># Show the metadata for a doc in the vector store</span>
-agentic<span class="w"> </span>show-document<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
-
-<span class="c1"># Perform a search of the vector store. Searches by vector by default, or can do hybrid search</span>
-agentic<span class="w"> </span>search<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;query&gt;<span class="w"> </span><span class="o">[</span><span class="nv">hybrid</span><span class="o">=</span>true<span class="o">]</span>
-</code></pre></div>
-
-<p>Example usage:</p>
-<div class="codehilite"><pre><span></span><code>$<span class="w"> </span>agentic<span class="w"> </span>index_file<span class="w"> </span>index1<span class="w"> </span>tests/data/agentic_reasoning.pdf
-
-$<span class="w"> </span>agentic<span class="w"> </span>list-documents<span class="w"> </span>index1
-<span class="w">                                                         </span>Documents<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s1">&#39;index1&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">3</span><span class="o">)</span><span class="w">                                                         </span>
--<span class="w"> </span>agentic_reasoning.pdf<span class="w"> </span>
-<span class="w">  </span>ID:<span class="w"> </span>27c0600f...<span class="w"> </span><span class="p">|</span><span class="w"> </span>Chunks:<span class="w"> </span><span class="m">19</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>Last<span class="w"> </span>indexed:<span class="w"> </span><span class="m">2025</span>-02-22<span class="w"> </span><span class="m">05</span>:54:51+00:00
-
-$<span class="w"> </span>agentic<span class="w"> </span>search<span class="w"> </span>index1<span class="w"> </span><span class="s2">&quot;reasoning models&quot;</span>
-<span class="w">                                                     </span>Result<span class="w"> </span><span class="m">1</span><span class="w"> </span>-<span class="w"> </span>agentic_reasoning.pdf<span class="w">                                                      </span>
--<span class="w"> </span>Source:<span class="w"> </span>None
--<span class="w"> </span>Date:<span class="w"> </span><span class="m">2025</span>-02-22<span class="w"> </span><span class="m">05</span>:54:51+00:00
--<span class="w"> </span>Distance:<span class="w"> </span><span class="m">0</span>.18599754571914673
--<span class="w"> </span>Score:<span class="w"> </span>N/A
-...
-</code></pre></div>
-
-<p>And to use RAG with an agent, via <em>agentic RAG</em>, just enable the RAG Tool:</p>
-<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools.rag_tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAGTool</span>
-
-<span class="n">agent</span><span class="o">=</span><span class="n">Agent</span><span class="p">(</span>
-    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Agent with RAG&quot;</span><span class="p">,</span>
-    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">RAGTool</span><span class="p">(</span><span class="s2">&quot;index1&quot;</span><span class="p">)]</span>
+<h1 id="teams-of-agents">Teams of agents</h1>
+<p>Agentic makes it very easy to solve a larger problem using a <em>team of agents</em> which
+collaborate together.</p>
+<p>The easiest mechanism is to employ one agent as a <em>tool</em> for another agent:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">producer</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;producer&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;You are a podcast producer. Call your reporter to get the news report.&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">Agent</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;reporter&quot;</span><span class="p">,</span>
+            <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;You are a hard news reporter.&quot;</span><span class="p">,</span>
+            <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">GoogleNewsTool</span><span class="p">()]</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
 <span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">agent</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;What do we know about reasoning models?&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p><strong>Coming soon</strong>: Classic RAG</p>
-<p>Create an agent which programmatically loads content from RAG into the LLM context to
-answer the user's query.</p>
+<p>The <em>producer</em> agent will receive a tool function like <code>call_reporter_agent</code> which it
+can call to invoke the <em>reporter</em> agent.</p>
+<p>You can attach multiple agents as tools to another agents, and there is no depth limit,
+so sub-agents can invoke other sub-agents as needed.</p>
+<h2 id="using-in-a-workflow-agent">Using in a workflow agent</h2>
+<p>You can always write your own code to implement your agent flow (by subclassing <code>Agent</code>), and 
+in this case you can call sub-agents programatically. The Deep Research example agent 
+uses this approach extensively to coordinate a large team of special-purpose agents. 
+A good pattern for calling sub-agents looks like this:</p>
+<div class="codehilite"><pre><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">next_turn</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sub_agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">sub_agent</span><span class="o">.</span><span class="n">final_result</span><span class="p">(</span>
+                <span class="s2">&quot;Please query the order system.&quot;</span><span class="p">,</span>
+                <span class="n">request_context</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;order_id&quot;</span><span class="p">:</span> <span class="n">order_id</span><span class="p">,</span> 
+                <span class="p">},</span>
+            <span class="p">)</span>
+        <span class="c1"># do something with &#39;result&#39;</span>
+</code></pre></div>
+
+<p>There are two tricks here. The first is calling <code>final_result</code> which waits for the end of the
+agent run and returns the final text output. The other trick is the <code>yield from</code> which
+re-publishes any events that the sub-agent produces before it completes.</p>
+<h2 id="when-should-i-use-agent-teams">When should I use agent teams?</h2>
+<p>One obvious use for sub-agents is when you already have an agent which performs some valuable
+task, and you just want to leverage that task from another agent. Now you could go look
+at the other agent, see what tools it is using, and use those tools directly in <em>your</em> agent.
+This is fine, but calling a sub-agent offers some benefits:</p>
+<ul>
+<li>
+<p>Sub-agents can use their own LLM, which could be a different model than the one powering
+the calling agent. This is good if your sub-task requires some capability that your main
+model doesn't offer (or to arbitrage model costs).</p>
+</li>
+<li>
+<p>Sub-agents can leverage the LLM for reasoning and decision making. As a simple example,
+we could give our <em>reporter</em> agent multiple "news feed" tools and let it decide which ones to 
+use as appropriate. </p>
+</li>
+<li>
+<p>Sub-agents let you mange your overall <em>LLM context</em>. Context windows are limited, tokens
+cost money, and LLM decision making gets less reliable as the context size grows. All of these
+factors create reasons for wanting to "split your problem" across multiple agents.</p>
+</li>
+</ul>
+<h2 id="unified-event-stream">Unified event stream</h2>
+<p>Note that when Agent A calls Agent B in the agentic framework, both agents are operating within
+a shared <em>Thread</em>. This means that events published by both agents will appear in the same event
+stream to the agent caller. Events identify their source agent and <em>depth</em>, so client apps
+(like a web interface) can decide how to render "nested" events within the overall thread.</p>
 
 
 

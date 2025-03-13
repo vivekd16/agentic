@@ -18,7 +18,7 @@
     
     
       
-        <title>Examples - Agentic Docs</title>
+        <title>Example agents - Agentic Docs</title>
       
     
     
@@ -59,6 +59,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#example-agents" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -91,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Examples
+              Example agents
             
           </span>
         </div>
@@ -331,6 +336,27 @@
   
   
     <li class="md-nav__item">
+      <a href="../Dashboard/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Dashboard
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../PROJECT_STRUCTURE/" class="md-nav__link">
         
   
@@ -352,7 +378,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../Events/" class="md-nav__link">
+      <a href="../EVENTS/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -404,6 +430,79 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#deep-researcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deep Researcher
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Operator
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#meeting-notetaker" class="md-nav__link">
+    <span class="md-ellipsis">
+      Meeting Notetaker
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#people-researcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      People Researcher
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#airbnb-calendar-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      AirBnb calendar agent
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Database Agent
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agentic-oracle" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agentic Oracle
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -419,9 +518,57 @@
 
 
 
-  <h1>Examples</h1>
-
-
+<h1 id="example-agents">Example agents</h1>
+<p>All example agents can be found in the <code>examples</code> folder.</p>
+<h2 id="deep-researcher">Deep Researcher</h2>
+<p>The OSS Deep Researcher performs web research on any topic, and writes a multiple page
+report based on its research findings. This complex agent is an example of a "plan and execute"
+agent which operates across many steps.</p>
+<h2 id="operator">Operator</h2>
+<p>Our version of the OpenAI "Operator" agent supports intelligent LLM-directed browser automation.
+You can fully automate live interaction with any web site. This agent relies on a browser
+automation tool which you can use for your own agents.</p>
+<h2 id="meeting-notetaker">Meeting Notetaker</h2>
+<p>The Meeting Notetaker agent can dispatch a "meeting bot" to transcribe notes from your online
+meetings. It creates a summary of each meeting which you can review later, and stores the
+summaries and transcripts in a RAG (vector store) index so you can ask questions about
+meetings long after they have ended.</p>
+<h2 id="people-researcher">People Researcher</h2>
+<p>The People Researcher agent uses a LinkedAPI scraper API to do research via LinkedIn 
+on contacts that you specify.</p>
+<h2 id="airbnb-calendar-agent">AirBnb calendar agent</h2>
+<p>The AirBnb agent can help AirBnb hosts manage their bookings calendar.</p>
+<h2 id="database-agent">Database Agent</h2>
+<p>The Database Agent demonstrates basic Text-to-SQL for performing data analysis using
+natural language.</p>
+<h2 id="agentic-oracle">Agentic Oracle</h2>
+<p>This basic Q&amp;A chatbot builds a RAG index from the Agentic library docs, and it can
+answer questions using Retrievel Augmented Generation based on that imdex.</p>
+<h1 id="what-else-can-i-build">What else can I build?</h1>
+<p>Here are some other ideas for useful agents:</p>
+<ul>
+<li>
+<p>Build a "conversational assistant" agent that can answer questions from private documents,
+or by retrieving information live from systems like JIRA or Salesforce.</p>
+</li>
+<li>
+<p>Build a customer service agent that answers questions from a RAG index plus live data sources 
+(status of orders, status of tickets, etc...).</p>
+</li>
+<li>
+<p>Adapt the Deep Research agent to do research projects <em>inside your company</em>. Either connect
+live data sources via search APIs (like Google Docs search, or Salesforce SOQL), or build a 
+RAG index that contains docs and knowledge from your company.</p>
+</li>
+<li>
+<p>Create an agent that uses browser automation to gather information from a site that requires
+user login, and store that information in a structured form like a spreadsheet.</p>
+</li>
+<li>
+<p>Create an agent that does people+company research from a list of leads in a spreadsheet,
+writing the research data back into the spreadsheet.</p>
+</li>
+</ul>
 
 
 

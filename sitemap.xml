@@ -2,66 +2,90 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://supercog.ai/agentic/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/AGENTIC_MANIFESTO/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/AGENT_MEMORY/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Building_Agents/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
+    </url>
+    <url>
+         <loc>https://supercog.ai/agentic/CLI/</loc>
+         <lastmod>2025-03-13</lastmod>
+    </url>
+    <url>
+         <loc>https://supercog.ai/agentic/DATA_MODEL/</loc>
+         <lastmod>2025-03-13</lastmod>
+    </url>
+    <url>
+         <loc>https://supercog.ai/agentic/Dashboard/</loc>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Debugging/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
-         <loc>https://supercog.ai/agentic/Events/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <loc>https://supercog.ai/agentic/EVENTS/</loc>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Examples/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
-         <loc>https://supercog.ai/agentic/Flows/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <loc>https://supercog.ai/agentic/FLOWS/</loc>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Internals/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Models/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/PROJECT_STRUCTURE/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/PlanningAgents/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/REST_API/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Rag/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
+    </url>
+    <url>
+         <loc>https://supercog.ai/agentic/RestApiTool/</loc>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Settings/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
+    </url>
+    <url>
+         <loc>https://supercog.ai/agentic/Teams/</loc>
+         <lastmod>2025-03-13</lastmod>
+    </url>
+    <url>
+         <loc>https://supercog.ai/agentic/ToolLibrary/</loc>
+         <lastmod>2025-03-13</lastmod>
     </url>
     <url>
          <loc>https://supercog.ai/agentic/Tools/</loc>
-         <lastmod>2025-02-25</lastmod>
+         <lastmod>2025-03-13</lastmod>
     </url>
 </urlset>

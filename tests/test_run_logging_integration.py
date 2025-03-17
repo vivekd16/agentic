@@ -102,7 +102,7 @@ def test_run_logging_disabled(db_manager):
         Always explain your work before using a tool.""",
         tools=[SimpleCalculator()],
         model="gpt-4o-mini",
-        enable_run_logs=False
+        db_path=None
     )
     runner = AgentRunner(no_logging_agent)
     
@@ -120,6 +120,7 @@ def test_run_logging_disabled(db_manager):
     runs = db_manager.get_runs_by_agent("Calculator")
     assert len(runs) == 0
 
+@pytest.mark.skip("Disabling isn't supported since the Threaded agent refactor")
 def test_run_logging_toggle(test_agent, db_manager, temp_db_path):
     """Test that logging can be toggled on and off."""    
     runner = AgentRunner(test_agent)

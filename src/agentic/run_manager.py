@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 from uuid import uuid4
 from litellm import Message
 from .events import (
@@ -10,25 +10,26 @@ from .events import (
     ToolCall,
     ToolResult
 )
-from .common import Agent, RunContext
+from agentic.common import RunContext
 from agentic.utils.json import make_json_serializable
 from agentic.db.db_manager import DatabaseManager
+from agentic.utils.directory_management import get_runtime_filepath
 
 class RunManager:
     """
     Context manager that tracks agent runs and logs events to the database.
-    This is automatically initialized for all agents unless disabled with enable_run_logs=False.
+    This is automatically initialized for all agents unless disabled with db_path=None.
     """
     
-    def __init__(self, initial_run_id: Optional[str] = None, current_run_id: Optional[str] = None, user_id: str = "default", db_path: str = "./runtime/agent_runs.db"):
+    def __init__(self, initial_run_id: Optional[str] = None, current_run_id: Optional[str] = None, user_id: str = "default", db_path: str = "agent_runs.db"):
         self.user_id = user_id
         self.initial_run_id: Optional[str] = initial_run_id
         self.current_run_id: Optional[str] = current_run_id
         self.usage_data: Dict = {}
-        self.db_path = db_path
+        self.db_path = get_runtime_filepath(db_path)
     
     def handle_event(self, event: Event, run_context: RunContext) -> None:
-        """Generic event handler that processes all events and logs them appropriately"""      
+        """Generic event handler that processes all events and logs them appropriately"""
         db_manager = DatabaseManager(db_path=self.db_path)
         # Initialize a new run when we see a Prompt event
 
@@ -106,11 +107,11 @@ class RunManager:
             self.usage_data = {}
 
 def init_run_tracking(
-        agent: Agent,
+        agent,
         user_id: str = "default",
-        db_path: str = "./runtime/agent_runs.db",
+        db_path: str = "agent_runs.db",
         resume_run_id: Optional[str] = None
-    ) -> RunManager:
+    ) -> tuple[str,Callable]:
     """Helper function to set up run tracking for an agent"""
     run_id = str(uuid4()) if resume_run_id is None else resume_run_id
     run_manager = RunManager(
@@ -119,10 +120,8 @@ def init_run_tracking(
         user_id=user_id,
         db_path=db_path
     )
-    agent._agent.set_callback.remote('handle_event', run_manager.handle_event)
-    return run_id
+    return run_id, run_manager.handle_event
 
-def disable_run_tracking(agent: Agent) -> None:
+def disable_run_tracking(agent) -> None:
     """Helper function to disable run tracking for an agent"""
-    if agent._agent.get_callback.remote('handle_event'):
-        agent._agent.set_callback.remote('handle_event', None)
+    raise NotImplemented("Can't disable run tracking from outside the proxy")

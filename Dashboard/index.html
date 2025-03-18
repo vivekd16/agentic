@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://supercog.ai/agentic/Dashboard/">
       
       
-        <link rel="prev" href="../REST_API/">
+        <link rel="prev" href="../CLI/">
       
       
         <link rel="next" href="../PROJECT_STRUCTURE/">
@@ -323,7 +323,28 @@
         
   
   <span class="md-ellipsis">
-    REST API
+    Rest API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CLI/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agentic CLI
     
   </span>
   
@@ -877,6 +898,9 @@ agentic<span class="w"> </span>dashboard<span class="w"> </span>start<span class
 
 <span class="c1"># Specify a custom port</span>
 agentic<span class="w"> </span>dashboard<span class="w"> </span>start<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+
+<span class="c1"># Start an agent server alongside the dashboard</span>
+agentic<span class="w"> </span>dashboard<span class="w"> </span>start<span class="w"> </span>--agent-path<span class="w"> </span>examples/basic_agent.py
 </code></pre></div>
 
 <h3 id="programmatically">Programmatically</h3>
@@ -893,7 +917,7 @@ agentic<span class="w"> </span>dashboard<span class="w"> </span>start<span class
 <h2 id="architecture">Architecture</h2>
 <p>The dashboard uses a client-server architecture:</p>
 <ol>
-<li>The <strong>Backend Server</strong> is your Agentic API server (started with <code>agentic serve</code>)</li>
+<li>The <strong>Backend Server</strong> is your Agentic API server (started with <code>agentic serve</code> or <code>agentic dashboard start --agent-path &lt;path&gt;</code>)</li>
 <li>The <strong>Frontend Dashboard</strong> is the Next.js application that communicates with the backend</li>
 </ol>
 <h3 id="backend-integration">Backend Integration</h3>
@@ -963,7 +987,7 @@ agentic<span class="w"> </span>dashboard<span class="w"> </span>start<span class
 <p>Common issues and solutions:</p>
 <ul>
 <li><strong>Dashboard fails to start</strong>: Ensure Node.js and npm are installed and up to date</li>
-<li><strong>Cannot connect to agents</strong>: Make sure the Agentic server is running (<code>agentic serve</code>)</li>
+<li><strong>Cannot connect to agents</strong>: Make sure the Agentic server is running (<code>agentic serve</code> or <code>agentic dashboard start --agent-path &lt;path&gt;</code>)</li>
 <li><strong>UI not updating after changes</strong>: Make sure you started the dashboard in development mode (<code>--dev</code>)</li>
 </ul>
 

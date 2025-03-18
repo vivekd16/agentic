@@ -11,6 +11,10 @@
         <link rel="canonical" href="https://supercog.ai/agentic/CLI/">
       
       
+        <link rel="prev" href="../REST_API/">
+      
+      
+        <link rel="next" href="../Dashboard/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -319,12 +323,128 @@
         
   
   <span class="md-ellipsis">
-    REST API
+    Rest API
     
   </span>
   
 
       </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Agentic CLI
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Agentic CLI
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#global-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secrets-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Secrets Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dashboard Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#index-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Index Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Operations
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -433,6 +553,68 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#global-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secrets-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Secrets Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dashboard Commands
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#index-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Index Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Operations
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -448,25 +630,51 @@
 
 
 <h1 id="agentic-cli">Agentic CLI</h1>
-<p>Commands:</p>
-<div class="codehilite"><pre><span></span><code><span class="o">--</span><span class="n">help</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">Get</span><span class="w"> </span><span class="n">help</span>
+<h2 id="global-commands">Global Commands</h2>
+<div class="codehilite"><pre><span></span><code><span class="nx">init</span><span class="w">            </span><span class="o">-</span><span class="w"> </span><span class="nx">Initialize</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">new</span><span class="w"> </span><span class="nx">project</span><span class="w"> </span><span class="nx">by</span><span class="w"> </span><span class="nx">copying</span><span class="w"> </span><span class="nx">example</span><span class="w"> </span><span class="nx">files</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="kn">package</span>
+<span class="nx">thread</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="nx">Start</span><span class="w"> </span><span class="nx">interactive</span><span class="w"> </span><span class="nx">CLI</span><span class="w"> </span><span class="nx">session</span><span class="w"> </span><span class="nx">with</span><span class="w"> </span><span class="nx">an</span><span class="w"> </span><span class="nx">agent</span>
+<span class="nx">serve</span><span class="w">           </span><span class="o">-</span><span class="w"> </span><span class="nx">Runs</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">FastAPI</span><span class="w"> </span><span class="nx">server</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">an</span><span class="w"> </span><span class="nx">agent</span>
+<span class="nx">shell</span><span class="w">           </span><span class="o">-</span><span class="w"> </span><span class="nx">Copies</span><span class="w"> </span><span class="nx">secrets</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">Environment</span><span class="w"> </span><span class="k">and</span><span class="w"> </span><span class="nx">Runs</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">shell</span><span class="w"> </span><span class="nx">command</span>
+<span class="nx">streamlit</span><span class="w">       </span><span class="o">-</span><span class="w"> </span><span class="nx">Run</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">Streamlit</span><span class="w"> </span><span class="nx">UI</span>
+</code></pre></div>
 
-<span class="n">models</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">list</span><span class="w"> </span><span class="n">some</span><span class="w"> </span><span class="n">popular</span><span class="w"> </span><span class="n">LLM</span><span class="w"> </span><span class="n">models</span>
-<span class="n">list</span><span class="w">            </span><span class="o">-</span><span class="w"> </span><span class="n">List</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">settings</span><span class="o">.</span>
-<span class="n">set</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Set</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="n">value</span><span class="o">.</span>
-<span class="n">get</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Get</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="n">value</span><span class="o">.</span>
-<span class="n">delete</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">Delete</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">config</span><span class="w"> </span><span class="n">value</span><span class="o">.</span>
+<h2 id="secrets-management">Secrets Management</h2>
+<div class="codehilite"><pre><span></span><code><span class="nv">secrets</span><span class="w"> </span><span class="nv">set</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="nv">Set</span><span class="w"> </span><span class="nv">a</span><span class="w"> </span><span class="nv">secret</span><span class="w"> </span><span class="nv">value</span>
+<span class="nv">secrets</span><span class="w"> </span><span class="nv">list</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">List</span><span class="w"> </span><span class="nv">all</span><span class="w"> </span><span class="nv">secrets</span><span class="w"> </span><span class="ss">(</span><span class="nv">use</span><span class="w"> </span><span class="o">--</span><span class="nv">values</span><span class="w"> </span><span class="nv">to</span><span class="w"> </span><span class="k">show</span><span class="w"> </span><span class="nv">values</span><span class="ss">)</span>
+<span class="nv">secrets</span><span class="w"> </span><span class="nv">get</span><span class="w">     </span><span class="o">-</span><span class="w"> </span><span class="nv">Get</span><span class="w"> </span><span class="nv">a</span><span class="w"> </span><span class="nv">secret</span><span class="w"> </span><span class="nv">value</span>
+<span class="nv">secrets</span><span class="w"> </span><span class="nv">delete</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nv">Delete</span><span class="w"> </span><span class="nv">a</span><span class="w"> </span><span class="nv">secret</span>
+</code></pre></div>
 
-<span class="n">list</span><span class="o">-</span><span class="n">secrets</span><span class="w">    </span><span class="n">List</span><span class="w"> </span><span class="n">all</span><span class="w"> </span><span class="n">secrets</span><span class="o">.</span>
-<span class="n">set</span><span class="o">-</span><span class="n">secret</span><span class="w">      </span><span class="n">Set</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">secret</span><span class="o">.</span>
-<span class="n">get</span><span class="o">-</span><span class="n">secret</span><span class="w">      </span><span class="n">Get</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">secret</span><span class="o">.</span>
-<span class="n">delete</span><span class="o">-</span><span class="n">secret</span><span class="w">   </span><span class="n">Delete</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">secret</span><span class="o">.</span>
+<h2 id="settings-management">Settings Management</h2>
+<div class="codehilite"><pre><span></span><code>settings set    - Set a setting value
+settings list   - List all settings
+settings get    - Get a setting value
+settings delete - Delete a setting
+</code></pre></div>
 
-<span class="n">ollama</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">List</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">latest</span><span class="w"> </span><span class="n">popular</span><span class="w"> </span><span class="n">models</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">Ollama</span><span class="o">.</span><span class="w"> </span><span class="n">Use</span><span class="w"> </span><span class="s2">&quot;ollama pull &lt;model&gt; to download.</span>
-<span class="n">claude</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="n">Runs</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">completion</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">Anthropic</span><span class="s1">&#39;s Claude sonnet model</span>
-<span class="n">gpt</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="n">Runs</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">completion</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">OpenAI</span><span class="s1">&#39;s GPT-4o-mini model. Use --model to override.</span>
+<h2 id="dashboard-commands">Dashboard Commands</h2>
+<div class="codehilite"><pre><span></span><code><span class="nv">dashboard</span><span class="w"> </span><span class="nv">start</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">Start</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">dashboard</span><span class="w"> </span><span class="nv">server</span>
+<span class="nv">dashboard</span><span class="w"> </span><span class="nv">build</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">Build</span><span class="w"> </span><span class="nv">the</span><span class="w"> </span><span class="nv">dashboard</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">production</span>
+</code></pre></div>
 
-<span class="n">webui</span><span class="w">              </span><span class="o">-</span><span class="w"> </span><span class="n">Runs</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">agentic</span><span class="w"> </span><span class="n">NextJS</span><span class="w"> </span><span class="n">UI</span>
+<h2 id="index-management">Index Management</h2>
+<div class="codehilite"><pre><span></span><code><span class="nv">index</span><span class="w"> </span><span class="nv">add</span><span class="w">             </span><span class="o">-</span><span class="w"> </span><span class="nv">Create</span><span class="w"> </span><span class="nv">a</span><span class="w"> </span><span class="nv">new</span><span class="w"> </span><span class="nv">index</span>
+<span class="nv">index</span><span class="w"> </span><span class="nv">list</span><span class="w">            </span><span class="o">-</span><span class="w"> </span><span class="nv">List</span><span class="w"> </span><span class="nv">all</span><span class="w"> </span><span class="nv">available</span><span class="w"> </span><span class="nv">indexes</span>
+<span class="nv">index</span><span class="w"> </span><span class="nv">rename</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="nv">Rename</span><span class="w"> </span><span class="nv">an</span><span class="w"> </span><span class="nv">index</span>
+<span class="nv">index</span><span class="w"> </span><span class="nv">delete</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="nv">Delete</span><span class="w"> </span><span class="nv">an</span><span class="w"> </span><span class="nv">index</span>
+<span class="nv">index</span><span class="w"> </span><span class="nv">search</span><span class="w">          </span><span class="o">-</span><span class="w"> </span><span class="nv">Search</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">an</span><span class="w"> </span><span class="nv">index</span>
+
+<span class="nv">index</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="nv">add</span><span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="nv">Add</span><span class="w"> </span><span class="nv">a</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="nv">to</span><span class="w"> </span><span class="nv">an</span><span class="w"> </span><span class="nv">index</span>
+<span class="nv">index</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="nv">list</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nv">List</span><span class="w"> </span><span class="nv">documents</span><span class="w"> </span><span class="nv">in</span><span class="w"> </span><span class="nv">an</span><span class="w"> </span><span class="nv">index</span>
+<span class="nv">index</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="k">show</span><span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="k">Show</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="nv">details</span>
+<span class="nv">index</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="nv">delete</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nv">Delete</span><span class="w"> </span><span class="nv">a</span><span class="w"> </span><span class="nv">document</span><span class="w"> </span><span class="nv">from</span><span class="w"> </span><span class="nv">an</span><span class="w"> </span><span class="nv">index</span>
+</code></pre></div>
+
+<h2 id="model-operations">Model Operations</h2>
+<div class="codehilite"><pre><span></span><code>models list     - List available LLM models
+models ollama   - List popular Ollama models
+models claude   - Run completion with Claude
+models gpt      - Run completion with GPT (use --model to override)
 </code></pre></div>
 
 

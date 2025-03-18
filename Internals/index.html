@@ -18,7 +18,7 @@
     
     
       
-        <title>Agent processing flow - Agentic Docs</title>
+        <title>Agentic Internals - Agentic Docs</title>
       
     
     
@@ -60,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agent-processing-flow" class="md-skip">
+        <a href="#agentic-internals" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Agent processing flow
+              Agentic Internals
             
           </span>
         </div>
@@ -319,7 +319,28 @@
         
   
   <span class="md-ellipsis">
-    REST API
+    Rest API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CLI/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Agentic CLI
     
   </span>
   
@@ -440,71 +461,20 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#special-tool-results" class="md-nav__link">
+  <a href="#core-data-model" class="md-nav__link">
     <span class="md-ellipsis">
-      Special tool results:
+      Core data model
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#handoff" class="md-nav__link">
+  <a href="#choosing-the-runtime-engine" class="md-nav__link">
     <span class="md-ellipsis">
-      Handoff
+      Choosing the runtime engine
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#case-1-normal-sub-agent-call-with-pauseforchildresult" class="md-nav__link">
-    <span class="md-ellipsis">
-      Case 1: Normal Sub-Agent Call with PauseForChildResult
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#case-2-pause-for-human-input" class="md-nav__link">
-    <span class="md-ellipsis">
-      Case 2: Pause for Human Input
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#case-3-handoff-to-another-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      Case 3: Handoff to Another Agent
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ray-actor-logic" class="md-nav__link">
-    <span class="md-ellipsis">
-      Ray Actor logic
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Ray Actor logic">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pause-and-resume" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pause and Resume
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -524,6 +494,40 @@
 
 
 
+<h1 id="agentic-internals">Agentic Internals</h1>
+<h2 id="core-data-model">Core data model</h2>
+<p>The base <strong>ReAct</strong> agent is implemented by the <code>ActorBaseAgent</code> class in <code>actor_agents.py</code>. 
+It manages the agent loop and the current LLM context, via its <code>history</code> attribute. This
+class calls the <code>completion</code> API from <code>Litellm</code> to generate LLM completions for each
+step when running an agent.</p>
+<p>External callers operate agents via a <em>proxy</em> class which provides the interface to the agent.
+Generally the proxy keeps track of multiple requests, and it creates an instance of <code>ActorBaseAgent</code>
+to hold the state and process operations for each (parallel) request. The proxy runs the agent
+via a separate thread, and dispatches events from a Queue from the caller's thread.</p>
+<p>The proxy class manages these concerns:</p>
+<ul>
+<li>creates separate agent instances to manage parallel operations</li>
+<li>dispatches events to the RunManager for persistence</li>
+<li>binds tools properly to the underlying agent instance</li>
+<li>manages an event queue for dispatching agent events to the caller</li>
+<li>parses a JSON string result from the LLM into the requsted result model</li>
+<li>manages running the FastAPI app for the agent</li>
+</ul>
+<p>You can implement custom agents by subclassing <code>BaseAgentProxy</code>. You should call the base
+constructor in your <code>__init__</code> method, then implement the <code>next_turn</code> method to process
+operation requests. That method should <code>yield</code> events as your agent runs.</p>
+<p>Any instance of <code>BaseAgentProxy</code> can be used as a tool by another agent.</p>
+<h2 id="choosing-the-runtime-engine">Choosing the runtime engine</h2>
+<p>There are two agent runtimes: one uses basic threads, and the other runs your agent via the
+<a href="https://github.com/ray-project/ray">Ray</a> distributed processing system. The thread runtime, implemented via <code>LocalAgentProxy</code>,
+is chosen by default. Set <code>AGENTIC_USE_RAY</code> to enable the Ray runtime:</p>
+<div class="codehilite"><pre><span></span><code>AGENTIC_USE_RAY=1 python examples/basic_agent.py
+</code></pre></div>
+
+<p>The import <code>agentic.common.Agent</code> will reference the active runtime proxy class, either
+<code>LocalAgentProxy</code> or <code>RayAgentProxy</code>.</p>
+<p>One big difference when using the <code>Ray</code> engine is that all events and data in and out of
+your agent must be picklable.</p>
 <h1 id="agent-processing-flow">Agent processing flow</h1>
 <p>Forward direction processing happens by sending events to agent, which may send
 events to sub-agents, and those agents emit events back with results.</p>

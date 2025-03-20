@@ -62,7 +62,8 @@ from agentic.events import (
     DebugLevel,
     ToolError,
     StartRequestResponse,
-    OauthFlowRequest,
+    OAuthFlow,
+    OAuthFlowResult,
 )
 from agentic.db.models import Run, RunLog
 from agentic.tools.registry import tool_registry
@@ -464,24 +465,26 @@ class ActorBaseAgent:
             yield from events
 
             if partial_response.last_tool_result:
-                # Tool returns OauthFlowRequest
-                if isinstance(partial_response.last_tool_result, OauthFlowRequest):
-                    # Store context to resume later
-                    self.paused_context = AgentPauseContext(
-                        orig_history_length=init_len,
-                        tool_partial_response=partial_response,
-                        tool_function=partial_response.last_tool_result.tool_function
-                    )
-                    # Pass OAuth request up to client
-                    yield partial_response.last_tool_result
-                    return
-                elif isinstance(partial_response.last_tool_result, PauseForInputResult):
+                if isinstance(partial_response.last_tool_result, PauseForInputResult):
                     self.paused_context = AgentPauseContext(
                         orig_history_length=init_len,
                         tool_partial_response=partial_response,
                         tool_function=partial_response.last_tool_result.tool_function
                     )
                     yield WaitForInput(self.name, partial_response.last_tool_result.request_keys)
+                    return
+                elif isinstance(partial_response.last_tool_result, OAuthFlowResult):
+                    self.paused_context = AgentPauseContext(
+                        orig_history_length=init_len,
+                        tool_partial_response=partial_response,
+                        tool_function=partial_response.last_tool_result.tool_function
+                    )
+                    yield OAuthFlow(
+                        self.name,
+                        partial_response.last_tool_result.auth_url,
+                        partial_response.last_tool_result.tool_name,
+                        depth=self.depth
+                    )
                     return
                 elif FinishAgentResult.matches_sentinel(partial_response.messages[-1]["content"]):
                     self.history.extend(partial_response.messages)

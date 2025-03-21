@@ -53,7 +53,7 @@ To use this, you need to install Playwright and a driver:
     pip install playwright
     playwright install chromium
 
-and then enable playwrite in the Agent config part:
+and then enable playwright in the Agent config part:
 
     self.playwright_fallback: bool = True
 
@@ -91,7 +91,7 @@ than just a bunch of separate sections.
 
 ### Reading the code
 
-The main orchestration is in the `DeepResearchAgent` class. It constructs a set of [ReAct](https://www.promptingguide.ai/techniques/react)
+The main orchestration is in the [DeepResearchAgent](./oss_deep_research.py) class. It constructs a set of [ReAct](https://www.promptingguide.ai/techniques/react)
 agents to handle the processing. Each agent has a prompt, you can find them in 
 execution order in [oss_deep_research.prompts.yaml](./oss_deep_research.prompts.yaml).
 

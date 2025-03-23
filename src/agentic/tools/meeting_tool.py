@@ -2,6 +2,7 @@ from typing import Any, Callable, Optional, Dict, List
 import requests
 import traceback
 from datetime import datetime, timedelta
+import aiohttp
 from sqlalchemy import create_engine, Column, String, Integer, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -578,3 +579,25 @@ class MeetingBaasTool(BaseAgenticTool):
         finally:
             if session:
                 session.close()
+
+    async def _fetch_meeting_data(self, bot_id: str) -> Optional[dict]:
+        """Fetch meeting data from MeetingBaaS API"""
+        try:
+            url = f"https://api.meetingbaas.com/bots/meeting_data"
+            api_key = self.meeting_baas_api_key
+            if not api_key:
+                return {"error": "No API key available for MeetingBaaS"}
+
+            headers = {
+                "x-meeting-baas-api-key": api_key
+            }
+            params = {"bot_id": bot_id}
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, params=params) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    return None
+                    
+        except Exception as e:
+            return {"error": f"Exception occurred: {str(e)}"}

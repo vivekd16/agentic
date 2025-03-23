@@ -14,7 +14,7 @@ from .registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
 from agentic.common import RunContext
 from agentic.utils.directory_management import get_runtime_directory
-from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker
+from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker, search_collection
 import logging  
 
 # Configure logging  
@@ -254,77 +254,34 @@ class MeetingBaasTool(BaseAgenticTool):
     def get_summary(self, meeting_id: str) -> dict:
         """Generate a detailed summary of the meeting"""
         try:
+            # First check if summary exists in database
+            session = self._get_session()
+            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
+            
+            if meeting and meeting.summary:
+                return {
+                    "status": "success",
+                    "summary": meeting.summary
+                }
+            
+            # If no summary exists, get transcript and generate one
             transcript_result = self.get_transcript(meeting_id)
             if transcript_result["status"] == "error":
                 return transcript_result
                 
             transcript = transcript_result["transcript"]
             
-            formatted_transcript = ""
-            for entry in transcript:
-                if entry.get('words'):
-                    words = ' '.join([word['text'] for word in entry['words']])
-                    speaker = entry['speaker']
-                    formatted_transcript += f"{speaker}: {words}\n"
-
-            system_prompt = """
-                                Please provide a detailed summary of this meeting transcript. Include:
-                                1. Main topics discussed
-                                2. Key decisions made
-                                3. Action items and assignments
-                                4. Important points raised by each participant
-                                5. Timeline of major discussion points
-                                Format the summary in clear sections with headers.
-
-                                """
-
-            client = OpenAI(api_key=self.openai_api_key)
-
-            response = client.beta.chat.completions.parse(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": formatted_transcript},
-                ]
-            )
+            # Generate summary using helper method
+            summary_result = self._generate_meeting_summary(transcript, meeting.start_time if meeting else None)
+            if summary_result["status"] == "error":
+                return summary_result
+                
+            detailed_summary = summary_result["response"].meeting_summary
             
-            detailed_summary = response.choices[0].message.parsed
-            
-            session = self._get_session()
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
+            # Save to database
             if meeting:
                 meeting.summary = detailed_summary
                 session.commit()
-            
-            # Initialize RAG if needed
-            self._initialize_rag()
-            
-            # Use chonkie for semantic chunking (imported via rag_helper)
-            chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
-            chunks = chunker(detailed_summary)
-            chunks_text = [chunk.text for chunk in chunks]
-            
-            # Generate embeddings for chunks
-            embeddings = list(self._embed_model.embed(chunks_text))
-            
-            # Index chunks in Weaviate
-            with self._vector_store.batch.dynamic() as batch:
-                for i, chunk in enumerate(chunks):
-                    vector = embeddings[i].tolist()
-                    batch.add_object(
-                        properties={
-                            "content": chunk.text,
-                            "document_id": meeting_id,
-                            "chunk_index": i,
-                            "filename": f"meeting_{meeting_id}_summary",
-                            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                            "mime_type": "text/plain",
-                            "source_url": "None",
-                            "summary": "Meeting summary chunk",
-                            "fingerprint": meeting_id,
-                        },
-                        vector=vector
-                    )
             
             return {
                 "status": "success",
@@ -365,43 +322,53 @@ class MeetingBaasTool(BaseAgenticTool):
                 "message": f"Error listing meetings: {str(e)}"
             }
 
-    def get_meeting_info(self, meeting_id: str) -> dict:  
+    def get_meeting_info(self, meeting_id: str, user_query: str = None) -> dict:  
         """  
-        Retrieve detailed information about a specific meeting.  
-        Includes metadata, transcript, and summary if available.  
+        Retrieve information about a specific meeting.  
+        If user_query is provided, search the knowledge index first.
+        Falls back to database if knowledge search fails or no query provided.
         """  
         try:  
-            # Establish a database session  
+            # If we have a query, try searching the knowledge index first
+            if user_query:
+                try:
+                    # Initialize RAG components
+                    self._initialize_rag()
+                    embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
+                    
+                    # Search the knowledge index
+                    collection = self._weaviate_client.collections.get("meeting_summaries")
+                    search_results = search_collection(
+                        collection=collection,
+                        query=user_query,
+                        embed_model=embed_model,
+                        limit=1,
+                        filters={"document_id": meeting_id}
+                    )
+
+                    if search_results and not search_results[0].get("error"):
+                        return {
+                            "status": "success",
+                            "content": search_results[0]["content"]
+                        }
+                except Exception as e:
+                    logger.warning(f"Knowledge index search failed: {str(e)}")
+
+            # Fall back to database query if knowledge search failed or no query provided
             session = self._get_session()  
             meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
             
-            # Check whether the meeting exists  
             if not meeting:  
                 return {"status": "error", "message": f"Meeting with ID '{meeting_id}' not found"}  
 
-            # Fetch meeting metadata  
             meeting_info = {  
                 "id": meeting.id,  
                 "name": meeting.name or "Untitled",  
                 "start_time": meeting.start_time,  
                 "end_time": meeting.end_time,  
                 "duration": str(timedelta(seconds=meeting.duration)) if meeting.duration else "Unknown",  
-                "status": meeting.status,  
+                "status": meeting.status
             }  
-
-            # Fetch transcript  
-            transcript_result = self.get_transcript(meeting_id)  
-            if transcript_result["status"] == "success":  
-                meeting_info["transcript"] = transcript_result["transcript"]  
-            else:  
-                meeting_info["transcript_error"] = transcript_result["message"]  
-
-            # Fetch summary  
-            summary_result = self.get_summary(meeting_id)  
-            if summary_result["status"] == "success":  
-                meeting_info["summary"] = summary_result["summary"]  
-            else:  
-                meeting_info["summary_error"] = summary_result["message"]  
 
             return {"status": "success", "meeting_info": meeting_info}  
 
@@ -513,11 +480,49 @@ class MeetingBaasTool(BaseAgenticTool):
                 "error": str(e)
             }
 
+    def _save_to_knowledge_index(self, bot_id: str, meeting_name: str, meeting_summary: str, attendees: list) -> None:
+        """Save meeting data to the knowledge index"""
+        self._initialize_rag()
+        collection = self._vector_store
+
+        # Initialize embedding model and chunker
+        embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
+        chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
+
+        # Prepare metadata
+        metadata = {
+            "content": meeting_summary,
+            "document_id": bot_id,
+            "filename": f"meeting_{bot_id}_summary.md",
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "mime_type": "text/markdown",
+            "source_url": "None",
+            "summary": meeting_summary,
+            "fingerprint": bot_id,
+        }
+
+        # Generate chunks and embeddings
+        chunks = chunker(meeting_summary)
+        chunks_text = [chunk.text for chunk in chunks]
+        embeddings = list(embed_model.embed(chunks_text))
+
+        # Index chunks in Weaviate
+        with collection.batch.dynamic() as batch:
+            for i, chunk in enumerate(chunks):
+                vector = embeddings[i].tolist()
+                batch.add_object(
+                    properties={
+                        **metadata,
+                        "content": chunk.text,
+                        "chunk_index": i,
+                    },
+                    vector=vector
+                )
+
     async def process_webhook(self, webhook_data: dict) -> dict:
         """Process incoming webhook data from MeetingBaaS"""
         session = None
         try:
-            # Get existing meeting URL
             session = self._get_session()
             
             print(f"Processing webhook data: {webhook_data}")
@@ -575,48 +580,9 @@ class MeetingBaasTool(BaseAgenticTool):
                     session.commit()
 
                     # Save to knowledge index
-                    # Initialize Weaviate client and collection
-                    client = init_weaviate()
-                    collection = client.collections.get("meeting_summaries")
-                    if not collection:
-                        create_collection(client, "meeting_summaries")
-                        collection = client.collections.get("meeting_summaries")
+                    self._save_to_knowledge_index(bot_id, meeting_name, meeting_summary, attendees)
 
-                    # Initialize embedding model and chunker
-                    embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
-                    chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
-
-                    # Prepare document metadata
-                    metadata = {
-                        "content": meeting_summary,
-                        "document_id": bot_id,
-                        "filename": f"meeting_{bot_id}_summary.md",
-                        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        "mime_type": "text/markdown",
-                        "source_url": meeting_url,
-                        "summary": meeting_summary,
-                        "fingerprint": bot_id,
-                    }
-
-                    # Generate chunks and embeddings
-                    chunks = chunker(meeting_summary)
-                    chunks_text = [chunk.text for chunk in chunks]
-                    embeddings = list(embed_model.embed(chunks_text))
-
-                    # Index chunks in Weaviate
-                    with collection.batch.dynamic() as batch:
-                        for i, chunk in enumerate(chunks):
-                            vector = embeddings[i].tolist()
-                            batch.add_object(
-                                properties={
-                                    **metadata,
-                                    "content": chunk.text,
-                                    "chunk_index": i,
-                                },
-                                vector=vector
-                            )
-
-                    logger.info(f"Successfully indexed meeting summary with {len(chunks)} chunks")
+                    logger.info(f"Successfully indexed meeting summary")
                     return {"status": "success", "message": "Meeting completed and indexed"}
 
             elif event == "failed":

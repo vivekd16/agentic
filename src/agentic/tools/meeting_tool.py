@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Dict
+from typing import Any, Callable, Optional, Dict, List
 import requests
 import traceback
 from datetime import datetime, timedelta
@@ -7,6 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from openai import OpenAI
 import json, os
+from pydantic import BaseModel
 
 from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
@@ -23,6 +24,11 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",  # Set the date format  
 )  
 logger = logging.getLogger(__name__)
+
+class Meeting_name_summary_and_attendees(BaseModel):
+    meeting_name: str
+    meeting_summary: str
+    attendees: List[str]
 
 Base = declarative_base()
 
@@ -446,151 +452,188 @@ class MeetingBaasTool(BaseAgenticTool):
                 "message": f"Error answering question: {str(e)}"
             }
 
-    def process_webhook(self, webhook_data: dict) -> dict:  
-        """  
-        Process webhook data received from MeetingBaaS.  
-
-        This function parses the webhook data and updates the meeting object in the database.  
-        
-        Args:  
-            webhook_data (dict): The webhook data received from MeetingBaaS.  
+    async def process_webhook(self, webhook_data: dict) -> dict:
+        """Process incoming webhook data from MeetingBaaS"""
+        session = None
+        try:
+            # Get existing meeting URL
+            session = self._get_session()
             
-        Returns:  
-            dict: A dictionary containing the processing status and any updated meeting information.  
-        """  
-        session = None  
-        try:  
-            # Validate webhook data
-            if not isinstance(webhook_data, dict):
-                return {  
-                    "status": "error",  
-                    "message": "Invalid webhook data format: expected dictionary"  
-                }
-                
-            # Log the incoming webhook data for debugging
-            logger.info(f"Received webhook data: {json.dumps(webhook_data, indent=2)}")
+            print(f"Processing webhook data: {webhook_data}")
+            event = webhook_data.get('event')
+            if event is None:
+                raise RuntimeError("Webhook event key was None")
+
+            event_data = webhook_data.get('data')
+            if event_data is None:
+                raise RuntimeError("Webhook event data was None")
+
+            bot_id = event_data.get("bot_id")           
+            if bot_id is None:
+                raise RuntimeError("Webhook bot_id was None")            
             
-            meeting_id = webhook_data.get("bot_id")  
-
-            if not meeting_id:  
-                return {  
-                    "status": "error",  
-                    "message": "No bot_id found in webhook data"  
-                }  
-
-            # Get database session
-            session = self._get_session()  
-
-            # Fetch the meeting from the database.  
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
-            if not meeting:  
-                logger.warning(f"Meeting with ID {meeting_id} not found in database")
-                # Create a new meeting record if it doesn't exist
-                meeting = Meeting(
-                    id=meeting_id,
-                    status="created_from_webhook",
-                    start_time=datetime.now().isoformat()
-                )
-                session.add(meeting)
-                logger.info(f"Created new meeting record for ID {meeting_id}")
-
-            event_type = webhook_data.get("event", "unknown_event")  
-            logger.info(f"Processing webhook for Meeting ID: {meeting_id}, Event: {event_type}")  
-
-            # Detailed handling logic based on event type.  
-            if event_type == "complete":  
-                logger.info(f"Webhook indicates meeting '{meeting_id}' is complete")  
-
-                # Update recording URL and transcript from bot data.  
-                bot_data = webhook_data.get("bot_data", {})  
-                if bot_data:  
-                    # Save the transcript.  
-                    transcripts = bot_data.get("transcripts", [])
-                    if transcripts:
-                        meeting.transcript = json.dumps(transcripts)
-                        logger.info(f"Saved transcript for meeting {meeting_id}")
-
-                    # Save the recording URL (if available).  
-                    recording_url = bot_data.get("mp4", None)
-                    if recording_url:
-                        meeting.recording_url = recording_url
-                        logger.info(f"Saved recording URL: {recording_url}")
-
-                # Set end time and calculate duration.  
-                meeting.end_time = datetime.now().isoformat()  
-                if meeting.start_time:  
-                    try:
-                        start_dt = datetime.fromisoformat(meeting.start_time)  
-                        end_dt = datetime.fromisoformat(meeting.end_time)  
-                        meeting.duration = int((end_dt - start_dt).total_seconds())
-                        logger.info(f"Meeting duration: {meeting.duration} seconds")
-                    except ValueError as e:
-                        logger.error(f"Error calculating duration: {str(e)}")
-                        meeting.duration = 0
-                
-                # Fetch or generate a summary if needed.  
-                if not meeting.summary and meeting.transcript:  
-                    try:
-                        logger.info(f"Generating summary for meeting {meeting_id}")
-                        summary_result = self.get_summary(meeting_id)  
-                        if summary_result.get("status") == "success":  
-                            meeting.summary = summary_result["summary"]
-                            logger.info(f"Summary generated successfully")
-                        else:
-                            logger.warning(f"Failed to generate summary: {summary_result.get('message', 'Unknown error')}")
-                    except Exception as summary_error:
-                        logger.error(f"Error generating summary: {str(summary_error)}")
-
-                meeting.status = "completed"  
-
-            elif event_type == "failed":  
-                error_code = webhook_data.get("error", "UnknownError")  
-                error_details = webhook_data.get("error_details", "No details provided")
-                logger.warning(f"Webhook indicates meeting '{meeting_id}' failed with error: {error_code}, details: {error_details}")  
-                meeting.status = "failed"  
+            # Get existing meeting URL
+            existing_status = session.query(Meeting).filter_by(
+                id=bot_id,
+            ).first()
+            meeting_url = existing_status.url if existing_status else None
             
-            elif event_type == "bot.status_change":  
-                status = webhook_data.get("status", {})
-                if not isinstance(status, dict):
-                    status = {}
+            if event == "complete":
+                logger.info("Processing complete event")
+                meeting_data = await self._fetch_meeting_data(bot_id)
+                if meeting_data and meeting_data.get("bot_data"):
+                    transcripts = meeting_data["bot_data"]["transcripts"]
+                    created_at = meeting_data["bot_data"]["bot"].get("created_at")
+
+                    # Format transcript for summary generation
+                    formatted_transcript = ""
+                    for entry in transcripts:
+                        if entry.get('words'):
+                            words = ' '.join([word['text'] for word in entry['words']])
+                            start_time = entry['start_time']
+                            timestamp = f"{int(start_time//60):02d}:{int(start_time%60):02d}"
+                            speaker = entry['speaker']
+                            formatted_transcript += f"[{timestamp}] {speaker}: {words}\n"
+
+                    # Format meeting time
+                    time_str = "unknown time"
+                    if created_at:
+                        try:
+                            dt = datetime.fromisoformat(created_at)
+                            time_str = dt.strftime("%B %d, %Y at %I:%M %p")
+                        except ValueError:
+                            logger.warning(f"Could not parse meeting time: {created_at}")
+
+                    # Generate meeting summary using OpenAI
+                    system_prompt = f"""You will be provided with the transcript of a meeting, 
+                                and your goal will be to output the summary of the meeting, along with the meeting name and meeting attendees.
+                                Please provide the meeting summary in markdown format. 
+                                The summary should use the following format. Each meeting section summary should cover approximately 5 mins of elapsed time in the transcript. Follow this report format for the meeting summary:
+                                --------------
+                                ## Meeting at {time_str} with {{number of attendees}} attendees
+                                ### Attendees: {{command separated list of meeting attendees, in alphabetical order}}
+
+                                ### {{Topic: write summary of the meeting topics}}
+
+                                #### {{Section 1 - heading}}
+                                Summary of the first topic discussed in the meeting.
+
+                                #### {{Section 2 - heading}}
+                                Write additional sections for each major topic of discussion in the meeting.
+                                """
+
+                    client = OpenAI(api_key=agentic_secrets.get_required_secret("OPENAI_API_KEY"))
+                    completion = client.beta.chat.completions.parse(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": formatted_transcript},
+                        ],
+                        response_format=Meeting_name_summary_and_attendees,
+                    )
                     
-                status_code = status.get("code", "unknown_status")  
-                status_message = status.get("message", "No status message")
-                logger.info(f"Bot status changed for meeting '{meeting_id}', new status: {status_code}, message: {status_message}")  
-                meeting.status = status_code  
+                    summary_result = completion.choices[0].message.parsed
+                    meeting_name = summary_result.meeting_name
+                    meeting_summary = summary_result.meeting_summary
+                    attendees = summary_result.attendees
+
+                    # Save to database
+                    meeting = Meeting(
+                        id=bot_id,
+                        name=meeting_name,
+                        url=meeting_url,
+                        start_time=created_at,
+                        end_time=datetime.now().isoformat(),
+                        duration=meeting_data.get("duration", 0),
+                        transcript=json.dumps(transcripts),
+                        summary=meeting_summary,
+                        attendees=json.dumps(attendees),
+                        status="completed",
+                        recording_url=meeting_data.get("mp4", "")
+                    )
+                    session.merge(meeting)
+                    session.commit()
+
+                    # Save to knowledge index
+                    # Initialize Weaviate client and collection
+                    client = init_weaviate()
+                    collection = client.collections.get("meeting_summaries")
+                    if not collection:
+                        create_collection(client, "meeting_summaries")
+                        collection = client.collections.get("meeting_summaries")
+
+                    # Initialize embedding model and chunker
+                    embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
+                    chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
+
+                    # Prepare document metadata
+                    metadata = {
+                        "content": meeting_summary,
+                        "document_id": bot_id,
+                        "filename": f"meeting_{bot_id}_summary.md",
+                        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "mime_type": "text/markdown",
+                        "source_url": meeting_url,
+                        "summary": meeting_summary,
+                        "fingerprint": bot_id,
+                    }
+
+                    # Generate chunks and embeddings
+                    chunks = chunker(meeting_summary)
+                    chunks_text = [chunk.text for chunk in chunks]
+                    embeddings = list(embed_model.embed(chunks_text))
+
+                    # Index chunks in Weaviate
+                    with collection.batch.dynamic() as batch:
+                        for i, chunk in enumerate(chunks):
+                            vector = embeddings[i].tolist()
+                            batch.add_object(
+                                properties={
+                                    **metadata,
+                                    "content": chunk.text,
+                                    "chunk_index": i,
+                                },
+                                vector=vector
+                            )
+
+                    logger.info(f"Successfully indexed meeting summary with {len(chunks)} chunks")
+                    return {"status": "success", "message": "Meeting completed and indexed"}
+
+            elif event == "failed":
+                logger.info("Processing failed event")
+                error_code = event_data.get("error", "UnknownError")
+                meeting = Meeting(
+                    id=bot_id,
+                    url=meeting_url,
+                    status="failed",
+                    transcript="",
+                    summary=f"Meeting failed with error: {error_code}"
+                )
+                session.merge(meeting)
+                session.commit()
+                return {"status": "failed", "error": error_code}
             
-            else:  
-                logger.warning(f"Unhandled webhook event type: {event_type} for meeting: {meeting_id}")  
+            elif event == "bot.status_change":
+                logger.info("Bot status changed event")
+                status_code = event_data["status"]["code"]
+                meeting = Meeting(
+                    id=bot_id,
+                    url=meeting_url,
+                    status=status_code
+                )
+                session.merge(meeting)
+                session.commit()
+                return {"status": "updated", "new_status": status_code}
 
-            # Commit all updates to the database.  
-            try:
-                session.commit()  
-                logger.info(f"Successfully committed changes to database for meeting {meeting_id}")
-            except Exception as db_error:
-                session.rollback()
-                logger.error(f"Database error during commit: {str(db_error)}")
-                return {  
-                    "status": "error",  
-                    "message": f"Database error: {str(db_error)}",  
-                    "meeting_id": meeting_id  
-                }
-
-            return {  
-                "status": "success",  
-                "message": f"Webhook processed successfully for event '{event_type}'",  
-                "meeting_id": meeting_id  
-            }  
-
-        except Exception as e:  
+            return {"status": "success", "message": "Webhook processed"}
+            
+        except Exception as e:
             logger.error(f"Error processing webhook: {str(e)}")
             logger.error(traceback.format_exc())
-            if session:
-                try:
-                    session.rollback()
-                except:
-                    pass
-            return {  
-                "status": "error",  
-                "message": f"Error processing webhook: {str(e)}",  
-                "meeting_id": webhook_data.get("bot_id", "unknown")  
+            return {
+                "status": "error",
+                "message": f"Error processing webhook: {str(e)}"
             }
+        finally:
+            if session:
+                session.close()

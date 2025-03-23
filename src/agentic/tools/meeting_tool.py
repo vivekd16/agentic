@@ -452,6 +452,67 @@ class MeetingBaasTool(BaseAgenticTool):
                 "message": f"Error answering question: {str(e)}"
             }
 
+    def _generate_meeting_summary(self, transcript_data: list, meeting_time: str = None) -> dict:
+        """Generate meeting summary using OpenAI GPT-4o"""
+        try:
+            # Convert transcript data to a format suitable for GPT
+            formatted_transcript = ""
+            for entry in transcript_data:
+                if entry.get('words'):
+                    words = ' '.join([word['text'] for word in entry['words']])
+                    start_time = entry['start_time']
+                    timestamp = f"{int(start_time//60):02d}:{int(start_time%60):02d}"
+                    speaker = entry['speaker']
+                    formatted_transcript += f"[{timestamp}] {speaker}: {words}\n"
+
+            # Format meeting time if provided
+            time_str = "unknown time"
+            if meeting_time:
+                try:
+                    dt = datetime.fromisoformat(meeting_time)
+                    time_str = dt.strftime("%B %d, %Y at %I:%M %p")
+                except ValueError:
+                    print(f"Warning: Could not parse meeting time: {meeting_time}")
+
+            system_prompt = f"""You will be provided with the transcript of a meeting, 
+                        and your goal will be to output the summary of the meeting, along with the meeting name and meeting attendees.
+                        Please provide the meeting summary in markdown format. 
+                        The summary should use the following format. Each meeting section summary should cover approximately 5 mins of elapsed time in the transcript. Follow this report format for the meeting summary:
+                        --------------
+                        ## Meeting at {time_str} with {{number of attendees}} attendees
+                        ### Attendees: {{command separated list of meeting attendees, in alphabetical order}}
+
+                        ### {{Topic: write summary of the meeting topics}}
+
+                        #### {{Section 1 - heading}}
+                        Summary of the first topic discussed in the meeting.
+
+                        #### {{Section 2 - heading}}
+                        Write additional sections for each major topic of discussion in the meeting.
+                        """
+
+            client = OpenAI(api_key=agentic_secrets.get_required_secret("OPENAI_API_KEY"))
+
+            completion = client.beta.chat.completions.parse(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": formatted_transcript},
+                ],
+                response_format=Meeting_name_summary_and_attendees,
+            )
+
+            event = completion.choices[0].message.parsed
+            return {
+                "status": "success",
+                "response": event
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e)
+            }
+
     async def process_webhook(self, webhook_data: dict) -> dict:
         """Process incoming webhook data from MeetingBaaS"""
         session = None
@@ -485,57 +546,16 @@ class MeetingBaasTool(BaseAgenticTool):
                     transcripts = meeting_data["bot_data"]["transcripts"]
                     created_at = meeting_data["bot_data"]["bot"].get("created_at")
 
-                    # Format transcript for summary generation
-                    formatted_transcript = ""
-                    for entry in transcripts:
-                        if entry.get('words'):
-                            words = ' '.join([word['text'] for word in entry['words']])
-                            start_time = entry['start_time']
-                            timestamp = f"{int(start_time//60):02d}:{int(start_time%60):02d}"
-                            speaker = entry['speaker']
-                            formatted_transcript += f"[{timestamp}] {speaker}: {words}\n"
+                    # Generate meeting summary using helper method
+                    summary_result = self._generate_meeting_summary(transcripts, created_at)
+                    meeting_name = ""
+                    meeting_summary = ""
+                    attendees = []
 
-                    # Format meeting time
-                    time_str = "unknown time"
-                    if created_at:
-                        try:
-                            dt = datetime.fromisoformat(created_at)
-                            time_str = dt.strftime("%B %d, %Y at %I:%M %p")
-                        except ValueError:
-                            logger.warning(f"Could not parse meeting time: {created_at}")
-
-                    # Generate meeting summary using OpenAI
-                    system_prompt = f"""You will be provided with the transcript of a meeting, 
-                                and your goal will be to output the summary of the meeting, along with the meeting name and meeting attendees.
-                                Please provide the meeting summary in markdown format. 
-                                The summary should use the following format. Each meeting section summary should cover approximately 5 mins of elapsed time in the transcript. Follow this report format for the meeting summary:
-                                --------------
-                                ## Meeting at {time_str} with {{number of attendees}} attendees
-                                ### Attendees: {{command separated list of meeting attendees, in alphabetical order}}
-
-                                ### {{Topic: write summary of the meeting topics}}
-
-                                #### {{Section 1 - heading}}
-                                Summary of the first topic discussed in the meeting.
-
-                                #### {{Section 2 - heading}}
-                                Write additional sections for each major topic of discussion in the meeting.
-                                """
-
-                    client = OpenAI(api_key=agentic_secrets.get_required_secret("OPENAI_API_KEY"))
-                    completion = client.beta.chat.completions.parse(
-                        model="gpt-4o",
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": formatted_transcript},
-                        ],
-                        response_format=Meeting_name_summary_and_attendees,
-                    )
-                    
-                    summary_result = completion.choices[0].message.parsed
-                    meeting_name = summary_result.meeting_name
-                    meeting_summary = summary_result.meeting_summary
-                    attendees = summary_result.attendees
+                    if summary_result["status"] == "success":
+                        meeting_name = summary_result["response"].meeting_name
+                        meeting_summary = summary_result["response"].meeting_summary
+                        attendees = summary_result["response"].attendees
 
                     # Save to database
                     meeting = Meeting(

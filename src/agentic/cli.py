@@ -2,16 +2,24 @@ import typer
 import os
 import requests
 import inspect
-import time
+import json
+import uvicorn
 from rich.markdown import Markdown
 from rich.console import Console
 from typing import Optional, List
 from .file_cache import file_cache
 from .colors import Colors
 
+from fastapi import FastAPI, APIRouter, Request, Depends, Path as FastAPIPath, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sse_starlette.sse import EventSourceResponse
+
 import agentic.quiet_warnings
+from agentic.actor_agents import ProcessRequest, ResumeWithInputRequest
 from agentic.agentic_secrets import agentic_secrets as secrets
+from agentic.events import AgentDescriptor, DebugLevel
 from agentic.settings import settings
+from agentic.utils.json import make_json_serializable
 
 import shutil
 from pathlib import Path
@@ -136,7 +144,7 @@ def init_runtime_directory(
 @app.command()
 def thread(
     agent_path: str = typer.Argument(..., help="Path to the agent file"),
-    use_ray: bool = typer.Option(False, "--ray", help="Use Ray for parallel execution"),
+    use_ray: bool = typer.Option(False, "--ray", help="Use Ray for agent execution"),
 ):
     """Start an interactive CLI session with an agent"""
     if use_ray:
@@ -165,28 +173,49 @@ def thread(
         raise typer.Exit(1)
     
 @app.command()
-def serve(filename: str = typer.Argument(default="", show_default=False)):
-    """Runs the FastAPI server for an agent"""
-    # Set AGENTIC_USE_RAY = True to use Ray for parallel processing
-    os.environ["AGENTIC_USE_RAY"] = "True"
+def serve(
+    filename: str = typer.Argument(default="", show_default=False),
+    use_ray: bool = typer.Option(False, "--ray", help="Use Ray for agent execution"),
+    port: int = typer.Option(8086, "--port", "-p", help="Port to run the server on")
+):
+    """Runs the FastAPI server for an agent, supporting both Ray and threaded execution"""
+    console = Console()
+    
+    # Set AGENTIC_USE_RAY based on the flag
+    if use_ray:
+        os.environ["AGENTIC_USE_RAY"] = "True"
+    
+    if os.environ["AGENTIC_USE_RAY"]:
+        console.print("[green]Using Ray for agent execution[/green]")
+    else:
+        console.print("[green]Using threading for agent execution[/green]")
 
-    from agentic.common import AgentRunner
-
-    agent_instances = find_agent_instances(filename)
+    # Import the AgentAPIServer now that environment variables are set
+    from agentic.api import AgentAPIServer
+    
+    # Load the agent instances
+    with Status("[bold green]Loading agent instances...", console=console):
+        agent_instances = find_agent_instances(filename)
+        
     if len(agent_instances) == 0:
-        typer.echo(f"No agent instances found in {filename}. Make sure to create at least one agent at module scope.")
+        console.print(f"[red]No agent instances found in {filename}[/red]")
+        console.print("[yellow]Make sure you create an Agent instance in your script[/yellow]")
         raise typer.Exit(1)
-    for agent in agent_instances:
-        runner = AgentRunner(agent)
-        path = runner.serve()
+    
+    # Create and run the API server
+    with Status("[bold green]Setting up API server...", console=console):
+        api_server = AgentAPIServer(agent_instances, port=port)
+        
+    console.print(f"[bold green]✓ Starting server on port {port}[/bold green]")
+    console.print(f"[blue]Server URL: http://0.0.0.0:{port}[/blue]")
+    console.print(f"[blue]Swagger UI: http://0.0.0.0:{port}/docs[/blue]")
+    console.print("[yellow]Press Ctrl+C to exit[/yellow]")
+    
+    try:
+        api_server.run()
+    except KeyboardInterrupt:
+        console.print("[yellow]Shutting down...[/yellow]")
 
-    # Busy loop until ctrl-c or ctrl-d
-    #os.system(f"open http://0.0.0.0:8086{path}/docs")
-
-    while True:
-        time.sleep(1)
-
-# executes a shell with all the args
 @app.command()
 def shell(args: List[str]):
     """Copies secrets into the environment and executes a shell command"""

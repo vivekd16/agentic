@@ -5,7 +5,7 @@ from agentic.tools.meeting_tool import MeetingBaasTool
 
 meeting_manager = Agent(
     name="Meeting Manage Agent",
-    welcome="I am the Meeting Manager. I can help you join meetings, get transcripts, and generate summaries.",
+    welcome="I am the Meeting Manager. I can help you join meetings, get transcripts, generate summaries and get info about meetings.",
     instructions="""  
             You help manage meetings. You can:  
             1. Join new meetings to record and transcribe them.  
@@ -18,12 +18,6 @@ meeting_manager = Agent(
             - Ask for the meeting URL if not provided.  
             - Join the meeting and track its status.  
             - Once complete, offer to generate a summary.  
-
-            When asked about past meetings:  
-            - List available meetings if needed.  
-            - Get meeting details and status.  
-            - Call the Meeting Summarizer for transcripts and summaries.  
-            - Use answer_question for specific queries about meeting content.  
             """,
     tools=[MeetingBaasTool()],
     model="openai/gpt-4o-mini"

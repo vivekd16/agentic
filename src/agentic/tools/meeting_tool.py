@@ -323,19 +323,22 @@ class MeetingBaasTool(BaseAgenticTool):
                 "message": f"Error listing meetings: {str(e)}"
             }
 
-    def get_meeting_info(self, meeting_id: str, user_query: str = None) -> dict:  
+    def get_meeting_info(self, meeting_id: str = None, user_query: str = None) -> dict:  
         """  
-        Retrieve information about a specific meeting.  
-        If user_query is provided, search the knowledge index first.
+        Retrieve information about meetings.
+        If meeting_id is provided, search only that meeting.
+        If user_query is provided, search the knowledge index.
         Falls back to database if knowledge search fails or no query provided.
         """  
         try:  
             # If we have a query, try searching the knowledge index first
             if user_query:
                 try:
-                    # Initialize RAG components
                     self._initialize_rag()
                     embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
+                    
+                    # Set filters only if meeting_id is provided
+                    filters = {"document_id": meeting_id} if meeting_id else None
                     
                     # Search the knowledge index
                     collection = self._weaviate_client.collections.get("meeting_summaries")
@@ -343,37 +346,40 @@ class MeetingBaasTool(BaseAgenticTool):
                         collection=collection,
                         query=user_query,
                         embed_model=embed_model,
-                        limit=1,
-                        filters={"document_id": meeting_id}
+                        limit=5 if not meeting_id else 1,  # Return more results if searching all meetings
+                        filters=filters
                     )
 
                     if search_results and not search_results[0].get("error"):
                         return {
                             "status": "success",
-                            "content": search_results[0]["content"]
+                            "content": search_results[0]["content"] if meeting_id else [r["content"] for r in search_results]
                         }
                 except Exception as e:
                     logger.warning(f"Knowledge index search failed: {str(e)}")
 
-            # Fall back to database query if knowledge search failed or no query provided
-            session = self._get_session()  
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
+            # Fall back to database query
+            session = self._get_session()
+            if meeting_id:
+                meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
             
-            if not meeting:  
-                return {"status": "error", "message": f"Meeting with ID '{meeting_id}' not found"}  
+                if not meeting:  
+                    return {"status": "error", "message": f"Meeting with ID '{meeting_id}' not found"}  
 
-            meeting_info = {  
-                "id": meeting.id,  
-                "name": meeting.name or "Untitled",  
-                "start_time": meeting.start_time,  
-                "end_time": meeting.end_time,  
-                "duration": str(timedelta(seconds=meeting.duration)) if meeting.duration else "Unknown",  
-                "status": meeting.status
-            }  
+                meeting_info = {  
+                    "id": meeting.id,  
+                    "name": meeting.name or "Untitled",  
+                    "start_time": meeting.start_time,  
+                    "end_time": meeting.end_time,  
+                    "duration": str(timedelta(seconds=meeting.duration)) if meeting.duration else "Unknown",  
+                    "status": meeting.status
+                }  
 
-            return {"status": "success", "meeting_info": meeting_info}  
+                return {"status": "success", "meeting_info": meeting_info}  
 
-        except Exception as e:  
+            return {"status": "error", "message": "No meeting ID provided"}
+
+        except Exception as e:
             return {"status": "error", "message": f"Error fetching meeting info: {str(e)}"}
 
     def _generate_meeting_summary(self, transcript_data: list, meeting_time: str = None) -> dict:

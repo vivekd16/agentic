@@ -560,7 +560,7 @@ class MeetingBaasTool(BaseAgenticTool):
                 meeting = Meeting(
                     id=bot_id,
                     url=meeting_url,
-                    status="failed",
+                    status=error_code,
                     transcript="",
                     summary=f"Meeting failed with error: {error_code}"
                 )

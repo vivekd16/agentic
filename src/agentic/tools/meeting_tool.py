@@ -90,7 +90,8 @@ class MeetingBaasTool(BaseAgenticTool):
             self.get_summary,
             self.list_meetings,
             self.get_meeting_info,
-            self.process_webhook
+            self.process_webhook,
+            self.check_bot_status
         ]
 
     def _initialize_rag(self):
@@ -194,7 +195,7 @@ class MeetingBaasTool(BaseAgenticTool):
                     id=meeting_data["bot_id"],
                     url=meeting_url,
                     start_time=datetime.now().isoformat(),
-                    status="joining"
+                    status="joining_call"
                 )
                 session.add(meeting)
                 session.commit()
@@ -601,3 +602,68 @@ class MeetingBaasTool(BaseAgenticTool):
                     
         except Exception as e:
             return {"error": f"Exception occurred: {str(e)}"}
+
+    async def check_bot_status(self, bot_id: str) -> dict:
+        """Check the current status of a bot"""
+        try:
+            session = self._get_session()
+            
+            # First check meeting_status for current status or failures
+            status = session.query(Meeting).filter_by(id=bot_id).first()
+            
+            if status:
+                # Map status codes to more descriptive states
+                status_descriptions = {
+                    "joining_call": "Bot is attempting to join the meeting",
+                    "in_waiting_room": "Bot is waiting to be admitted",
+                    "in_call_not_recording": "Bot has joined but not yet recording",
+                    "in_call_recording": "Bot is in the meeting and recording",
+                    "call_ended": "Meeting has ended",
+                    # Error states
+                    "CannotJoinMeeting": "Failed: Unable to join meeting - check meeting URL and permissions",
+                    "TimeoutWaitingToStart": "Failed: Timed out waiting to be admitted",
+                    "BotNotAccepted": "Failed: Bot was not accepted into the meeting",
+                    "InternalError": "Failed: Internal system error occurred",
+                    "InvalidMeetingUrl": "Failed: Invalid meeting URL provided"
+                }
+
+                description = status_descriptions.get(status.status, "Unknown status")
+
+                # If call has ended, get additional details
+                if status.status == "call_ended":
+                    return {
+                        "status": "completed",
+                        "error": None,
+                        "details": {
+                            "meeting_name": status.name,
+                            "created_at": status.start_time,
+                            "ended_at": status.end_time,
+                            "duration": status.duration,
+                            "description": description
+                        },
+                        "timestamp": status.end_time
+                    }
+
+                return {
+                    "status": status.status,
+                    "error": None,
+                    "details": {
+                        "description": description
+                    },
+                    "timestamp": status.start_time
+                }
+            
+            return {
+                "status": "not_found",
+                "error": "Bot ID not found in system",
+                "details": None,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "details": None,
+                "timestamp": datetime.now().isoformat()
+            }

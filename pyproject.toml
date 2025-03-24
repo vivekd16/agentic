@@ -11,7 +11,7 @@ dependencies = [
     "streamlit>=1.41.1",
     "swarm",
     "thespian>=4.0.0",
-    "litellm>=1.60.2",
+    "litellm>=1.63.15",
     "typer>=0.15.1",
     "cryptography>=44.0.0",
     "ray>=2.42.0",
@@ -38,7 +38,8 @@ dependencies = [
     "httpx>=0.28.1",
     "unicodedata2>=16.0.0",
     "sse-starlette>=2.2.1",
-    "sqlmodel>=0.0.22"
+    "sqlmodel>=0.0.22",
+    "mcp[cli]>=1.5.0",
 ]
 
 [project.optional-dependencies]

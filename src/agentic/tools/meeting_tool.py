@@ -476,6 +476,18 @@ class MeetingBaasTool(BaseAgenticTool):
                     vector=vector
                 )
 
+    def clean_markdown(self, markdown_text):
+        """Clean markdown text by removing heading markers and extra whitespace"""
+        if not markdown_text:
+            return ""
+        lines = markdown_text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            cleaned_line = line.lstrip('#').strip()
+            if cleaned_line:
+                cleaned_lines.append(cleaned_line)
+        return '\n'.join(cleaned_lines)
+
     async def process_webhook(self, webhook_data: dict) -> dict:
         """Process incoming webhook data from MeetingBaaS"""
         session = None
@@ -516,7 +528,7 @@ class MeetingBaasTool(BaseAgenticTool):
 
                     if summary_result["status"] == "success":
                         meeting_name = summary_result["response"].meeting_name
-                        meeting_summary = summary_result["response"].meeting_summary
+                        meeting_summary = self.clean_markdown(summary_result["response"].meeting_summary)
                         attendees = summary_result["response"].attendees
 
                     # Save to database

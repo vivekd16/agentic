@@ -26,7 +26,7 @@ logging.basicConfig(
 )  
 logger = logging.getLogger(__name__)
 
-class Meeting_name_summary_and_attendees(BaseModel):
+class MeetingSummary(BaseModel):
     meeting_name: str
     meeting_summary: str
     attendees: List[str]
@@ -425,7 +425,7 @@ class MeetingBaasTool(BaseAgenticTool):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": formatted_transcript},
                 ],
-                response_format=Meeting_name_summary_and_attendees,
+                response_format=MeetingSummary,
             )
 
             event = completion.choices[0].message.parsed

@@ -249,7 +249,7 @@ class MeetingBaasTool(BaseAgenticTool):
 
 
     def get_meeting_summary(self, meeting_id: str) -> dict:
-        """Generate a detailed summary of the meeting"""
+        """Get summary for a specific meeting"""
         try:
             # First check if summary exists in database
             session = self._get_session()

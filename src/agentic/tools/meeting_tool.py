@@ -633,6 +633,7 @@ class MeetingBaasTool(BaseAgenticTool):
                     "in_call_not_recording": "Bot has joined but not yet recording",
                     "in_call_recording": "Bot is in the meeting and recording",
                     "call_ended": "Meeting has ended",
+                    "completed": "Meeting has been successfully recorded",
                     # Error states
                     "CannotJoinMeeting": "Failed: Unable to join meeting - check meeting URL and permissions",
                     "TimeoutWaitingToStart": "Failed: Timed out waiting to be admitted",

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode
+import os
 
 import httpx
 from agentic.common import RunContext
@@ -42,9 +43,9 @@ class OAuthTool:
 
     async def _start_oauth_flow(self, run_context: RunContext) -> OAuthFlowResult:
         """Initialize OAuth authorization flow"""
-        client_id = run_context.get_secret(self.oauth_config.client_id_key)
+        client_id = os.getenv(self.oauth_config.client_id_key)
         if not client_id:
-            raise ValueError(f"{self.oauth_config.client_id_key} not found in secrets")
+            raise ValueError(f"{self.oauth_config.client_id_key} not found in environment variables")
 
         callback_url = run_context.get_oauth_callback_url(self.oauth_config.tool_name)
         
@@ -69,8 +70,8 @@ class OAuthTool:
 
     async def _exchange_code_for_token(self, auth_code: str, run_context: RunContext) -> Optional[str]:
         """Exchange OAuth code for access token"""
-        client_id = run_context.get_secret(self.oauth_config.client_id_key)
-        client_secret = run_context.get_secret(self.oauth_config.client_secret_key)
+        client_id = os.getenv(self.oauth_config.client_id_key)
+        client_secret = os.getenv(self.oauth_config.client_secret_key)
 
         if not client_id or not client_secret:
             return None

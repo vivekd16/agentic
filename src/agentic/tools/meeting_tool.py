@@ -141,7 +141,7 @@ class MeetingBaasTool(BaseAgenticTool):
         run_context: RunContext,
         bot_name: str = "Meeting Assistant"
     ) -> dict:
-        """Join a video meeting and start recording"""
+        """Dispatches a bot to join a meeting and return the bot id"""
         print("Joining call.....")
         
         try:

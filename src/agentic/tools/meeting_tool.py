@@ -142,7 +142,7 @@ class MeetingBaasTool(BaseAgenticTool):
         bot_name: str = "Meeting Assistant"
     ) -> dict:
         """Join a video meeting and start recording"""
-        logger.info(self.meeting_baas_api_key)
+        print("Joining call.....")
         
         try:
             headers = {
@@ -188,11 +188,11 @@ class MeetingBaasTool(BaseAgenticTool):
             
             if response.status_code == 200:
                 meeting_data = response.json()
-                
+                bot_id = meeting_data["bot_id"]
                 # Store meeting in database
                 session = self._get_session()
                 meeting = Meeting(
-                    id=meeting_data["bot_id"],
+                    id=bot_id,
                     url=meeting_url,
                     start_time=datetime.now().isoformat(),
                     status="joining_call"
@@ -201,19 +201,15 @@ class MeetingBaasTool(BaseAgenticTool):
                 session.commit()
                 
                 return {
-                    "status": "success",
-                    "meeting_id": meeting_data["bot_id"],
-                    "message": "Bot is joining the meeting"
+                    "joining_call": f"Joining call... The bot will join the meeting and take notes. Your bot_id is {bot_id}"
                 }
             else:
                 return {
-                    "status": "error",
                     "message": f"Failed to join meeting: {response.text}"
                 }
                 
         except Exception as e:
             return {
-                "status": "error", 
                 "message": f"Error joining meeting: {str(e)}"
             }
 

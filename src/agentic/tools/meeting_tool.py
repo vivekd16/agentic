@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Dict, List
+from typing import Callable, Optional, Dict, List
 import requests
 import traceback
 from datetime import datetime, timedelta

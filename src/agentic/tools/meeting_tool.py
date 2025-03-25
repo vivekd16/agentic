@@ -87,7 +87,7 @@ class MeetingBaasTool(BaseAgenticTool):
         return [
             self.join_meeting,
             self.get_transcript,
-            self.get_summary,
+            self.get_meeting_summary,
             self.list_meetings,
             self.get_meeting_info,
             self.process_webhook,
@@ -248,7 +248,7 @@ class MeetingBaasTool(BaseAgenticTool):
             return {"status": "error", "message": f"Error fetching transcript: {str(e)}"}  
 
 
-    def get_summary(self, meeting_id: str) -> dict:
+    def get_meeting_summary(self, meeting_id: str) -> dict:
         """Generate a detailed summary of the meeting"""
         try:
             # First check if summary exists in database

@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from openai import OpenAI
 import json, os
 from pydantic import BaseModel
+import weaviate
 
 from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
@@ -88,7 +89,19 @@ class MeetingBaasTool(BaseAgenticTool):
     def _initialize_rag(self):
         """Initialize the RAG components"""
         if not self._rag_initialized:
-            self._weaviate_client = init_weaviate()
+            try:
+                # First try to connect to existing instance
+                self._weaviate_client = weaviate.connect_to_local(
+                    port=8079,
+                    grpc_port=50060
+                )
+                print("Connected to existing Weaviate instance")
+            except Exception as e:
+                print(f"Could not connect to existing instance: {e}")
+                print("Creating new embedded instance...")
+                # If connection fails, create new embedded instance
+                self._weaviate_client = init_weaviate()
+            
             create_collection(self._weaviate_client, "meeting_summaries")
             self._vector_store = self._weaviate_client.collections.get("meeting_summaries")
             self._embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")

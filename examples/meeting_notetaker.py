@@ -17,7 +17,6 @@ meeting_manager = Agent(
             When joining a meeting:  
             - Ask for the meeting URL if not provided.  
             - Join the meeting and track its status.  
-            - Once complete, offer to generate a summary.  
             """,
     tools=[MeetingBaasTool()],
     model="openai/gpt-4o-mini"

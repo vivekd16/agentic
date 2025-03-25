@@ -1,6 +1,5 @@
 from typing import Callable, Optional, Dict, List
 import requests
-import traceback
 from datetime import datetime, timedelta
 import aiohttp
 from sqlalchemy import create_engine, Column, String, Integer, Text
@@ -42,7 +41,7 @@ class Meeting(Base):
 
 @tool_registry.register(
     name="MeetingTool",
-    description="A tool for managing video meetings, recording transcripts, and generating summaries",
+    description="A tool for managing video meetings, recording transcripts, getting meeting info and summaries",
     dependencies=[
         Dependency("openai", type="pip", version="1.63.2")
     ],

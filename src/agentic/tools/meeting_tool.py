@@ -16,15 +16,7 @@ from agentic.agentic_secrets import agentic_secrets
 from agentic.common import RunContext
 from agentic.utils.directory_management import get_runtime_directory
 from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker, search_collection
-import logging  
 
-# Configure logging  
-logging.basicConfig(  
-    level=logging.INFO,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)  
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Set the log format  
-    datefmt="%Y-%m-%d %H:%M:%S",  # Set the date format  
-)  
-logger = logging.getLogger(__name__)
 
 class MeetingSummary(BaseModel):
     meeting_name: str
@@ -80,7 +72,7 @@ class MeetingBaasTool(BaseAgenticTool):
             
             self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
         except ValueError as e:
-            logger.error(f"Error initializing MeetingBaasTool: {e}")
+            print(f"Error initializing MEETING_BAAS_Tool: {e}")
             self.meeting_baas_api_key = None
 
     def get_tools(self) -> list[Callable]:
@@ -215,6 +207,7 @@ class MeetingBaasTool(BaseAgenticTool):
 
     def get_meeting_transcript(self, meeting_id: str) -> dict:  
         """Get the transcript for a specific meeting and save it to the database if not already present"""  
+        print('getting meeting transcript........')
         try:  
             session = self._get_session()  
             meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
@@ -250,6 +243,7 @@ class MeetingBaasTool(BaseAgenticTool):
 
     def get_meeting_summary(self, meeting_id: str) -> dict:
         """Get summary for a specific meeting"""
+        print('getting meeting summary........')
         try:
             # First check if summary exists in database
             session = self._get_session()
@@ -293,6 +287,7 @@ class MeetingBaasTool(BaseAgenticTool):
 
     def list_meetings(self) -> dict:
         """List all recorded meetings"""
+        print('listing meetings........')
         try:
             session = self._get_session()
             meetings = session.query(Meeting).all()
@@ -326,6 +321,7 @@ class MeetingBaasTool(BaseAgenticTool):
         If user_query is provided, search the knowledge index.
         Falls back to database if knowledge search fails or no query provided.
         """  
+        print('getting meeting info........')
         try:  
             # If we have a query, try searching the knowledge index first
             if user_query:
@@ -352,7 +348,7 @@ class MeetingBaasTool(BaseAgenticTool):
                             "content": search_results[0]["content"] if meeting_id else [r["content"] for r in search_results]
                         }
                 except Exception as e:
-                    logger.warning(f"Knowledge index search failed: {str(e)}")
+                    print(f"Knowledge index search failed: {str(e)}")
 
             # Fall back to database query
             session = self._get_session()
@@ -516,7 +512,7 @@ class MeetingBaasTool(BaseAgenticTool):
             meeting_url = existing_status.url if existing_status else None
             
             if event == "complete":
-                logger.info("Processing complete event")
+                print("Processing complete event")
                 meeting_data = await self._fetch_meeting_data(bot_id)
                 if meeting_data and meeting_data.get("bot_data"):
                     transcripts = meeting_data["bot_data"]["transcripts"]
@@ -553,11 +549,11 @@ class MeetingBaasTool(BaseAgenticTool):
                     # Save to knowledge index
                     self._save_to_knowledge_index(bot_id, meeting_name, meeting_summary, attendees)
 
-                    logger.info(f"Successfully indexed meeting summary")
+                    print(f"Successfully indexed meeting summary")
                     return {"status": "success", "message": "Meeting completed and indexed"}
 
             elif event == "failed":
-                logger.info("Processing failed event")
+                print("Processing failed event")
                 error_code = event_data.get("error", "UnknownError")
                 meeting = Meeting(
                     id=bot_id,
@@ -571,7 +567,7 @@ class MeetingBaasTool(BaseAgenticTool):
                 return {"status": "failed", "error": error_code}
             
             elif event == "bot.status_change":
-                logger.info("Bot status changed event")
+                print("Bot status changed event")
                 status_code = event_data["status"]["code"]
                 meeting = Meeting(
                     id=bot_id,
@@ -585,8 +581,7 @@ class MeetingBaasTool(BaseAgenticTool):
             return {"status": "success", "message": "Webhook processed"}
             
         except Exception as e:
-            logger.error(f"Error processing webhook: {str(e)}")
-            logger.error(traceback.format_exc())
+            print(f"Error processing webhook: {str(e)}")
             return {
                 "status": "error",
                 "message": f"Error processing webhook: {str(e)}"
@@ -619,6 +614,7 @@ class MeetingBaasTool(BaseAgenticTool):
 
     async def check_bot_status(self, bot_id: str) -> dict:
         """Check the current status of a bot"""
+        print('checking bot status.........')
         try:
             session = self._get_session()
             

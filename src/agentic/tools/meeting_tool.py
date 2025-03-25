@@ -86,7 +86,7 @@ class MeetingBaasTool(BaseAgenticTool):
     def get_tools(self) -> list[Callable]:
         return [
             self.join_meeting,
-            self.get_transcript,
+            self.get_meeting_transcript,
             self.get_meeting_summary,
             self.list_meetings,
             self.get_meeting_info,
@@ -213,7 +213,7 @@ class MeetingBaasTool(BaseAgenticTool):
                 "message": f"Error joining meeting: {str(e)}"
             }
 
-    def get_transcript(self, meeting_id: str) -> dict:  
+    def get_meeting_transcript(self, meeting_id: str) -> dict:  
         """Get the transcript for a specific meeting and save it to the database if not already present"""  
         try:  
             session = self._get_session()  
@@ -262,7 +262,7 @@ class MeetingBaasTool(BaseAgenticTool):
                 }
             
             # If no summary exists, get transcript and generate one
-            transcript_result = self.get_transcript(meeting_id)
+            transcript_result = self.get_meeting_transcript(meeting_id)
             if transcript_result["status"] == "error":
                 return transcript_result
                 

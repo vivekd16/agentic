@@ -96,7 +96,7 @@ class OAuthTool:
             )
 
             if response.status_code == 200:
-                token_data = response.json()
+                token_data = await response.json()
                 access_token = token_data.get("access_token")
                 if access_token:
                     run_context.set_oauth_token(self.oauth_config.tool_name, access_token)

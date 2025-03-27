@@ -52,4 +52,4 @@ from agentic.tools.github_tool import GithubTool
 github_tool = GithubTool(api_key="your_github_token", default_repo="owner/repo")
 ```
 
-For more information on creating your own tools, see [Tools](../tools.md).
+For more information on creating your own tools, see [Tools](../index.md).

@@ -1,4 +1,4 @@
-# Building and running agents
+# Building Agents
 
 ### Terminology
 
@@ -44,9 +44,9 @@ Optional parameters to your agent include:
     max_tokens - The maximum number of tokens to generate on each completion
     memories - A list of facts to inject into the Agent's context for every Run
 
-See [models](./Models.md) for information on using different models. 
+See [models](../core-concepts/models.md) for information on using different models. 
 
-See [tools](./Tools.md) for information on creating and using tools.
+See [tools](../tools/index.md) for information on creating and using tools.
 
 ## Secrets
 
@@ -155,8 +155,8 @@ events along the way, but it can stop at any time.
 
 ## Next steps
 
-- See more about [events](./Events.md).
-- Learn about the [CLI](./CLI.md)
-- Learn how to build [Tools](./Tools.md) for your agent
-- Discover some [example](./Examples.md) agents.
-- Learn about Agent [Teams](./Teams.md).
+- See more about [events](../core-concepts/event-system.md).
+- Learn about the [CLI](../interacting-with-agents/cli.md)
+- Learn how to use and build [Tools](../tools/index.md) for your agent
+- Discover some [example](../example-agents.md) agents.
+- Learn about Agent [Teams](../building-agents/agent-teams.md).

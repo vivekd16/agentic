@@ -1185,7 +1185,7 @@ class BaseAgentProxy:
                 )
             )
             # Transmit depth through the Prompt
-            if depthLocal.depth > prompt.depth:
+            if hasattr(depthLocal, 'depth') and depthLocal.depth > prompt.depth:
                 prompt.depth = depthLocal.depth
                 
             # Get generator from agent
@@ -1273,6 +1273,19 @@ class BaseAgentProxy:
                 return items[-1]
         except StopIteration as e:
             return e.value
+
+    def __lshift__(self, prompt: str):
+        """
+        Implement the << operator for sending prompts to agents.
+        This allows syntax like: response = agent << "prompt"
+        
+        Args:
+            prompt: The prompt to send to the agent
+            
+        Returns:
+            The final response from the agent
+        """
+        return self.grab_final_result(prompt)
 
 class RayAgentProxy(BaseAgentProxy):
     """Ray-based implementation of the agent proxy.

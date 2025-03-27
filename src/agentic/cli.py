@@ -185,7 +185,7 @@ def serve(
     if use_ray:
         os.environ["AGENTIC_USE_RAY"] = "True"
     
-    if os.environ["AGENTIC_USE_RAY"]:
+    if "AGENTIC_USE_RAY" in os.environ and os.environ["AGENTIC_USE_RAY"]:
         console.print("[green]Using Ray for agent execution[/green]")
     else:
         console.print("[green]Using threading for agent execution[/green]")
@@ -760,7 +760,7 @@ def models_gpt(
 @app.command()
 def streamlit():
     """Runs the Streamlit UI"""
-    os.execvp("streamlit", ["streamlit", "run", "src/agentic/ui/app.py"])
+    os.execvp("streamlit", ["streamlit", "run", "src/agentic/streamlit/app.py"])
 
 # Hidden deprecated commands that map to new structure
 @app.command(hidden=True)

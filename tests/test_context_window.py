@@ -5,6 +5,7 @@ def generate_large_text(base_text="This is a test message. ", repetitions=10):
     """Generate text with a predictable token count"""
     return base_text * repetitions
 
+@pytest.mark.requires_llm
 def test_context_compression():
     """Test that context window compression allows agent to continue functioning with very large inputs"""
     # Create agent with smaller context window model

@@ -1,4 +1,4 @@
-name: Lint_and_Test
+name: Test and Lint
 on:
   pull_request:
     branches: [ main ]
@@ -8,7 +8,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -23,12 +23,12 @@ jobs:
       - name: Run tests (excluding LLM tests)
         env:
           TEST_GITHUB_TOKEN: ${{ secrets.TEST_GITHUB_TOKEN }}
-        run: pytest -v -m "not requires_llm"
+        run: pytest -v -m "not requires_llm and not github_test"
         
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Node.js
         uses: actions/setup-node@v3

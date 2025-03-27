@@ -7,28 +7,28 @@ You can manage vectorstore indexes using the CLI:
 ```sh
 
 # Chunk a file, calculate chunk embeddings, and add them to the vectorstore
-agentic index_file <index name> <file path>
+agentic index document add <index name> <file path>
 
 # Remove all the chunks of a file from the vector store
-agentic delete_document <index name> <file path|document ID>
+agentic index document delete <index name> <file path|document ID>
 
 # list the indexes
-agentic list-indexes
+agentic index list
 
 # rename an index
-agentic rename-index <from name> <to name>
+agentic index rename <from name> <to name>
 
 # delete a whole index
-agentic delete-index <index name>
+agentic index delete <index name>
 
 # List the documents in a vector store
-agentic list-documents <index name>
+agentic index document list <index name>
 
 # Show the metadata for a doc in the vector store
-agentic show-document <file path|document ID>
+agentic index document show <index name> <file path|document ID>
 
 # Perform a search of the vector store. Searches by vector by default, or can do hybrid search
-agentic search <index name> <query> [hybrid=true]
+agentic index search <index name> <query> [--hybrid]
 
 ```
 
@@ -36,14 +36,14 @@ Example usage:
 
 ```sh
 
-$ agentic index_file index1 tests/data/agentic_reasoning.pdf
+$ agentic index document add index1 tests/data/agentic_reasoning.pdf
 
-$ agentic list-documents index1
+$ agentic index document list index1
                                                          Documents in 'index1' (3)                                                         
 - agentic_reasoning.pdf 
   ID: 27c0600f... | Chunks: 19 | Last indexed: 2025-02-22 05:54:51+00:00
 
-$ agentic search index1 "reasoning models"
+$ agentic index search index1 "reasoning models"
                                                      Result 1 - agentic_reasoning.pdf                                                      
 - Source: None
 - Date: 2025-02-22 05:54:51+00:00
@@ -56,10 +56,21 @@ And to use RAG with an agent, via _agentic RAG_, just enable the RAG Tool:
 
 ```python
 from agentic.tools.rag_tool import RAGTool
+from agentic.tools.mcp_tool import MCPTool
+from agentic.common import Agent
+
+# Create Sequential Thinking MCP tool
+sequential_thinker = MCPTool(
+    command="npx",
+    args=["-y", "@modelcontextprotocol/server-sequential-thinking"]
+)
 
 agent=Agent(
     name="Agent with RAG",
-    tools=[RAGTool("index1")]
+    tools=[
+        RAGTool("index1"),
+        sequential_thinker
+    ]
 )
 print(agent << "What do we know about reasoning models?")
 ```

@@ -22,6 +22,10 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - pymdownx.blocks.caption
+plugins:
+  mike:
+    alias_type: symlink
+    version_selector: true
 nav:
   - index.md
   - getting-started.md

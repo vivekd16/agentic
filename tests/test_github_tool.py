@@ -43,6 +43,7 @@ def test_get_repo_info(github_tool, run_context):
 
 # Test API endpoints with real calls
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="User will be marked as spammy")
 async def test_search_repositories(github_tool, run_context):
     result = await github_tool.search_repositories(run_context, "test", language="python")
     assert result['status'] == 'success'
@@ -114,8 +115,8 @@ async def test_credential_validation(github_tool, run_context):
     result = await github_tool.test_credential(run_context)
     assert result is None  # Success case returns None
 
-# Create and delete repository test
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="User will be marked as spammy")
 async def test_create_and_delete_repository(github_tool, run_context):
     # Create a new test repository
     repo_name = "temp-test-repo-" + os.urandom(4).hex()

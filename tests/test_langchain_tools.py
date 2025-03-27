@@ -1,7 +1,9 @@
 from agentic.common import Agent, AgentRunner
 from agentic.tools.automatic_tools import AutomaticTools
 from agentic.tools.registry import tool_registry
+import pytest
 
+@pytest.mark.requires_llm
 def test_langchain_tool():
     agent = Agent(
         name="Basic Agent",
@@ -18,5 +20,4 @@ def test_langchain_tool():
 
     agent_runner = AgentRunner(agent)
     response = agent_runner.turn("search for 'supercog ai'")
-    print(response)
     assert "supercog" in response.lower(), response

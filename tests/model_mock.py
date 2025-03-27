@@ -1,8 +1,9 @@
+import pytest
 import random
-from typing import List, Dict, Optional, Any, Union
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typing import Optional, Dict, Any, List
 import litellm
 from datetime import datetime
@@ -251,7 +252,8 @@ class YourLLMClient:
             raise
 
 # Example of how to test your actual code
-def test_your_client():
+@pytest.mark.asyncio
+async def test_your_client():
     with patch('litellm.completion') as mock_completion:
         # Setup
         client = YourLLMClient()
@@ -260,7 +262,7 @@ def test_your_client():
         
         # Test
         messages = [{"role": "user", "content": "Hello"}]
-        response = client.get_completion(messages)
+        response = await client.get_completion(messages)
         
         # Assertions
         assert mock_completion.called

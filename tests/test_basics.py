@@ -2,6 +2,7 @@ import pytest
 from agentic.common import Agent, AgentRunner
 
 
+@pytest.mark.requires_llm
 def test_agent():
     agent = Agent(
         name="Basic Agent",
@@ -17,6 +18,7 @@ def test_agent():
     response = agent_runnner.turn("please tell me hello")
     assert "hello" in response.lower(), response
 
+@pytest.mark.requires_llm
 def test_agent_as_tool():
     agent = Agent(
         name="Agent A",
@@ -38,7 +40,7 @@ Then call agent B once with the request 'run'
     response = agent_runnner.turn("run your instructions")
     assert "99" in response.lower(), response
 
-
+@pytest.mark.requires_llm
 def test_event_depth():
     agent = Agent(
         name="Agent A",
@@ -68,7 +70,7 @@ def read_file() -> str:
     """Reads the current file"""
     return "Hello world, i am in a file."
 
-
+@pytest.mark.requires_llm
 def test_simple_tool_use():
     global read_file_was_called
 

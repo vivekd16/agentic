@@ -28,6 +28,7 @@ def parent():
         ]
     )
 
+@pytest.mark.requires_llm
 def test_sync_logging(parent):
     tool_outputs = []
     turn_end = None
@@ -40,6 +41,7 @@ def test_sync_logging(parent):
     print("Turn end: ", turn_end)
     assert len(tool_outputs) > 0
 
+@pytest.mark.requires_llm
 def test_async_logging(parent):
     tool_outputs = []
     turn_end = None
@@ -54,6 +56,7 @@ def test_async_logging(parent):
     assert tool_outputs[0].payload == "async_function_with_logging"
     assert "ASYNC" in tool_outputs[0].result
 
+@pytest.mark.requires_llm
 def test_direct_logging(parent):
     tool_outputs = []
     turn_end = None

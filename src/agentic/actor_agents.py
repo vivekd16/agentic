@@ -300,10 +300,7 @@ class ActorBaseAgent:
                     if isinstance(result, Event):
                         events.append(result)
                 raw_result = [result for result in raw_result if not isinstance(result, Event)]
-                if raw_result:
-                    # Would be good to allow multiple results and merge them
-                    raw_result = raw_result[0]
-                else:
+                if len(raw_result) == 0:
                     raw_result = ""
                 
             result: Result = (

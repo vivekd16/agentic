@@ -73,8 +73,11 @@ async def test_exchange_code_for_token(oauth_tool, mock_run_context, monkeypatch
     monkeypatch.setenv("TEST_CLIENT_SECRET", "test_client_secret")
     
     with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
-        mock_post.return_value.status_code = 200
-        mock_post.return_value.json.return_value = {"access_token": "new_token"}
+        mock_response = AsyncMock()
+        mock_response.status_code = 200
+        # Mock json as a regular method, not async
+        mock_response.json = Mock(return_value={"access_token": "new_token"})
+        mock_post.return_value = mock_response
         
         token = await oauth_tool._exchange_code_for_token("test_auth_code", mock_run_context)
         
@@ -88,8 +91,10 @@ async def test_exchange_code_for_token_failure(oauth_tool, mock_run_context, mon
     monkeypatch.setenv("TEST_CLIENT_SECRET", "test_client_secret")
     
     with patch('httpx.AsyncClient.post', new_callable=AsyncMock) as mock_post:
-        # Mock failed token response
-        mock_post.return_value.status_code = 400
+        mock_response = AsyncMock()
+        mock_response.status_code = 400
+        mock_response.json = Mock(return_value={})
+        mock_post.return_value = mock_response
         
         token = await oauth_tool._exchange_code_for_token("test_auth_code", mock_run_context)
         
@@ -99,6 +104,7 @@ async def test_exchange_code_for_token_failure(oauth_tool, mock_run_context, mon
 @pytest.mark.asyncio
 async def test_start_oauth_flow_missing_client_id(oauth_tool, mock_run_context):
     mock_run_context.get_oauth_callback_url.return_value = "https://callback.url"
+    mock_run_context.get_secret.return_value = None
     
     with pytest.raises(ValueError) as exc_info:
         await oauth_tool._start_oauth_flow(mock_run_context)

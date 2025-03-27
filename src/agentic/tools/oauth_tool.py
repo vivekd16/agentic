@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 import os
+from dotenv import load_dotenv
 
 import httpx
 from agentic.common import RunContext
@@ -25,6 +26,9 @@ class OAuthTool:
 
     async def authenticate(self, run_context: RunContext) -> str | OAuthFlowResult:
         """Start or continue OAuth authentication flow"""
+        # Load environment variables from .env file
+        load_dotenv()
+
         # Check for existing token
         token = run_context.get_oauth_token(self.oauth_config.tool_name)
         if token:
@@ -32,6 +36,7 @@ class OAuthTool:
 
         # Check for auth code
         auth_code = run_context.get_oauth_auth_code(self.oauth_config.tool_name)
+
         if auth_code:
             token = await self._exchange_code_for_token(auth_code, run_context)
             if token:
@@ -41,11 +46,23 @@ class OAuthTool:
         # Start OAuth flow
         return await self._start_oauth_flow(run_context)
 
+    def _get_secret(self, key: str, run_context: RunContext) -> Optional[str]:
+        """Get secret from environment or secrets database"""
+        # First try environment variables (including .env file)
+        value = os.getenv(key)
+        if value:
+            return value
+            
+        # Then try secrets database through run_context
+        return run_context.get_secret(key)
+
     async def _start_oauth_flow(self, run_context: RunContext) -> OAuthFlowResult:
         """Initialize OAuth authorization flow"""
-        client_id = os.getenv(self.oauth_config.client_id_key)
+        
+        client_id = self._get_secret(self.oauth_config.client_id_key, run_context)
+
         if not client_id:
-            raise ValueError(f"{self.oauth_config.client_id_key} not found in environment variables")
+            raise ValueError(f"{self.oauth_config.client_id_key} not found in environment variables or secrets")
 
         callback_url = run_context.get_oauth_callback_url(self.oauth_config.tool_name)
         
@@ -70,8 +87,8 @@ class OAuthTool:
 
     async def _exchange_code_for_token(self, auth_code: str, run_context: RunContext) -> Optional[str]:
         """Exchange OAuth code for access token"""
-        client_id = os.getenv(self.oauth_config.client_id_key)
-        client_secret = os.getenv(self.oauth_config.client_secret_key)
+        client_id = self._get_secret(self.oauth_config.client_id_key, run_context)
+        client_secret = self._get_secret(self.oauth_config.client_secret_key, run_context)
 
         if not client_id or not client_secret:
             return None
@@ -96,7 +113,7 @@ class OAuthTool:
             )
 
             if response.status_code == 200:
-                token_data = await response.json()
+                token_data = response.json()
                 access_token = token_data.get("access_token")
                 if access_token:
                     run_context.set_oauth_token(self.oauth_config.tool_name, access_token)

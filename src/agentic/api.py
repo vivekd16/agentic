@@ -9,6 +9,8 @@ import asyncio
 from agentic.actor_agents import ProcessRequest, ResumeWithInputRequest
 from agentic.events import AgentDescriptor, DebugLevel
 from agentic.utils.json import make_json_serializable
+from agentic.swarm.types import RunContext
+from agentic.db.db_manager import DatabaseManager
 
 
 class AgentAPIServer:
@@ -49,6 +51,79 @@ class AgentAPIServer:
             """Discovery endpoint that lists all available agents"""
             return [f"/{name}" for name in self.agent_registry.keys()]
         
+        @self.app.get("/{agent_name}/oauth/callback/{tool_name}")
+        async def handle_oauth_static_callback(
+            agent_name: str,
+            tool_name: str,
+            request: Request
+        ) -> dict:
+            """Static OAuth callback endpoint that extracts run_id from state parameter"""
+            params = dict(request.query_params)
+            run_id = params.get("state")
+            
+            if not run_id:
+                raise HTTPException(status_code=400, detail="No state/run_id provided in OAuth callback")
+                
+            # Forward to main OAuth handler
+            return await handle_oauth_callback(run_id, tool_name, agent_name, request)
+
+        @self.app.get("/{agent_name}/oauth/{run_id}/{tool_name}") 
+        async def handle_oauth_callback(
+            run_id: str,
+            tool_name: str,
+            agent_name: str,
+            request: Request
+        ) -> dict:
+            """Core OAuth callback handler implementation"""
+
+            if agent_name not in self.agent_registry:
+                raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+
+            params = dict(request.query_params)
+            auth_code = params.get("code")
+            
+            if not auth_code:
+                raise HTTPException(status_code=400, detail="No authorization code provided in OAuth callback")
+
+            # Get the run context from the database
+            db_manager = DatabaseManager()
+            run = db_manager.get_run(run_id)
+            if not run:
+                raise HTTPException(status_code=404, detail=f"No run found with ID {run_id}")
+
+            # Find the agent instance for this run
+            agent = next((a for a in self.agent_instances if a.name == run.agent_id), None)
+
+            if not agent:
+                raise HTTPException(status_code=404, detail=f"No agent found for run {run_id}")
+
+            # Create RunContext for storing auth code
+            run_context = RunContext(
+                agent=agent._agent,
+                agent_name=agent.name,
+                debug_level=DebugLevel(""),
+                run_id=run_id,
+            )
+
+            # Store auth code
+            run_context.set_oauth_auth_code(tool_name, auth_code)
+            
+            # Store any additional OAuth params (except code and state)
+            for key, value in params.items():
+                if key not in ["code", "state"]:
+                    run_context[f"{tool_name}_oauth_{key}"] = value
+
+            return {
+                "status": "success", 
+                "message": "Authorization successful",
+                "stored_values": {
+                    "auth_code": auth_code,
+                    "tool_name": tool_name,
+                    "additional_params": {k:v for k,v in params.items() 
+                                       if k not in ["code", "state"]}
+                }
+            }
+
         # Create router for agent endpoints
         agent_router = APIRouter()
         

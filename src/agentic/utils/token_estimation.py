@@ -62,9 +62,26 @@ def should_compress_context(
     Returns:
         Tuple[bool, int, int]: (should_compress, current_tokens, max_allowed_tokens)
     """
+    # Special case for mock models
+    if model.startswith("mock/"):
+        # Use a reasonable default for mock models
+        context_window = 16000
+        safety_margin = int(context_window * safety_factor)
+        max_allowed_tokens = context_window - safety_margin
+        
+        # Approximate token count for mock models
+        current_tokens = sum(len(m.get("content", "")) // 4 for m in messages if "content" in m)
+        
+        return current_tokens > max_allowed_tokens, current_tokens, max_allowed_tokens
+    
     # Get model context window size
-    model_info = litellm.get_model_info(model)
-    context_window = model_info.get("max_input_tokens", 128000)
+    try:
+        model_info = litellm.get_model_info(model)
+        context_window = model_info.get("max_input_tokens", 128000)
+    except Exception as e:
+        # Fallback to default if model info can't be retrieved
+        logging.warning(f"Failed to get model info for {model}: {e}")
+        context_window = 128000
     
     # Calculate safety margin
     safety_margin = int(context_window * safety_factor)
@@ -98,9 +115,27 @@ def create_compressed_messages(
     """
     from agentic.utils.summarizer import summarize_chat_history
     
+    # Special case for mock models
+    if model.startswith("mock/"):
+        # Use a reasonable default for mock models
+        context_window = 16000
+        target_token_count = int(context_window * target_percentage)
+        
+        # For mock models, we'll just return a simplified message list
+        if len(messages) <= 4:
+            return messages
+            
+        # Return system message + latest messages
+        return [messages[0]] + messages[-3:]
+    
     # Get model context window size
-    model_info = litellm.get_model_info(model)
-    context_window = model_info.get("max_input_tokens", 128000)
+    try:
+        model_info = litellm.get_model_info(model)
+        context_window = model_info.get("max_input_tokens", 128000)
+    except Exception as e:
+        # Fallback to default if model info can't be retrieved
+        logging.warning(f"Failed to get model info for {model}: {e}")
+        context_window = 128000
     
     # Calculate target token count
     target_token_count = int(context_window * target_percentage)

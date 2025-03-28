@@ -529,6 +529,7 @@ class MeetingBaasTool(BaseAgenticTool):
                 if meeting_data and meeting_data.get("bot_data"):
                     transcripts = meeting_data["bot_data"]["transcripts"]
                     created_at = meeting_data["bot_data"]["bot"].get("created_at")
+                    ended_at = meeting_data["bot_data"]["bot"].get("ended_at")
 
                     # Generate meeting summary using helper method
                     summary_result = self._generate_meeting_summary(transcripts, created_at)
@@ -547,7 +548,7 @@ class MeetingBaasTool(BaseAgenticTool):
                         name=meeting_name,
                         url=meeting_url,
                         start_time=created_at,
-                        end_time=datetime.now().isoformat(),
+                        end_time=ended_at,
                         duration=meeting_data.get("duration", 0),
                         transcript=json.dumps(transcripts),
                         summary=meeting_summary,

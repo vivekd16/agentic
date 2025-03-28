@@ -1,28 +1,27 @@
-from typing import Any, Callable, Optional, Dict
+from typing import Callable, Optional, Dict, List
 import requests
-import traceback
 from datetime import datetime, timedelta
+import aiohttp
 from sqlalchemy import create_engine, Column, String, Integer, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from openai import OpenAI
 import json, os
+from pydantic import BaseModel
+import weaviate
 
 from .base import BaseAgenticTool
 from .registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
 from agentic.common import RunContext
 from agentic.utils.directory_management import get_runtime_directory
-from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker
-import logging  
+from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker, search_collection
 
-# Configure logging  
-logging.basicConfig(  
-    level=logging.INFO,  # Set the minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)  
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Set the log format  
-    datefmt="%Y-%m-%d %H:%M:%S",  # Set the date format  
-)  
-logger = logging.getLogger(__name__)
+
+class MeetingSummary(BaseModel):
+    meeting_name: str
+    meeting_summary: str
+    attendees: List[str]
 
 Base = declarative_base()
 
@@ -43,7 +42,7 @@ class Meeting(Base):
 
 @tool_registry.register(
     name="MeetingTool",
-    description="A tool for managing video meetings, recording transcripts, and generating summaries",
+    description="A tool for managing video meetings, recording transcripts, getting meeting info and summaries",
     dependencies=[
         Dependency("openai", type="pip", version="1.63.2")
     ],
@@ -73,24 +72,36 @@ class MeetingBaasTool(BaseAgenticTool):
             
             self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
         except ValueError as e:
-            logger.error(f"Error initializing MeetingBaasTool: {e}")
+            print(f"Error initializing MEETING_BAAS_Tool: {e}")
             self.meeting_baas_api_key = None
 
     def get_tools(self) -> list[Callable]:
         return [
             self.join_meeting,
-            self.get_transcript,
-            self.get_summary,
+            self.get_meeting_transcript,
+            self.get_meeting_summary,
             self.list_meetings,
             self.get_meeting_info,
-            self.answer_question,
-            self.process_webhook
+            self.process_webhook,
+            self.check_bot_status
         ]
 
     def _initialize_rag(self):
         """Initialize the RAG components"""
         if not self._rag_initialized:
-            self._weaviate_client = init_weaviate()
+            try:
+                # First try to connect to existing instance
+                self._weaviate_client = weaviate.connect_to_local(
+                    port=8079,
+                    grpc_port=50060
+                )
+                print("Connected to existing Weaviate instance")
+            except Exception as e:
+                print(f"Could not connect to existing instance: {e}")
+                print("Creating new embedded instance...")
+                # If connection fails, create new embedded instance
+                self._weaviate_client = init_weaviate()
+            
             create_collection(self._weaviate_client, "meeting_summaries")
             self._vector_store = self._weaviate_client.collections.get("meeting_summaries")
             self._embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
@@ -134,8 +145,8 @@ class MeetingBaasTool(BaseAgenticTool):
         run_context: RunContext,
         bot_name: str = "Meeting Assistant"
     ) -> dict:
-        """Join a video meeting and start recording"""
-        logger.info(self.meeting_baas_api_key)
+        """Dispatches a bot to join a meeting and return the bot id"""
+        print("Joining call.....")
         
         try:
             headers = {
@@ -181,37 +192,34 @@ class MeetingBaasTool(BaseAgenticTool):
             
             if response.status_code == 200:
                 meeting_data = response.json()
-                
+                bot_id = meeting_data["bot_id"]
                 # Store meeting in database
                 session = self._get_session()
                 meeting = Meeting(
-                    id=meeting_data["bot_id"],
+                    id=bot_id,
                     url=meeting_url,
                     start_time=datetime.now().isoformat(),
-                    status="joining"
+                    status="joining_call"
                 )
                 session.add(meeting)
                 session.commit()
                 
                 return {
-                    "status": "success",
-                    "meeting_id": meeting_data["bot_id"],
-                    "message": "Bot is joining the meeting"
+                    "joining_call": f"Joining call... The bot will join the meeting and take notes. Your bot_id is {bot_id}"
                 }
             else:
                 return {
-                    "status": "error",
                     "message": f"Failed to join meeting: {response.text}"
                 }
                 
         except Exception as e:
             return {
-                "status": "error", 
                 "message": f"Error joining meeting: {str(e)}"
             }
 
-    def get_transcript(self, meeting_id: str) -> dict:  
+    def get_meeting_transcript(self, meeting_id: str) -> dict:  
         """Get the transcript for a specific meeting and save it to the database if not already present"""  
+        print('getting meeting transcript........')
         try:  
             session = self._get_session()  
             meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
@@ -245,80 +253,38 @@ class MeetingBaasTool(BaseAgenticTool):
             return {"status": "error", "message": f"Error fetching transcript: {str(e)}"}  
 
 
-    def get_summary(self, meeting_id: str) -> dict:
-        """Generate a detailed summary of the meeting"""
+    def get_meeting_summary(self, meeting_id: str) -> dict:
+        """Get summary for a specific meeting"""
+        print('getting meeting summary........')
         try:
-            transcript_result = self.get_transcript(meeting_id)
+            # First check if summary exists in database
+            session = self._get_session()
+            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
+            
+            if meeting and meeting.summary:
+                return {
+                    "status": "success",
+                    "summary": meeting.summary
+                }
+            
+            # If no summary exists, get transcript and generate one
+            transcript_result = self.get_meeting_transcript(meeting_id)
             if transcript_result["status"] == "error":
                 return transcript_result
                 
             transcript = transcript_result["transcript"]
             
-            formatted_transcript = ""
-            for entry in transcript:
-                if entry.get('words'):
-                    words = ' '.join([word['text'] for word in entry['words']])
-                    speaker = entry['speaker']
-                    formatted_transcript += f"{speaker}: {words}\n"
-
-            system_prompt = """
-                                Please provide a detailed summary of this meeting transcript. Include:
-                                1. Main topics discussed
-                                2. Key decisions made
-                                3. Action items and assignments
-                                4. Important points raised by each participant
-                                5. Timeline of major discussion points
-                                Format the summary in clear sections with headers.
-
-                                """
-
-            client = OpenAI(api_key=self.openai_api_key)
-
-            response = client.beta.chat.completions.parse(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": formatted_transcript},
-                ]
-            )
+            # Generate summary using helper method
+            summary_result = self._generate_meeting_summary(transcript, meeting.start_time if meeting else None)
+            if summary_result["status"] == "error":
+                return summary_result
+                
+            detailed_summary = summary_result["response"].meeting_summary
             
-            detailed_summary = response.choices[0].message.parsed
-            
-            session = self._get_session()
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()
+            # Save to database
             if meeting:
                 meeting.summary = detailed_summary
                 session.commit()
-            
-            # Initialize RAG if needed
-            self._initialize_rag()
-            
-            # Use chonkie for semantic chunking (imported via rag_helper)
-            chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
-            chunks = chunker(detailed_summary)
-            chunks_text = [chunk.text for chunk in chunks]
-            
-            # Generate embeddings for chunks
-            embeddings = list(self._embed_model.embed(chunks_text))
-            
-            # Index chunks in Weaviate
-            with self._vector_store.batch.dynamic() as batch:
-                for i, chunk in enumerate(chunks):
-                    vector = embeddings[i].tolist()
-                    batch.add_object(
-                        properties={
-                            "content": chunk.text,
-                            "document_id": meeting_id,
-                            "chunk_index": i,
-                            "filename": f"meeting_{meeting_id}_summary",
-                            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                            "mime_type": "text/plain",
-                            "source_url": "None",
-                            "summary": "Meeting summary chunk",
-                            "fingerprint": meeting_id,
-                        },
-                        vector=vector
-                    )
             
             return {
                 "status": "success",
@@ -333,6 +299,7 @@ class MeetingBaasTool(BaseAgenticTool):
 
     def list_meetings(self) -> dict:
         """List all recorded meetings"""
+        print('listing meetings........')
         try:
             session = self._get_session()
             meetings = session.query(Meeting).all()
@@ -359,238 +326,368 @@ class MeetingBaasTool(BaseAgenticTool):
                 "message": f"Error listing meetings: {str(e)}"
             }
 
-    def get_meeting_info(self, meeting_id: str) -> dict:  
+    def get_meeting_info(self, meeting_id: str = None, user_query: str = None) -> dict:  
         """  
-        Retrieve detailed information about a specific meeting.  
-        Includes metadata, transcript, and summary if available.  
+        Retrieve information about meetings.
+        If meeting_id is provided, search only that meeting.
+        If user_query is provided, search the knowledge index.
+        Falls back to database if knowledge search fails or no query provided.
         """  
+        print('getting meeting info........')
         try:  
-            # Establish a database session  
-            session = self._get_session()  
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
+            # If we have a query, try searching the knowledge index first
+            if user_query:
+                try:
+                    self._initialize_rag()
+                    embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
+                    
+                    # Set filters only if meeting_id is provided
+                    filters = {"document_id": meeting_id} if meeting_id else None
+                    
+                    # Search the knowledge index
+                    collection = self._weaviate_client.collections.get("meeting_summaries")
+                    search_results = search_collection(
+                        collection=collection,
+                        query=user_query,
+                        embed_model=embed_model,
+                        limit=5 if not meeting_id else 1,  # Return more results if searching all meetings
+                        filters=filters
+                    )
+
+                    if search_results and not search_results[0].get("error"):
+                        return {
+                            "status": "success",
+                            "content": search_results[0]["content"] if meeting_id else [r["content"] for r in search_results]
+                        }
+                except Exception as e:
+                    print(f"Knowledge index search failed: {str(e)}")
+
+            # Fall back to database query
+            session = self._get_session()
+            if meeting_id:
+                meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
             
-            # Check whether the meeting exists  
-            if not meeting:  
-                return {"status": "error", "message": f"Meeting with ID '{meeting_id}' not found"}  
+                if not meeting:  
+                    return {"status": "error", "message": f"Meeting with ID '{meeting_id}' not found"}  
 
-            # Fetch meeting metadata  
-            meeting_info = {  
-                "id": meeting.id,  
-                "name": meeting.name or "Untitled",  
-                "start_time": meeting.start_time,  
-                "end_time": meeting.end_time,  
-                "duration": str(timedelta(seconds=meeting.duration)) if meeting.duration else "Unknown",  
-                "status": meeting.status,  
-            }  
+                meeting_info = {  
+                    "id": meeting.id,  
+                    "name": meeting.name or "Untitled",  
+                    "start_time": meeting.start_time,  
+                    "end_time": meeting.end_time,  
+                    "duration": str(timedelta(seconds=meeting.duration)) if meeting.duration else "Unknown",  
+                    "status": meeting.status
+                }  
 
-            # Fetch transcript  
-            transcript_result = self.get_transcript(meeting_id)  
-            if transcript_result["status"] == "success":  
-                meeting_info["transcript"] = transcript_result["transcript"]  
-            else:  
-                meeting_info["transcript_error"] = transcript_result["message"]  
+                return {"status": "success", "meeting_info": meeting_info}  
 
-            # Fetch summary  
-            summary_result = self.get_summary(meeting_id)  
-            if summary_result["status"] == "success":  
-                meeting_info["summary"] = summary_result["summary"]  
-            else:  
-                meeting_info["summary_error"] = summary_result["message"]  
+            return {"status": "error", "message": "No meeting ID provided"}
 
-            return {"status": "success", "meeting_info": meeting_info}  
-
-        except Exception as e:  
+        except Exception as e:
             return {"status": "error", "message": f"Error fetching meeting info: {str(e)}"}
 
-    def answer_question(self, meeting_id: str, question: str) -> dict:
-        """Answer a question related to a specific meeting"""
+    def _generate_meeting_summary(self, transcript_data: list, meeting_time: str = None) -> dict:
+        """Generate meeting summary using OpenAI GPT-4o"""
         try:
-            self._initialize_rag()
-        
-            # First try to get relevant chunks from vector store
-            if self._vector_store:
-                # Search for relevant chunks in the vector database
-                query_embedding = self._embed_model.embed(question)
-                search_results = self._vector_store.query.near_vector(
-                    vector=query_embedding.tolist(),
-                    limit=3,
-                    return_properties=["content", "document_id"],
-                    where={"document_id": meeting_id}
-                )
-                
-                if search_results.objects:
-                    # Return the relevant chunks as context
-                    context_chunks = [obj.properties["content"] for obj in search_results.objects]
-                    return {
-                        "status": "success",
-                        "context": "\n\n".join(context_chunks),
-                        "source": "vector_search"
-                    }
-            
-            # Fallback to using the full summary if vector search fails or returns no results
-            meeting_summary_result = self.get_summary(meeting_id)
-            if meeting_summary_result["status"] == "error":
-                return meeting_summary_result
-                
-            summary = meeting_summary_result["summary"]
-            
+            # Convert transcript data to a format suitable for GPT
+            formatted_transcript = ""
+            for entry in transcript_data:
+                if entry.get('words'):
+                    words = ' '.join([word['text'] for word in entry['words']])
+                    start_time = entry['start_time']
+                    timestamp = f"{int(start_time//60):02d}:{int(start_time%60):02d}"
+                    speaker = entry['speaker']
+                    formatted_transcript += f"[{timestamp}] {speaker}: {words}\n"
+
+            # Format meeting time if provided
+            time_str = "unknown time"
+            if meeting_time:
+                try:
+                    dt = datetime.fromisoformat(meeting_time)
+                    time_str = dt.strftime("%B %d, %Y at %I:%M %p")
+                except ValueError:
+                    print(f"Warning: Could not parse meeting time: {meeting_time}")
+
+            system_prompt = f"""You will be provided with the transcript of a meeting, 
+                        and your goal will be to output the summary of the meeting, along with the meeting name and meeting attendees.
+                        Please provide the meeting summary in markdown format. 
+                        The summary should use the following format. Each meeting section summary should cover approximately 5 mins of elapsed time in the transcript. Follow this report format for the meeting summary:
+                        --------------
+                        ## Meeting at {time_str} with {{number of attendees}} attendees
+                        ### Attendees: {{command separated list of meeting attendees, in alphabetical order}}
+
+                        ### {{Topic: write summary of the meeting topics}}
+
+                        #### {{Section 1 - heading}}
+                        Summary of the first topic discussed in the meeting.
+
+                        #### {{Section 2 - heading}}
+                        Write additional sections for each major topic of discussion in the meeting.
+                        """
+
+            client = OpenAI(api_key=agentic_secrets.get_required_secret("OPENAI_API_KEY"))
+
+            completion = client.beta.chat.completions.parse(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": formatted_transcript},
+                ],
+                response_format=MeetingSummary,
+            )
+
+            event = completion.choices[0].message.parsed
             return {
                 "status": "success",
-                "context": summary,
-                "source": "full_summary"
+                "response": event
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e)
+            }
+
+    def _save_to_knowledge_index(self, bot_id: str, meeting_name: str, meeting_summary: str, attendees: list) -> None:
+        """Save meeting data to the knowledge index"""
+        self._initialize_rag()
+        collection = self._vector_store
+
+        # Initialize embedding model and chunker
+        embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
+        chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
+
+        # Prepare metadata
+        metadata = {
+            "content": meeting_summary,
+            "document_id": bot_id,
+            "filename": f"meeting_{bot_id}_summary.md",
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "mime_type": "text/markdown",
+            "source_url": "None",
+            "summary": meeting_summary,
+            "fingerprint": bot_id,
+        }
+
+        # Generate chunks and embeddings
+        chunks = chunker(meeting_summary)
+        chunks_text = [chunk.text for chunk in chunks]
+        embeddings = list(embed_model.embed(chunks_text))
+
+        # Index chunks in Weaviate
+        with collection.batch.dynamic() as batch:
+            for i, chunk in enumerate(chunks):
+                vector = embeddings[i].tolist()
+                batch.add_object(
+                    properties={
+                        **metadata,
+                        "content": chunk.text,
+                        "chunk_index": i,
+                    },
+                    vector=vector
+                )
+
+    def clean_markdown(self, markdown_text):
+        """Clean markdown text by removing heading markers and extra whitespace"""
+        if not markdown_text:
+            return ""
+        lines = markdown_text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            cleaned_line = line.lstrip('#').strip()
+            if cleaned_line:
+                cleaned_lines.append(cleaned_line)
+        return '\n'.join(cleaned_lines)
+
+    async def process_webhook(self, webhook_data: dict) -> dict:
+        """Process incoming webhook data from MeetingBaaS"""
+        session = None
+        try:
+            session = self._get_session()
+            
+            print(f"Processing webhook data: {webhook_data}")
+            event = webhook_data.get('event')
+            if event is None:
+                raise RuntimeError("Webhook event key was None")
+
+            event_data = webhook_data.get('data')
+            if event_data is None:
+                raise RuntimeError("Webhook event data was None")
+
+            bot_id = event_data.get("bot_id")           
+            if bot_id is None:
+                raise RuntimeError("Webhook bot_id was None")            
+            
+            # Get existing meeting URL
+            existing_status = session.query(Meeting).filter_by(
+                id=bot_id,
+            ).first()
+            meeting_url = existing_status.url if existing_status else None
+            
+            if event == "complete":
+                print("Processing complete event")
+                meeting_data = await self._fetch_meeting_data(bot_id)
+                if meeting_data and meeting_data.get("bot_data"):
+                    transcripts = meeting_data["bot_data"]["transcripts"]
+                    created_at = meeting_data["bot_data"]["bot"].get("created_at")
+                    ended_at = meeting_data["bot_data"]["bot"].get("ended_at")
+
+                    # Generate meeting summary using helper method
+                    summary_result = self._generate_meeting_summary(transcripts, created_at)
+                    meeting_name = ""
+                    meeting_summary = ""
+                    attendees = []
+
+                    if summary_result["status"] == "success":
+                        meeting_name = summary_result["response"].meeting_name
+                        meeting_summary = self.clean_markdown(summary_result["response"].meeting_summary)
+                        attendees = summary_result["response"].attendees
+
+                    # Save to database
+                    meeting = Meeting(
+                        id=bot_id,
+                        name=meeting_name,
+                        url=meeting_url,
+                        start_time=created_at,
+                        end_time=ended_at,
+                        duration=meeting_data.get("duration", 0),
+                        transcript=json.dumps(transcripts),
+                        summary=meeting_summary,
+                        attendees=json.dumps(attendees),
+                        status="completed",
+                        recording_url=meeting_data.get("mp4", "")
+                    )
+                    session.merge(meeting)
+                    session.commit()
+
+                    # Save to knowledge index
+                    self._save_to_knowledge_index(bot_id, meeting_name, meeting_summary, attendees)
+
+                    print(f"Successfully indexed meeting summary")
+                    return {"status": "success", "message": "Meeting completed and indexed"}
+
+            elif event == "failed":
+                print("Processing failed event")
+                error_code = event_data.get("error", "UnknownError")
+                meeting = Meeting(
+                    id=bot_id,
+                    url=meeting_url,
+                    status=error_code,
+                    transcript="",
+                    summary=f"Meeting failed with error: {error_code}"
+                )
+                session.merge(meeting)
+                session.commit()
+                return {"status": "failed", "error": error_code}
+            
+            elif event == "bot.status_change":
+                print("Bot status changed event")
+                status_code = event_data["status"]["code"]
+                meeting = Meeting(
+                    id=bot_id,
+                    url=meeting_url,
+                    status=status_code
+                )
+                session.merge(meeting)
+                session.commit()
+                return {"status": "updated", "new_status": status_code}
+
+            return {"status": "success", "message": "Webhook processed"}
+            
+        except Exception as e:
+            print(f"Error processing webhook: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Error processing webhook: {str(e)}"
+            }
+        finally:
+            if session:
+                session.close()
+
+    async def _fetch_meeting_data(self, bot_id: str) -> Optional[dict]:
+        """Fetch meeting data from MeetingBaaS API"""
+        try:
+            url = f"https://api.meetingbaas.com/bots/meeting_data"
+            api_key = self.meeting_baas_api_key
+            if not api_key:
+                return {"error": "No API key available for MeetingBaaS"}
+
+            headers = {
+                "x-meeting-baas-api-key": api_key
+            }
+            params = {"bot_id": bot_id}
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, params=params) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    return None
+                    
+        except Exception as e:
+            return {"error": f"Exception occurred: {str(e)}"}
+
+    async def check_bot_status(self, bot_id: str) -> dict:
+        """Check the current status of a bot"""
+        print('checking bot status.........')
+        try:
+            session = self._get_session()
+            
+            # First check meeting_status for current status or failures
+            status = session.query(Meeting).filter_by(id=bot_id).first()
+            
+            if status:
+                # Map status codes to more descriptive states
+                status_descriptions = {
+                    "joining_call": "Bot is attempting to join the meeting",
+                    "in_waiting_room": "Bot is waiting to be admitted",
+                    "in_call_not_recording": "Bot has joined but not yet recording",
+                    "in_call_recording": "Bot is in the meeting and recording",
+                    "call_ended": "Meeting has ended",
+                    "completed": "Meeting has been successfully recorded",
+                    # Error states
+                    "CannotJoinMeeting": "Failed: Unable to join meeting - check meeting URL and permissions",
+                    "TimeoutWaitingToStart": "Failed: Timed out waiting to be admitted",
+                    "BotNotAccepted": "Failed: Bot was not accepted into the meeting",
+                    "InternalError": "Failed: Internal system error occurred",
+                    "InvalidMeetingUrl": "Failed: Invalid meeting URL provided"
+                }
+
+                description = status_descriptions.get(status.status, "Unknown status")
+
+                # If call has ended, get additional details
+                if status.status == "call_ended":
+                    return {
+                        "status": "completed",
+                        "error": None,
+                        "details": {
+                            "meeting_name": status.name,
+                            "created_at": status.start_time,
+                            "ended_at": status.end_time,
+                            "duration": status.duration,
+                            "description": description
+                        },
+                        "timestamp": status.end_time
+                    }
+
+                return {
+                    "status": status.status,
+                    "error": None,
+                    "details": {
+                        "description": description
+                    },
+                    "timestamp": status.start_time
+                }
+            
+            return {
+                "status": "not_found",
+                "error": "Bot ID not found in system",
+                "details": None,
+                "timestamp": datetime.now().isoformat()
             }
             
         except Exception as e:
             return {
                 "status": "error",
-                "message": f"Error answering question: {str(e)}"
-            }
-
-    def process_webhook(self, webhook_data: dict) -> dict:  
-        """  
-        Process webhook data received from MeetingBaaS.  
-
-        This function parses the webhook data and updates the meeting object in the database.  
-        
-        Args:  
-            webhook_data (dict): The webhook data received from MeetingBaaS.  
-            
-        Returns:  
-            dict: A dictionary containing the processing status and any updated meeting information.  
-        """  
-        session = None  
-        try:  
-            # Validate webhook data
-            if not isinstance(webhook_data, dict):
-                return {  
-                    "status": "error",  
-                    "message": "Invalid webhook data format: expected dictionary"  
-                }
-                
-            # Log the incoming webhook data for debugging
-            logger.info(f"Received webhook data: {json.dumps(webhook_data, indent=2)}")
-            
-            meeting_id = webhook_data.get("bot_id")  
-
-            if not meeting_id:  
-                return {  
-                    "status": "error",  
-                    "message": "No bot_id found in webhook data"  
-                }  
-
-            # Get database session
-            session = self._get_session()  
-
-            # Fetch the meeting from the database.  
-            meeting = session.query(Meeting).filter_by(id=meeting_id).first()  
-            if not meeting:  
-                logger.warning(f"Meeting with ID {meeting_id} not found in database")
-                # Create a new meeting record if it doesn't exist
-                meeting = Meeting(
-                    id=meeting_id,
-                    status="created_from_webhook",
-                    start_time=datetime.now().isoformat()
-                )
-                session.add(meeting)
-                logger.info(f"Created new meeting record for ID {meeting_id}")
-
-            event_type = webhook_data.get("event", "unknown_event")  
-            logger.info(f"Processing webhook for Meeting ID: {meeting_id}, Event: {event_type}")  
-
-            # Detailed handling logic based on event type.  
-            if event_type == "complete":  
-                logger.info(f"Webhook indicates meeting '{meeting_id}' is complete")  
-
-                # Update recording URL and transcript from bot data.  
-                bot_data = webhook_data.get("bot_data", {})  
-                if bot_data:  
-                    # Save the transcript.  
-                    transcripts = bot_data.get("transcripts", [])
-                    if transcripts:
-                        meeting.transcript = json.dumps(transcripts)
-                        logger.info(f"Saved transcript for meeting {meeting_id}")
-
-                    # Save the recording URL (if available).  
-                    recording_url = bot_data.get("mp4", None)
-                    if recording_url:
-                        meeting.recording_url = recording_url
-                        logger.info(f"Saved recording URL: {recording_url}")
-
-                # Set end time and calculate duration.  
-                meeting.end_time = datetime.now().isoformat()  
-                if meeting.start_time:  
-                    try:
-                        start_dt = datetime.fromisoformat(meeting.start_time)  
-                        end_dt = datetime.fromisoformat(meeting.end_time)  
-                        meeting.duration = int((end_dt - start_dt).total_seconds())
-                        logger.info(f"Meeting duration: {meeting.duration} seconds")
-                    except ValueError as e:
-                        logger.error(f"Error calculating duration: {str(e)}")
-                        meeting.duration = 0
-                
-                # Fetch or generate a summary if needed.  
-                if not meeting.summary and meeting.transcript:  
-                    try:
-                        logger.info(f"Generating summary for meeting {meeting_id}")
-                        summary_result = self.get_summary(meeting_id)  
-                        if summary_result.get("status") == "success":  
-                            meeting.summary = summary_result["summary"]
-                            logger.info(f"Summary generated successfully")
-                        else:
-                            logger.warning(f"Failed to generate summary: {summary_result.get('message', 'Unknown error')}")
-                    except Exception as summary_error:
-                        logger.error(f"Error generating summary: {str(summary_error)}")
-
-                meeting.status = "completed"  
-
-            elif event_type == "failed":  
-                error_code = webhook_data.get("error", "UnknownError")  
-                error_details = webhook_data.get("error_details", "No details provided")
-                logger.warning(f"Webhook indicates meeting '{meeting_id}' failed with error: {error_code}, details: {error_details}")  
-                meeting.status = "failed"  
-            
-            elif event_type == "bot.status_change":  
-                status = webhook_data.get("status", {})
-                if not isinstance(status, dict):
-                    status = {}
-                    
-                status_code = status.get("code", "unknown_status")  
-                status_message = status.get("message", "No status message")
-                logger.info(f"Bot status changed for meeting '{meeting_id}', new status: {status_code}, message: {status_message}")  
-                meeting.status = status_code  
-            
-            else:  
-                logger.warning(f"Unhandled webhook event type: {event_type} for meeting: {meeting_id}")  
-
-            # Commit all updates to the database.  
-            try:
-                session.commit()  
-                logger.info(f"Successfully committed changes to database for meeting {meeting_id}")
-            except Exception as db_error:
-                session.rollback()
-                logger.error(f"Database error during commit: {str(db_error)}")
-                return {  
-                    "status": "error",  
-                    "message": f"Database error: {str(db_error)}",  
-                    "meeting_id": meeting_id  
-                }
-
-            return {  
-                "status": "success",  
-                "message": f"Webhook processed successfully for event '{event_type}'",  
-                "meeting_id": meeting_id  
-            }  
-
-        except Exception as e:  
-            logger.error(f"Error processing webhook: {str(e)}")
-            logger.error(traceback.format_exc())
-            if session:
-                try:
-                    session.rollback()
-                except:
-                    pass
-            return {  
-                "status": "error",  
-                "message": f"Error processing webhook: {str(e)}",  
-                "meeting_id": webhook_data.get("bot_id", "unknown")  
+                "error": str(e),
+                "details": None,
+                "timestamp": datetime.now().isoformat()
             }

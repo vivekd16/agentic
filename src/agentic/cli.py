@@ -53,15 +53,15 @@ app = typer.Typer()
 def quiet_log(*args):
     print(Colors.DARK_GRAY + " ".join(map(str, args)) + Colors.ENDC)
 
-
-def show_deprecation_warning(old_cmd: str, new_cmd: str):
-    """Show a warning about deprecated commands"""
-    typer.secho(
-        f"Warning: '{old_cmd}' is deprecated and will be removed in a future version.\n"
-        f"Please use '{new_cmd}' instead.",
-        fg=typer.colors.YELLOW,
-        err=True,
-    )
+# We don't need this anymore because we're using the new CLI structure but keeping it here for reference
+# def show_deprecation_warning(old_cmd: str, new_cmd: str):
+#     """Show a warning about deprecated commands"""
+#     typer.secho(
+#         f"Warning: '{old_cmd}' is deprecated and will be removed in a future version.\n"
+#         f"Please use '{new_cmd}' instead.",
+#         fg=typer.colors.YELLOW,
+#         err=True,
+#     )
 
 
 # Add the callback to process global options
@@ -761,174 +761,6 @@ def models_gpt(
 def streamlit():
     """Runs the Streamlit UI"""
     os.execvp("streamlit", ["streamlit", "run", "src/agentic/streamlit/app.py"])
-
-# Hidden deprecated commands that map to new structure
-@app.command(hidden=True)
-def run(args: List[str]):
-    """Deprecated: Use 'shell' instead"""
-    show_deprecation_warning("run", "shell")
-    return shell(args)
-
-@app.command(hidden=True)
-def list_settings():
-    """Deprecated: Use 'settings list' instead"""
-    show_deprecation_warning("list-settings", "settings list")
-    return settings_list()
-
-@app.command(hidden=True)
-def list_secrets():
-    """Deprecated: Use 'secrets list' instead"""
-    show_deprecation_warning("list-secrets", "secrets list")
-    return secrets_list()
-
-@app.command(hidden=True)
-def set(name: str, value: str):
-    """Deprecated: Use 'settings set' instead"""
-    show_deprecation_warning("set", "settings set")
-    return settings_set(name, value)
-
-@app.command(hidden=True)
-def set_secret(name: str, value: str | None = None):
-    """Deprecated: Use 'secrets set' instead"""
-    show_deprecation_warning("set-secret", "secrets set")
-    return secrets_set(name, value)
-
-@app.command(hidden=True)
-def get(name: str):
-    """Deprecated: Use 'settings get' instead"""
-    show_deprecation_warning("get", "settings get")
-    return settings_get(name)
-
-@app.command(hidden=True)
-def get_secret(name: str):
-    """Deprecated: Use 'secrets get' instead"""
-    show_deprecation_warning("get-secret", "secrets get")
-    return secrets_get(name)
-
-@app.command(hidden=True)
-def get_all_secrets():
-    """Deprecated: Use 'secrets list --values' instead"""
-    show_deprecation_warning("get-all-secrets", "secrets list --values")
-    return secrets_list(values=True)
-
-@app.command(hidden=True)
-def delete(name: str):
-    """Deprecated: Use 'settings delete' instead"""
-    show_deprecation_warning("delete", "settings delete")
-    return settings_delete(name)
-
-@app.command(hidden=True)
-def delete_secret(name: str):
-    """Deprecated: Use 'secrets delete' instead"""
-    show_deprecation_warning("delete-secret", "secrets delete")
-    return secrets_delete(name)
-
-@app.command(hidden=True)
-def ollama():
-    """Deprecated: Use 'models ollama' instead"""
-    show_deprecation_warning("ollama", "models ollama")
-    return models_ollama()
-
-@app.command(hidden=True)
-def claude(prompt: str):
-    """Deprecated: Use 'models claude' instead"""
-    show_deprecation_warning("claude", "models claude")
-    return models_claude(prompt)
-
-@app.command(hidden=True)
-def gpt(prompt: str, model: str = typer.Option(GPT_DEFAULT_MODEL)):
-    """Deprecated: Use 'models gpt' instead"""
-    show_deprecation_warning("gpt", "models gpt")
-    return models_gpt(prompt, model)
-
-@app.command(hidden=True)
-def models():
-    """Deprecated: Use 'models list' instead"""
-    show_deprecation_warning("models", "models list")
-    return models_list()
-
-@app.command(hidden=True)
-def index_file(
-    index_name: str,
-    file_path: str,
-    embedding_model: str = typer.Option("BAAI/bge-small-en-v1.5"),
-    chunk_threshold: float = typer.Option(0.5, min=0.1, max=1.0),
-    chunk_delimiters: str = typer.Option(". ,! ,? ,\n"),
-):
-    """Deprecated: Use 'index document add' instead"""
-    show_deprecation_warning("index-file", "index document add")
-    return document_add(
-        index_name,
-        file_path,
-        embedding_model,
-        chunk_threshold,
-        chunk_delimiters,
-    )
-
-@app.command(hidden=True)
-def ui():
-    """Deprecated: Use 'streamlit' instead"""
-    show_deprecation_warning("ui", "streamlit")
-    return streamlit()
-
-@app.command(hidden=True)
-def delete_document(
-    index_name: str,
-    document_identifier: str,
-    confirm: bool = typer.Option(False, "--yes", "-y")
-):
-    """Deprecated: Use 'index document delete' instead"""
-    show_deprecation_warning("delete-document", "index document delete")
-    return document_delete(index_name, document_identifier, confirm)
-
-@app.command(hidden=True)
-def delete_index(name: str, confirm: bool = typer.Option(False, "--yes", "-y")):
-    """Deprecated: Use 'index delete' instead"""
-    show_deprecation_warning("delete-index", "index delete")
-    return index_delete(name, confirm)
-
-@app.command(hidden=True)
-def list_indexes():
-    """Deprecated: Use 'index list' instead"""
-    show_deprecation_warning("list-indexes", "index list")
-    return index_list()
-
-@app.command(hidden=True)
-def rename_index(
-    source_name: str,
-    target_name: str,
-    confirm: bool = typer.Option(False, "--yes", "-y"),
-    overwrite: bool = typer.Option(False, "--overwrite")
-):
-    """Deprecated: Use 'index rename' instead"""
-    show_deprecation_warning("rename-index", "index rename")
-    return index_rename(source_name, target_name, confirm, overwrite)
-
-@app.command(hidden=True)
-def list_documents(index_name: str):
-    """Deprecated: Use 'index document list' instead"""
-    show_deprecation_warning("list-documents", "index document list")
-    return document_list(index_name)
-
-@app.command(hidden=True)
-def show_document(index_name: str, document_identifier: str):
-    """Deprecated: Use 'index document show' instead"""
-    show_deprecation_warning("show-document", "index document show")
-    return document_show(index_name, document_identifier)
-
-@app.command(hidden=True)
-def search(
-    index_name: str,
-    query: str,
-    embedding_model: str = typer.Option("BAAI/bge-small-en-v1.5"),
-    limit: int = typer.Option(5, min=1, max=100),
-    filter: Optional[str] = typer.Option(None),
-    hybrid: bool = typer.Option(False, "--hybrid"),
-    alpha: float = typer.Option(0.5, min=0.0, max=1.0)
-):
-    """Deprecated: Use 'index search' instead"""
-    show_deprecation_warning("search", "index search")
-    return index_search(index_name, query, embedding_model, limit, filter, hybrid, alpha)
 
 def find_agent_instances(file_path):
     """Find Agent instances in a module file"""

@@ -63,8 +63,13 @@ def should_compress_context(
         Tuple[bool, int, int]: (should_compress, current_tokens, max_allowed_tokens)
     """
     # Get model context window size
-    model_info = litellm.get_model_info(model)
-    context_window = model_info.get("max_input_tokens", 128000)
+    try:
+        model_info = litellm.get_model_info(model)
+        context_window = model_info.get("max_input_tokens", 128000)
+    except Exception as e:
+        # Fallback to default if model info can't be retrieved
+        logging.warning(f"Failed to get model info for {model}: {e}")
+        context_window = 128000
     
     # Calculate safety margin
     safety_margin = int(context_window * safety_factor)
@@ -99,8 +104,13 @@ def create_compressed_messages(
     from agentic.utils.summarizer import summarize_chat_history
     
     # Get model context window size
-    model_info = litellm.get_model_info(model)
-    context_window = model_info.get("max_input_tokens", 128000)
+    try:
+        model_info = litellm.get_model_info(model)
+        context_window = model_info.get("max_input_tokens", 128000)
+    except Exception as e:
+        # Fallback to default if model info can't be retrieved
+        logging.warning(f"Failed to get model info for {model}: {e}")
+        context_window = 128000
     
     # Calculate target token count
     target_token_count = int(context_window * target_percentage)

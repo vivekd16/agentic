@@ -1326,39 +1326,39 @@
 <p>Agentic has a basic RAG feature set built on the <a href="https://weaviate.io/">Weaviate</a> vector database.</p>
 <p>You can manage vectorstore indexes using the CLI:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># Chunk a file, calculate chunk embeddings, and add them to the vectorstore</span>
-agentic<span class="w"> </span>index_file<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path&gt;
+agentic<span class="w"> </span>index<span class="w"> </span>document<span class="w"> </span>add<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path&gt;
 
 <span class="c1"># Remove all the chunks of a file from the vector store</span>
-agentic<span class="w"> </span>delete_document<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
+agentic<span class="w"> </span>index<span class="w"> </span>document<span class="w"> </span>delete<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
 
 <span class="c1"># list the indexes</span>
-agentic<span class="w"> </span>list-indexes
+agentic<span class="w"> </span>index<span class="w"> </span>list
 
 <span class="c1"># rename an index</span>
-agentic<span class="w"> </span>rename-index<span class="w"> </span>&lt;from<span class="w"> </span>name&gt;<span class="w"> </span>&lt;to<span class="w"> </span>name&gt;
+agentic<span class="w"> </span>index<span class="w"> </span>rename<span class="w"> </span>&lt;from<span class="w"> </span>name&gt;<span class="w"> </span>&lt;to<span class="w"> </span>name&gt;
 
 <span class="c1"># delete a whole index</span>
-agentic<span class="w"> </span>delete-index<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
+agentic<span class="w"> </span>index<span class="w"> </span>delete<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
 
 <span class="c1"># List the documents in a vector store</span>
-agentic<span class="w"> </span>list-documents<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
+agentic<span class="w"> </span>index<span class="w"> </span>document<span class="w"> </span>list<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;
 
 <span class="c1"># Show the metadata for a doc in the vector store</span>
-agentic<span class="w"> </span>show-document<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
+agentic<span class="w"> </span>index<span class="w"> </span>document<span class="w"> </span>show<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;file<span class="w"> </span>path<span class="p">|</span>document<span class="w"> </span>ID&gt;
 
 <span class="c1"># Perform a search of the vector store. Searches by vector by default, or can do hybrid search</span>
-agentic<span class="w"> </span>search<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;query&gt;<span class="w"> </span><span class="o">[</span><span class="nv">hybrid</span><span class="o">=</span>true<span class="o">]</span>
+agentic<span class="w"> </span>index<span class="w"> </span>search<span class="w"> </span>&lt;index<span class="w"> </span>name&gt;<span class="w"> </span>&lt;query&gt;<span class="w"> </span><span class="o">[</span>--hybrid<span class="o">]</span>
 </code></pre></div>
 
 <p>Example usage:</p>
-<div class="codehilite"><pre><span></span><code>$<span class="w"> </span>agentic<span class="w"> </span>index_file<span class="w"> </span>index1<span class="w"> </span>tests/data/agentic_reasoning.pdf
+<div class="codehilite"><pre><span></span><code>$<span class="w"> </span>agentic<span class="w"> </span>index<span class="w"> </span>document<span class="w"> </span>add<span class="w"> </span>index1<span class="w"> </span>tests/data/agentic_reasoning.pdf
 
-$<span class="w"> </span>agentic<span class="w"> </span>list-documents<span class="w"> </span>index1
+$<span class="w"> </span>agentic<span class="w"> </span>index<span class="w"> </span>document<span class="w"> </span>list<span class="w"> </span>index1
 <span class="w">                                                         </span>Documents<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="s1">&#39;index1&#39;</span><span class="w"> </span><span class="o">(</span><span class="m">3</span><span class="o">)</span><span class="w">                                                         </span>
 -<span class="w"> </span>agentic_reasoning.pdf<span class="w"> </span>
 <span class="w">  </span>ID:<span class="w"> </span>27c0600f...<span class="w"> </span><span class="p">|</span><span class="w"> </span>Chunks:<span class="w"> </span><span class="m">19</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>Last<span class="w"> </span>indexed:<span class="w"> </span><span class="m">2025</span>-02-22<span class="w"> </span><span class="m">05</span>:54:51+00:00
 
-$<span class="w"> </span>agentic<span class="w"> </span>search<span class="w"> </span>index1<span class="w"> </span><span class="s2">&quot;reasoning models&quot;</span>
+$<span class="w"> </span>agentic<span class="w"> </span>index<span class="w"> </span>search<span class="w"> </span>index1<span class="w"> </span><span class="s2">&quot;reasoning models&quot;</span>
 <span class="w">                                                     </span>Result<span class="w"> </span><span class="m">1</span><span class="w"> </span>-<span class="w"> </span>agentic_reasoning.pdf<span class="w">                                                      </span>
 -<span class="w"> </span>Source:<span class="w"> </span>None
 -<span class="w"> </span>Date:<span class="w"> </span><span class="m">2025</span>-02-22<span class="w"> </span><span class="m">05</span>:54:51+00:00
@@ -1369,10 +1369,21 @@ $<span class="w"> </span>agentic<span class="w"> </span>search<span class="w"> <
 
 <p>And to use RAG with an agent, via <em>agentic RAG</em>, just enable the RAG Tool:</p>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools.rag_tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">RAGTool</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools.mcp_tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">MCPTool</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentic.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span>
+
+<span class="c1"># Create Sequential Thinking MCP tool</span>
+<span class="n">sequential_thinker</span> <span class="o">=</span> <span class="n">MCPTool</span><span class="p">(</span>
+    <span class="n">command</span><span class="o">=</span><span class="s2">&quot;npx&quot;</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;-y&quot;</span><span class="p">,</span> <span class="s2">&quot;@modelcontextprotocol/server-sequential-thinking&quot;</span><span class="p">]</span>
+<span class="p">)</span>
 
 <span class="n">agent</span><span class="o">=</span><span class="n">Agent</span><span class="p">(</span>
     <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Agent with RAG&quot;</span><span class="p">,</span>
-    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">RAGTool</span><span class="p">(</span><span class="s2">&quot;index1&quot;</span><span class="p">)]</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">RAGTool</span><span class="p">(</span><span class="s2">&quot;index1&quot;</span><span class="p">),</span>
+        <span class="n">sequential_thinker</span>
+    <span class="p">]</span>
 <span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">agent</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;What do we know about reasoning models?&quot;</span><span class="p">)</span>
 </code></pre></div>

@@ -62,18 +62,6 @@ def should_compress_context(
     Returns:
         Tuple[bool, int, int]: (should_compress, current_tokens, max_allowed_tokens)
     """
-    # Special case for mock models
-    if model.startswith("mock/"):
-        # Use a reasonable default for mock models
-        context_window = 16000
-        safety_margin = int(context_window * safety_factor)
-        max_allowed_tokens = context_window - safety_margin
-        
-        # Approximate token count for mock models
-        current_tokens = sum(len(m.get("content", "")) // 4 for m in messages if "content" in m)
-        
-        return current_tokens > max_allowed_tokens, current_tokens, max_allowed_tokens
-    
     # Get model context window size
     try:
         model_info = litellm.get_model_info(model)
@@ -114,19 +102,6 @@ def create_compressed_messages(
         List[Dict[str, Any]]: Compressed message list
     """
     from agentic.utils.summarizer import summarize_chat_history
-    
-    # Special case for mock models
-    if model.startswith("mock/"):
-        # Use a reasonable default for mock models
-        context_window = 16000
-        target_token_count = int(context_window * target_percentage)
-        
-        # For mock models, we'll just return a simplified message list
-        if len(messages) <= 4:
-            return messages
-            
-        # Return system message + latest messages
-        return [messages[0]] + messages[-3:]
     
     # Get model context window size
     try:

@@ -98,6 +98,7 @@ build-backend = "setuptools.build_meta"
 package-dir = {"" = "src", "agentic_examples" = "examples"}
 packages = [
     "agentic", 
+    "agentic.custom_models",
     "agentic.tools",
     "agentic.swarm",
     "agentic.streamlit",

@@ -102,5 +102,8 @@ packages = [
     "agentic.swarm",
     "agentic.streamlit",
     "agentic.dashboard",
+    "agentic.db",
+    "agentic.utils",
+    "agentic.ui",
     "agentic_examples"
 ]

@@ -51,17 +51,18 @@ def get_machine_id():
     if os.name == "nt":  # Windows
         output = subprocess.check_output("wmic csproduct get UUID", shell=True)
         return output.decode().split("\n")[1].strip()
-    elif os.path.exists("/etc/machine-id"):  # Linux/macOS
+    elif os.path.exists("/etc/machine-id"):  # Linux
         return open("/etc/machine-id").read().strip()
-    else:  # macOS alternative
-        output = subprocess.check_output(
-            ["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"]
-        )
-        for line in output.decode().split("\n"):
-            if "IOPlatformUUID" in line:
-                return line.split('"')[-2]
-    return None
-
+    elif os.path.exists("/proc/sys/kernel/random/boot_id"):  # Alternative for some Linux systems
+        return open("/proc/sys/kernel/random/boot_id").read().strip()
+    else:  # Docker or other environments
+        # Create a fixed ID for Docker containers or use a fallback mechanism
+        docker_id_path = "/tmp/docker-machine-id"
+        if not os.path.exists(docker_id_path):
+            import uuid
+            with open(docker_id_path, "w") as f:
+                f.write(str(uuid.uuid4()))
+        return open(docker_id_path).read().strip()
 
 def generate_fernet_key():
     """Generate a valid Fernet key from machine-specific data."""

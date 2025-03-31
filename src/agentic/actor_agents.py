@@ -298,14 +298,11 @@ class ActorBaseAgent:
             try:
                 if asyncio.iscoroutinefunction(function_map[name]):
                     try:
-                        # Try to get the current event loop
                         loop = asyncio.get_running_loop()
                     except RuntimeError:
-                        # No running event loop, create and set a new one
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
                     
-                    # Run the coroutine
                     raw_result = loop.run_until_complete(function_map[name](**args))
                 elif inspect.isgeneratorfunction(function_map[name]):
                     # We use our generator for our call_child function. I guess we could let user's

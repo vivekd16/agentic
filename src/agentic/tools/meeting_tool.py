@@ -57,11 +57,9 @@ class MeetingBaasTool(BaseAgenticTool):
 
     def __init__(self):
         self.db_path = os.path.join(get_runtime_directory(), "meetings.db")
-        # Do not initialize engine here, will be done when needed.
         self.Session = None
         self._engine = None
         self._initialized = False
-        # Initialize RAG-related attributes explicitly
         self._weaviate_client = None
         self._vector_store = None
         self._embed_model = None
@@ -130,7 +128,6 @@ class MeetingBaasTool(BaseAgenticTool):
     def __getstate__(self):
         """Custom serialization for Ray."""
         state = self.__dict__.copy()
-        # Remove non-serializable objects and close connections
         if self._weaviate_client:
             self._weaviate_client.close()
         state.pop('_weaviate_client', None)
@@ -143,11 +140,9 @@ class MeetingBaasTool(BaseAgenticTool):
     def __setstate__(self, state):
         """Custom deserialization for Ray."""
         self.__dict__.update(state)
-        # Ensure initialization attributes are set
         self._initialized = False
         self._engine = None
         self.Session = None
-        # Explicitly set RAG-related attributes
         self._rag_initialized = False
         self._weaviate_client = None
         self._vector_store = None

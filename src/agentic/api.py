@@ -84,7 +84,16 @@ class AgentAPIServer:
                 run_id=request.run_id,
                 debug=DebugLevel(request.debug or "")
             )
-        
+
+        # Reset endpoint. Need to use this for now to create a new session
+        @agent_router.post("/{agent_name}/reset")
+        async def reset_agent(
+            agent = Depends(get_agent)
+        ):
+            """Reset the agent"""
+            agent.reset_history()
+            return {"status": "success", "message": f"Agent '{agent.name}' reset successfully"}
+
         # Get events endpoint
         @agent_router.get("/{agent_name}/getevents")
         async def get_events(
@@ -103,6 +112,8 @@ class AgentAPIServer:
                         "depth": event.depth,
                         "payload": make_json_serializable(event.payload)
                     }
+                    if event.type == "tool_result":
+                        event_data["result"] = make_json_serializable(event.result)
                     results.append(event_data)
                 return results
             else:
@@ -115,6 +126,8 @@ class AgentAPIServer:
                             "depth": event.depth,
                             "payload": make_json_serializable(event.payload)
                         }
+                        if event.type == "tool_result":
+                            event_data["result"] = make_json_serializable(event.result)
                         yield {
                             "data": json.dumps(event_data),
                             "event": "message"

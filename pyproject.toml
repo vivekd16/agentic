@@ -104,6 +104,5 @@ packages = [
     "agentic.dashboard",
     "agentic.db",
     "agentic.utils",
-    "agentic.ui",
     "agentic_examples"
 ]

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# This script creates an .icns file from a PNG image
+# You need to have the PNG file first
+
+# Check if we have a PNG file
+if [ ! -f "icon.png" ]; then
+    echo "Error: icon.png not found!"
+    echo "Please save the red gear with checkmark image as icon.png in this directory."
+    exit 1
+fi
+
+# Create a temporary iconset directory
+mkdir -p Agentic.iconset
+
+# Generate the various sizes
+sips -z 16 16     icon.png --out Agentic.iconset/icon_16x16.png
+sips -z 32 32     icon.png --out Agentic.iconset/icon_16x16@2x.png
+sips -z 32 32     icon.png --out Agentic.iconset/icon_32x32.png
+sips -z 64 64     icon.png --out Agentic.iconset/icon_32x32@2x.png
+sips -z 128 128   icon.png --out Agentic.iconset/icon_128x128.png
+sips -z 256 256   icon.png --out Agentic.iconset/icon_128x128@2x.png
+sips -z 256 256   icon.png --out Agentic.iconset/icon_256x256.png
+sips -z 512 512   icon.png --out Agentic.iconset/icon_256x256@2x.png
+sips -z 512 512   icon.png --out Agentic.iconset/icon_512x512.png
+sips -z 1024 1024 icon.png --out Agentic.iconset/icon_512x512@2x.png
+
+# Convert to icns format
+iconutil -c icns Agentic.iconset
+
+# Clean up
+rm -rf Agentic.iconset
+
+mv icon.icns ../
+echo "Created icon.icns"

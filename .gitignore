@@ -33,3 +33,18 @@ uv.lock
 
 # System files
 .DS_Store
+
+# build artifacts
+.eggs
+build/
+build-working-backup/
+dist/
+dist-working-backup/
+venv-build-3.12/
+venv-build/
+runtime/
+*.egg-info/
+/resources/
+/src/resources/
+/src/agentic/dashboard/out/
+

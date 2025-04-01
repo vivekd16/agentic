@@ -1226,14 +1226,35 @@ class BaseAgentProxy:
             time.sleep(0.01)
         depthLocal.depth -= 1
 
-    def next_turn(self, request: str | Prompt, request_context: dict = {},
+    def _next_turn(self, request: str|Prompt, request_context: dict = {},
               request_id: str = None, continue_result: dict = {},
               debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
-        """
-        Default agent orchestration logic. Subclasses may override this.
-        If not overridden, this handles prompt/resume and returns generator from agent.
-        """
-        # Get agent instance
+        """Public interface for agent turns - handles run logging"""
+        # Delegate actual turn handling to _next_turn
+        for event in self.next_turn(request, request_context, request_id, continue_result, debug):
+            # Log the event before yielding it
+            if self.run_id and hasattr(self, 'log_event'):
+                self.log_event(event)
+            
+            yield event
+
+    def next_turn(self, request: str|Prompt, request_context: dict = {},
+                request_id: str = None, continue_result: dict = {},
+                debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
+        """Internal implementation of the agent turn loop."""
+        self.cancelled = False
+        self.debug.raise_level(debug)
+        
+        # Get or create request ID
+        if not request_id:
+            request_id = continue_result.get("request_id") or str(uuid.uuid4())
+            if isinstance(request, Prompt):
+                request.request_id = request_id
+
+        # Handle mock settings - subclasses should implement this
+        self._handle_mock_settings(self.mock_settings)
+
+        # Get the agent instance for this request
         agent_instance = self._get_agent_for_request(request_id)
 
         # Prepare the prompt or resume input

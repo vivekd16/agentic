@@ -1,14 +1,7 @@
 import pytest
-import re
-import time
-import sys
-import io
-import asyncio
-import threading
 import json
 from agentic.common import Agent, AgentRunner
 from agentic.tools.mcp_tool import MCPTool
-from typing import List, Any, Callable
 
 """
 A note on this testing approach:

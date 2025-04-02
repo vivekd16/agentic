@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import sqlite3
 from pathlib import Path
@@ -55,6 +56,11 @@ def get_machine_id():
         return open("/etc/machine-id").read().strip()
     elif os.path.exists("/proc/sys/kernel/random/boot_id"):  # Alternative for some Linux systems
         return open("/proc/sys/kernel/random/boot_id").read().strip()
+    elif sys.platform == "darwin":  # macOS
+        output = subprocess.check_output(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"])
+        for line in output.decode().split("\n"):
+            if "IOPlatformUUID" in line:
+                return line.split("=")[-1].strip().replace("\"", "")
     else:  # Docker or other environments
         # Create a fixed ID for Docker containers or use a fallback mechanism
         docker_id_path = "/tmp/docker-machine-id"

@@ -47,6 +47,8 @@ def test_get_machine_id(os_name, machine_id):
                  patch("builtins.open", MagicMock(return_value=MagicMock(read=lambda: machine_id))):
                 assert get_machine_id() == machine_id
 
+@pytest.mark.skipif(not (os.name == "posix" and "darwin" in os.uname().sysname.lower()), 
+                   reason="Test only runs on macOS")
 def test_get_machine_id_macos():
     with patch("os.name", "posix"), \
          patch("os.path.exists", return_value=False), \

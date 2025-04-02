@@ -59,11 +59,12 @@ class MeetingBaasTool(BaseAgenticTool):
 
     def __init__(self):
         self.db_path = os.path.join(get_runtime_directory(), "meetings.db")
-        # Do not initialize engine here, will be done when needed.
         self.Session = None
         self._engine = None
         self._initialized = False
+        self._weaviate_client = None
         self._vector_store = None
+        self._embed_model = None
         self._rag_initialized = False
         self.webhook_addr = ""
         try:
@@ -71,7 +72,6 @@ class MeetingBaasTool(BaseAgenticTool):
         except ValueError as e:
             self.openai_api_key = None
         try:
-            
             self.meeting_baas_api_key = agentic_secrets.get_required_secret("MEETING_BAAS_API_KEY")
         except ValueError as e:
             print(f"Error initializing MEETING_BAAS_Tool: {e}")
@@ -89,7 +89,7 @@ class MeetingBaasTool(BaseAgenticTool):
         ]
 
     def _initialize_rag(self):
-        """Initialize the RAG components"""
+        """Initialize the RAG components if not already initialized"""
         if not self._rag_initialized:
             try:
                 # First try to connect to existing instance
@@ -103,11 +103,20 @@ class MeetingBaasTool(BaseAgenticTool):
                 print("Creating new embedded instance...")
                 # If connection fails, create new embedded instance
                 self._weaviate_client = init_weaviate()
-            
-            create_collection(self._weaviate_client, "meeting_summaries")
-            self._vector_store = self._weaviate_client.collections.get("meeting_summaries")
-            self._embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
-            self._rag_initialized = True
+                
+            try:
+                create_collection(self._weaviate_client, "meeting_summaries")
+                self._vector_store = self._weaviate_client.collections.get("meeting_summaries")
+                self._embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
+                self._rag_initialized = True
+            except Exception as e:
+                if self._weaviate_client:
+                    self._weaviate_client.close()
+                self._weaviate_client = None
+                self._vector_store = None
+                self._embed_model = None
+                print(f"Error initializing RAG: {e}")
+                raise
 
     def _get_session(self):
         """Lazy initialization of the database session."""
@@ -121,7 +130,8 @@ class MeetingBaasTool(BaseAgenticTool):
     def __getstate__(self):
         """Custom serialization for Ray."""
         state = self.__dict__.copy()
-        # Remove non-serializable objects
+        if self._weaviate_client:
+            self._weaviate_client.close()
         state.pop('_weaviate_client', None)
         state.pop('_vector_store', None)
         state.pop('_embed_model', None)
@@ -132,13 +142,12 @@ class MeetingBaasTool(BaseAgenticTool):
     def __setstate__(self, state):
         """Custom deserialization for Ray."""
         self.__dict__.update(state)
-        # Ensure initialization attributes are set
         self._initialized = False
         self._engine = None
         self.Session = None
         self._rag_initialized = False
-        self._vector_store = None
         self._weaviate_client = None
+        self._vector_store = None
         self._embed_model = None
 
     def join_meeting(
@@ -335,24 +344,23 @@ class MeetingBaasTool(BaseAgenticTool):
         If user_query is provided, search the knowledge index.
         Falls back to database if knowledge search fails or no query provided.
         """  
-        print('getting meeting info........')
+        print('getting meeting info.........')
         try:  
             # If we have a query, try searching the knowledge index first
             if user_query:
                 try:
+                    # Initialize RAG components if needed
                     self._initialize_rag()
-                    embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
                     
                     # Set filters only if meeting_id is provided
                     filters = {"document_id": meeting_id} if meeting_id else None
                     
-                    # Search the knowledge index
-                    collection = self._weaviate_client.collections.get("meeting_summaries")
+                    # Search the knowledge index using our stored components
                     search_results = search_collection(
-                        collection=collection,
+                        collection=self._vector_store,
                         query=user_query,
-                        embed_model=embed_model,
-                        limit=5 if not meeting_id else 1,  # Return more results if searching all meetings
+                        embed_model=self._embed_model,
+                        limit=5 if not meeting_id else 1,
                         filters=filters
                     )
 
@@ -451,42 +459,52 @@ class MeetingBaasTool(BaseAgenticTool):
 
     def _save_to_knowledge_index(self, bot_id: str, meeting_name: str, meeting_summary: str, attendees: list) -> None:
         """Save meeting data to the knowledge index"""
-        self._initialize_rag()
-        collection = self._vector_store
+        try:
+            # This will initialize if needed
+            self._initialize_rag()
 
-        # Initialize embedding model and chunker
-        embed_model = init_embedding_model("BAAI/bge-small-en-v1.5")
-        chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
+            # Initialize chunker
+            chunker = init_chunker(threshold=0.5, delimiters=".,!,?,\n")
 
-        # Prepare metadata
-        metadata = {
-            "content": meeting_summary,
-            "document_id": bot_id,
-            "filename": f"meeting_{bot_id}_summary.md",
-            "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "mime_type": "text/markdown",
-            "source_url": "None",
-            "summary": meeting_summary,
-            "fingerprint": bot_id,
-        }
+            # Prepare metadata
+            metadata = {
+                "content": meeting_summary,
+                "document_id": bot_id,
+                "filename": f"meeting_{bot_id}_summary.md",
+                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "mime_type": "text/markdown",
+                "source_url": "None",
+                "summary": meeting_summary,
+                "fingerprint": bot_id,
+            }
 
-        # Generate chunks and embeddings
-        chunks = chunker(meeting_summary)
-        chunks_text = [chunk.text for chunk in chunks]
-        embeddings = list(embed_model.embed(chunks_text))
+            # Generate chunks and embeddings
+            chunks = chunker(meeting_summary)
+            chunks_text = [chunk.text for chunk in chunks]
+            if not chunks_text:
+                raise ValueError("No text chunks generated from document")
+            
+            batch_size = 128
+            embeddings = []
+            for i in range(0, len(chunks_text), batch_size):
+                batch = chunks_text[i:i+batch_size]
+                embeddings.extend(list(self._embed_model.embed(batch)))
 
-        # Index chunks in Weaviate
-        with collection.batch.dynamic() as batch:
-            for i, chunk in enumerate(chunks):
-                vector = embeddings[i].tolist()
-                batch.add_object(
-                    properties={
-                        **metadata,
-                        "content": chunk.text,
-                        "chunk_index": i,
-                    },
-                    vector=vector
-                )
+            # Index chunks in Weaviate
+            with self._vector_store.batch.dynamic() as batch:
+                for i, chunk in enumerate(chunks):
+                    vector = embeddings[i].tolist()
+                    batch.add_object(
+                        properties={
+                            **metadata,
+                            "content": chunk.text,
+                            "chunk_index": i,
+                        },
+                        vector=vector
+                    )
+        except Exception as e:
+            print(f"Error saving to knowledge index: {e}")
+            raise
 
     def clean_markdown(self, markdown_text):
         """Clean markdown text by removing heading markers and extra whitespace"""
@@ -693,3 +711,11 @@ class MeetingBaasTool(BaseAgenticTool):
                 "details": None,
                 "timestamp": datetime.now().isoformat()
             }
+
+    def __del__(self):
+        """Cleanup when the tool is destroyed"""
+        if self._weaviate_client:
+            try:
+                self._weaviate_client.close()
+            except:
+                pass

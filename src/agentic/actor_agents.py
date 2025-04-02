@@ -297,8 +297,13 @@ class ActorBaseAgent:
             raw_result = None
             try:
                 if asyncio.iscoroutinefunction(function_map[name]):
-                    # Wrap async functions in asyncio.run
-                    raw_result = asyncio.run(function_map[name](**args))
+                    try:
+                        loop = asyncio.get_running_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    
+                    raw_result = loop.run_until_complete(function_map[name](**args))
                 elif inspect.isgeneratorfunction(function_map[name]):
                     # We use our generator for our call_child function. I guess we could let user's
                     # write generate functions as long as they yield events. Or we could catch

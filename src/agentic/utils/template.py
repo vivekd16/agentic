@@ -3,7 +3,7 @@ import os
 import sys
 from typing import Optional
 
-def _find_template_path() -> Optional[str]:
+def find_template_path() -> Optional[str]:
     """Find the template path based on the caller's file location."""
     try:
         # Look for frames outside this file

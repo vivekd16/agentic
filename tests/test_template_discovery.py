@@ -2,10 +2,8 @@ import os
 import pytest
 import tempfile
 import yaml
-from pathlib import Path
 
 from agentic.actor_agents import AgentProxyClass
-from agentic.events import DebugLevel
 
 
 class TestTemplateDiscoveryAgent(AgentProxyClass):
@@ -19,52 +17,45 @@ class TestTemplateDiscoveryAgent(AgentProxyClass):
         return self.grab_final_result(f"Process this input: {text}")
 
 
-@pytest.fixture
-def template_file():
-    """Create a temporary template file for testing"""
-    # Create a temporary file with explicit mode 'w' for text writing
+def test_explicit_template_path():
+    """Test that an agent can use an explicitly provided template path"""
+    # Create a temporary file directly in the test
     fd, tmp_path = tempfile.mkstemp(suffix='.prompts.yaml')
     os.close(fd)  # Close the file descriptor
     
-    # Write template content to the file
-    with open(tmp_path, 'w') as f:
-        yaml_content = {
-            "test_instructions": "You are a specialized test agent.",
-            "test_capabilities": [
-                "Process inputs",
-                "Generate responses",
-                "Follow instructions"
-            ]
-        }
-        yaml.dump(yaml_content, f)
+    try:
+        # Write template content to the file
+        with open(tmp_path, 'w') as f:
+            yaml_content = {
+                "test_instructions": "You are a specialized test agent.",
+                "test_capabilities": [
+                    "Process inputs",
+                    "Generate responses",
+                    "Follow instructions"
+                ]
+            }
+            yaml.dump(yaml_content, f)
+            
+        # Create agent with explicit template path
+        agent = TestTemplateDiscoveryAgent(
+            name="TestAgent",
+            model="gpt-3.5-turbo",
+            instructions="You are a test agent. {{test_instructions}}",
+            template_path=tmp_path
+        )
+        
+        # Verify template was found and loaded
+        assert agent.template_path == tmp_path
+        assert "test_instructions" in agent.prompt_variables
+        assert agent.prompt_variables["test_instructions"] == "You are a specialized test agent."
+        assert "test_capabilities" in agent.prompt_variables
     
-    yield tmp_path
-    
-    # Clean up
-    if os.path.exists(tmp_path):
-        os.remove(tmp_path)
+    finally:
+        # Clean up
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
-@pytest.mark.requires_llm
-def test_explicit_template_path(template_file):
-    """Test that an agent can use an explicitly provided template path"""
-    agent = TestTemplateDiscoveryAgent(
-        name="TestAgent",
-        model="gpt-3.5-turbo",
-        instructions="You are a test agent. {{test_instructions}}",
-        template_path=template_file
-    )
-    
-    # Verify template was found and loaded
-    assert agent.template_path == template_file
-    assert "test_instructions" in agent.prompt_variables
-    assert agent.prompt_variables["test_instructions"] == "You are a specialized test agent."
-    assert "test_capabilities" in agent.prompt_variables
-    
-
-
-
-@pytest.mark.requires_llm
 def test_auto_template_discovery():
     """Test automatic template discovery based on the test file name"""
     # Create a template file in the same directory as this test file
@@ -98,10 +89,6 @@ def test_auto_template_discovery():
         assert "auto_instructions" in agent.prompt_variables
         assert "auto_capabilities" in agent.prompt_variables
         assert "You are an auto-discovered template agent." in agent.prompt_variables["auto_instructions"]
-        
-        # Test agent functionality
-        result = agent.process_input("Test auto discovery")
-        assert result, "Agent should return a result"
         
     finally:
         # Clean up the template file

@@ -898,8 +898,8 @@ class BaseAgentProxy:
         self.mock_settings = mock_settings
         
         # Find template path if not provided
-        from agentic.utils.template import _find_template_path
-        self.template_path = template_path or _find_template_path()
+        from agentic.utils.template import find_template_path
+        self.template_path = template_path or find_template_path()
         
         # Setup tools and other properties
         self._tools = []

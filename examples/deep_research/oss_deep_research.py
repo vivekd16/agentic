@@ -51,7 +51,6 @@ class DeepResearchAgent(Agent):
         self.playwright_fallback: bool = playwright_fallback
         self.sections_limit: Optional[int] = None  # For testing, limit the number of sections generated
         self.verbose = verbose
-        self.template_path = os.path.join(os.path.dirname(__file__), "oss_deep_research.prompts.yaml")
         
         if self.playwright_fallback:
             self.playwright_tool = PlaywrightTool()
@@ -60,7 +59,6 @@ class DeepResearchAgent(Agent):
         self.query_planner = Agent(
             name="Report Query Planner",
             instructions="{{REPORT_QUERY_PLANNER}}",
-            template_path=self.template_path,
             model=PLANNER_MODEL,
             result_model=Queries,
             # Some research is sensitive to the date, and without telling the LLM the date it
@@ -72,7 +70,6 @@ class DeepResearchAgent(Agent):
         self.section_planner = Agent(
             name="Section Planner",
             instructions="{{REPORT_SECTION_PLANNER}}",
-            template_path=self.template_path,
             model=PLANNER_MODEL,
             result_model=Sections
         )
@@ -81,7 +78,6 @@ class DeepResearchAgent(Agent):
         self.section_query_planner = Agent(
             name="Section Query Planner",
             instructions="{{SECTION_QUERY_PLANNER}}",
-            template_path=self.template_path,
             model=PLANNER_MODEL,
             result_model=Queries,
             memories=[f"The current date is {datetime.now().strftime('%Y-%m-%d')}"]
@@ -91,7 +87,6 @@ class DeepResearchAgent(Agent):
         self.section_writer = Agent(
             name="Section Writer",
             instructions="{{SECTION_WRITER}}",
-            template_path=self.template_path,
             model=WRITER_MODEL
         )
 
@@ -99,7 +94,6 @@ class DeepResearchAgent(Agent):
         self.final_section_writer = Agent(
             name="Final Section Writer",
             instructions="{{FINAL_SECTION_WRITER}}",
-            template_path=self.template_path,
             model=WRITER_MODEL
         )
 
@@ -107,7 +101,6 @@ class DeepResearchAgent(Agent):
         self.final_reference_writer = Agent(
             name="Final Reference Writer",
             instructions="{{FINAL_REFERENCE_WRITER}}",
-            template_path=self.template_path,
             model=WRITER_MODEL
         )
 

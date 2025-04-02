@@ -897,7 +897,9 @@ class BaseAgentProxy:
         self.cancelled = False
         self.mock_settings = mock_settings
         
-        self.template_path = template_path
+        # Find template path if not provided
+        from agentic.utils.template import find_template_path
+        self.template_path = template_path or find_template_path()
         
         # Setup tools and other properties
         self._tools = []

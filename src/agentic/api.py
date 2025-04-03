@@ -1,9 +1,9 @@
-from fastapi import FastAPI, APIRouter, Request, Depends, Path as FastAPIPath, HTTPException
+from fastapi import FastAPI, APIRouter, Request, Depends, Path as FastAPIPath, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 import json
 import uvicorn
-from typing import List
+from typing import List, Optional, Dict, Any, Callable
 import asyncio
 
 from agentic.actor_agents import ProcessRequest, ResumeWithInputRequest
@@ -20,7 +20,12 @@ class AgentAPIServer:
     This encapsulates the API server functionality previously contained in the CLI serve command.
     """
     
-    def __init__(self, agent_instances: List, port: int = 8086):
+    def __init__(
+            self, 
+            agent_instances: List, 
+            port: int = 8086, 
+            lookup_user: Optional[Callable[[str], Optional[str]]] = None
+        ):
         """
         Initialize the API server with agent instances.
         
@@ -32,9 +37,31 @@ class AgentAPIServer:
         self.port = port
         self.app = FastAPI(title="Agentic API")
         self.agent_registry = {agent.safe_name: agent for agent in self.agent_instances}
+        self.lookup_user = lookup_user
         
         self._setup_app()
-        
+
+    async def get_current_user(self, authorization: Optional[str] = Header(None)):
+            """
+            Call "lookup_user" from our caller to resolve the current user ID based on the Authorization header.
+            """
+            if authorization is None or self.lookup_user is None:
+                return None
+                
+            # Here you would implement your actual authorization logic
+            if authorization.startswith("Bearer "):
+                token = authorization.replace("Bearer ", "")
+            else:
+                token = authorization
+
+            # Call the lookup_user function to resolve the user ID
+            # call async if needed
+            if asyncio.iscoroutinefunction(self.lookup_user):
+                return await self.lookup_user(token)
+            else:
+                # Call the synchronous function 
+                return self.lookup_user(token)
+                    
     def _setup_app(self):
         """Configure the FastAPI application with middleware and routes"""
         # Add CORS middleware
@@ -45,6 +72,36 @@ class AgentAPIServer:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        
+        # Create router for agent endpoints
+        agent_router = APIRouter()
+        
+        # Dependency to get the agent from the path parameter
+
+        def get_agent(
+            agent_name: str = FastAPIPath(...),
+            current_user: Optional[Any] = Depends(self.get_current_user)
+        ):
+            # Check if the agent exists
+            if agent_name not in self.agent_registry:
+                raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+            
+            # If no user, return the default agent instance
+            if current_user is None:
+                # This was the original logic with no user specified
+                return self.agent_registry[agent_name]
+            
+            user_agent_name = agent_name + ":" + str(hash(current_user))
+            
+            # If this user doesn't have an instance of this agent yet, create one
+            if user_agent_name not in self.agent_registry:
+                # Get the default agent as a template
+                base_agent = self.agent_registry[agent_name]
+                new_agent = base_agent.__class__(**base_agent.agent_config)
+                self.agent_registry[user_agent_name] = new_agent
+                
+            # Return the user-specific agent instance
+            return self.agent_registry[user_agent_name]
         
         # Add discovery endpoint
         @self.app.get("/_discovery")
@@ -125,24 +182,19 @@ class AgentAPIServer:
                 }
             }
 
-        # Create router for agent endpoints
-        agent_router = APIRouter()
-        
-        # Dependency to get the agent from the path parameter
-        def get_agent(agent_name: str = FastAPIPath(...)) -> Agent:
-            if agent_name not in self.agent_registry:
-                raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
-            return self.agent_registry[agent_name]
-        
         # Process endpoint
         @agent_router.post("/{agent_name}/process")
         async def process_request(
             request: ProcessRequest, 
-            agent = Depends(get_agent)
+            agent = Depends(get_agent),
+            user = Depends(self.get_current_user),
         ):
             """Process a new request"""
+            ctx = {"user": user} if user else {}
+            print("In process request, context is: ", ctx)
             return agent.start_request(
                 request=request.prompt,
+                request_context=ctx,
                 run_id=request.run_id,
                 debug=DebugLevel(request.debug or "")
             )

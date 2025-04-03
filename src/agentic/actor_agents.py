@@ -1224,22 +1224,12 @@ class BaseAgentProxy:
             time.sleep(0.01)
         depthLocal.depth -= 1
 
-    def _next_turn(self, request: str|Prompt, request_context: dict = {},
-              request_id: str = None, continue_result: dict = {},
-              debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
-        """Public interface for agent turns - handles run logging"""
-        # Delegate actual turn handling to _next_turn
-        for event in self.next_turn(request, request_context, request_id, continue_result, debug):
-            # Log the event before yielding it
-            if self.run_id and hasattr(self, 'log_event'):
-                self.log_event(event)
-            
-            yield event
-
     def next_turn(self, request: str|Prompt, request_context: dict = {},
-                request_id: str = None, continue_result: dict = {},
-                debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
-        """Internal implementation of the agent turn loop."""
+                  request_id: str = None, continue_result: dict = {},
+                  debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
+        """
+        Main agent turn logic - this is meant to be overridden by subclasses.
+        """
         self.cancelled = False
         self.debug.raise_level(debug)
         
@@ -1292,6 +1282,25 @@ class BaseAgentProxy:
             # Process results if needed
             if isinstance(event, TurnEnd):
                 event = self._process_turn_end(event)
+            yield event
+    
+    def _next_turn(self, request: str|Prompt, request_context: dict = {},
+                request_id: str = None, continue_result: dict = {},
+                debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
+        """
+        Public wrapper method that adds run logging around the next_turn implementation.
+        This method should NOT be overridden by subclasses.
+        """
+        # Get the generator from next_turn
+        event_generator = self.next_turn(request, request_context, request_id, continue_result, debug)
+        
+        # Wrap the generator to intercept events for logging
+        for event in event_generator:
+            # Log the event if run tracking is enabled
+            if hasattr(self, 'run_id') and self.run_id and hasattr(self, 'log_event'):
+                run_context = RunContext(self.name, run_id=self.run_id)
+                self.log_event(event, run_context)
+            
             yield event
             
     def _get_prompt_generator(self, agent_instance, prompt):

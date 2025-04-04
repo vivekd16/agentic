@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, Request, Depends, Path as FastAPIPath, H
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 import json
+import os
 import uvicorn
 from typing import List, Optional, Dict, Any, Callable
 import asyncio
@@ -13,6 +14,13 @@ from agentic.utils.json import make_json_serializable
 from agentic.swarm.types import RunContext
 from agentic.db.db_manager import DatabaseManager
 
+from agentic.events import (
+    ToolResult,
+    ToolError,
+    TurnEnd,
+    StartCompletion,
+    FinishCompletion,
+)
 
 class AgentAPIServer:
     """
@@ -38,6 +46,7 @@ class AgentAPIServer:
         self.app = FastAPI(title="Agentic API")
         self.agent_registry = {agent.safe_name: agent for agent in self.agent_instances}
         self.lookup_user = lookup_user
+        self.debug = DebugLevel(os.environ.get("AGENTIC_DEBUG") or "")
         
         self._setup_app()
 
@@ -159,7 +168,7 @@ class AgentAPIServer:
             run_context = RunContext(
                 agent=agent._agent,
                 agent_name=agent.name,
-                debug_level=DebugLevel(""),
+                debug_level=self.debug,
                 run_id=run_id,
             )
 
@@ -192,13 +201,16 @@ class AgentAPIServer:
             """Process a new request"""
             ctx = {"user": user} if user else {}
             print("In process request, context is: ", ctx)
-            return agent.start_request(
+            req_event = agent.start_request(
                 request=request.prompt,
                 request_context=ctx,
                 run_id=request.run_id,
-                debug=DebugLevel(request.debug or "")
+                debug=DebugLevel(request.debug) if request.debug else self.debug
             )
-        
+            # abusing the "registry" to track the agent per request
+            self.agent_registry[req_event.request_id] = agent
+            return req_event
+                
         # Resume endpoint
         @agent_router.post("/{agent_name}/resume")
         async def resume_request(
@@ -210,21 +222,27 @@ class AgentAPIServer:
                 request=json.dumps(request.continue_result),
                 continue_result=request.continue_result,
                 run_id=request.run_id,
-                debug=DebugLevel(request.debug or "")
+                debug=DebugLevel(request.debug) if request.debug else self.debug
             )
         
         # Get events endpoint
         @agent_router.get("/{agent_name}/getevents")
         async def get_events(
             request_id: str, 
+            agent_name: str,
             stream: bool = False, 
-            agent: Agent = Depends(get_agent)
         ):
             """Get events for a request"""
+            if request_id in self.agent_registry:
+                agent = self.agent_registry[request_id]
+            else:
+                agent: Agent = get_agent(agent_name)
+
             if not stream:
                 # Non-streaming response
                 results = []
                 for event in agent.get_events(request_id):
+                    self.debug_event(event)
                     event_data = {
                         "type": event.type,
                         "agent": event.agent,
@@ -237,6 +255,7 @@ class AgentAPIServer:
                 # Streaming response
                 async def event_generator():
                     for event in agent.get_events(request_id):
+                        self.debug_event(event)
                         event_data = {
                             "type": event.type,
                             "agent": event.agent,
@@ -336,6 +355,27 @@ class AgentAPIServer:
         # Include the router in the main app
         self.app.include_router(agent_router)
     
+    def debug_event(self, event):
+        def should_print(event):
+            if isinstance(event, ToolError):
+                return self.debug != ""
+            elif isinstance(event, ToolResult):
+                return self.debug.debug_tools()
+            # elif isinstance(event, PromptStarted):
+            #     return self.debug.debug_llm() or self.debug.debug_agents()
+            # elif isinstance(event, ChatOutput):
+            #     if self.debug.debug_llm() or self.debug.debug_agents():
+            #         print(str(event), end="")        
+            elif isinstance(event, TurnEnd):
+                return self.debug.debug_agents()
+            elif isinstance(event, (StartCompletion, FinishCompletion)):
+                return self.debug.debug_llm()
+            return False
+        
+        if should_print(event):
+            print(str(event))
+
+
     def setup_agent_endpoints(self):
         """
         Update API endpoints for each agent.

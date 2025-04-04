@@ -1225,11 +1225,9 @@ class BaseAgentProxy:
         depthLocal.depth -= 1
 
     def next_turn(self, request: str|Prompt, request_context: dict = {},
-                  request_id: str = None, continue_result: dict = {},
-                  debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
-        """
-        Main agent turn logic - this is meant to be overridden by subclasses.
-        """
+                 request_id: str = None, continue_result: dict = {},
+                 debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
+        """This is the key agent loop generator."""
         self.cancelled = False
         self.debug.raise_level(debug)
         
@@ -1283,16 +1281,11 @@ class BaseAgentProxy:
             if isinstance(event, TurnEnd):
                 event = self._process_turn_end(event)
             yield event
-    
+
     def _next_turn(self, request: str|Prompt, request_context: dict = {},
-                request_id: str = None, continue_result: dict = {},
-                debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
-        """
-        Public wrapper method that adds run logging around the next_turn implementation.
-        This method should NOT be overridden by subclasses.
-        """
-        # Get the generator from next_turn
-        event_generator = self.next_turn(request, request_context, request_id, continue_result, debug)
+                  request_id: str = None, continue_result: dict = {},
+                  debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
+        event_generator = self._next_turn(request, request_context, request_id, continue_result, debug)
         
         # Wrap the generator to intercept events for logging
         for event in event_generator:
@@ -1302,7 +1295,7 @@ class BaseAgentProxy:
                 self.log_event(event, run_context)
             
             yield event
-            
+        
     def _get_prompt_generator(self, agent_instance, prompt):
         """Get generator for a new prompt - to be implemented by subclasses"""
         pass

@@ -34,6 +34,7 @@ class RunManager:
         # Initialize a new run when we see a Prompt event
 
         if isinstance(event, PromptStarted) and not self.current_run_id:
+            print(f"Creating run with ID: {self.initial_run_id}")
             run = db_manager.create_run(
                 run_id=self.initial_run_id,
                 agent_id=run_context.agent_name,

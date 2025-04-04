@@ -46,7 +46,7 @@ class DatabaseManager:
             return run
 
     def log_event(self,
-                  run_id: int,
+                  run_id: str,
                   agent_id: str,
                   user_id: str,
                   role: str,
@@ -117,11 +117,11 @@ class DatabaseManager:
                 return run
             return None
 
-    def get_run(self, run_id: int) -> Optional[Run]:
+    def get_run(self, run_id: str) -> Optional[Run]:
         with self.get_session() as session:
             return session.get(Run, run_id)
 
-    def get_run_logs(self, run_id: int) -> list[RunLog]:
+    def get_run_logs(self, run_id: str) -> list[RunLog]:
         with self.get_session() as session:
             return session.exec(select(RunLog).where(RunLog.run_id == run_id).order_by(asc(RunLog.created_at))).all()
 

@@ -7,7 +7,6 @@ from copy import deepcopy
 from agentic.db.models import Run, RunLog
 from agentic.events import FinishCompletion
 from agentic.utils.directory_management import get_runtime_filepath
-from agentic.utils.json import make_json_serializable
 
 # Database setup and management
 class DatabaseManager:
@@ -34,7 +33,7 @@ class DatabaseManager:
             id=run_id,
             agent_id=agent_id,
             user_id=user_id,
-            initial_prompt=make_json_serializable(initial_prompt),
+            initial_prompt=initial_prompt,
             description=description,
             usage_data=usage_data or {},
             run_metadata=run_metadata or {}

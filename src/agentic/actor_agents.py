@@ -617,6 +617,8 @@ class ActorBaseAgent:
                     message,
                     depth=depth,
                     debug=self.debug,
+                    request_context=self.run_context.context,
+                    request_id=str(uuid.uuid4())
                 )
             )
         
@@ -1286,7 +1288,10 @@ class BaseAgentProxy:
         if not self.run_id and self.db_path:
             self.init_run_tracking(agent_instance)
 
-        # Run actual orchestration from next_turn
+        # Add run_id into context explicitly so child agents inherit it
+        request_context = {**request_context, "run_id": self.run_id}
+
+        # Call the user’s or default next_turn
         event_gen = self.next_turn(
             request=request,
             request_context=request_context,
@@ -1295,17 +1300,23 @@ class BaseAgentProxy:
             debug=debug
         )
 
-        # Process events and apply logging
+        # Central logging of all events
         for event in self._process_generator(event_gen):
             if self.cancelled:
                 raise TurnCancelledError()
 
-            self.handle_event_wrapper(event)
-
+            # Handle TurnEnd result validation
             if isinstance(event, TurnEnd):
                 event = self._process_turn_end(event)
 
             yield event
+
+            # Only now: do logging after yielding
+            callback = self._agent.get_callback("handle_event") if hasattr(self, "_agent") else None
+            if callback:
+                context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id)
+                callback(event, context)
+
 
 
     def handle_event_wrapper(self, event: Event):
@@ -1313,7 +1324,6 @@ class BaseAgentProxy:
         if callback:
             context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id)
             callback(event, context)
-
         
     def _get_prompt_generator(self, agent_instance, prompt):
         """Get generator for a new prompt - to be implemented by subclasses"""

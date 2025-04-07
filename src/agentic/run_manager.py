@@ -41,7 +41,7 @@ class RunManager:
                 run_id=self.initial_run_id,
                 agent_id=run_context.agent_name,
                 user_id=self.user_id,
-                initial_prompt=json.dumps(make_json_serializable(event.payload)),
+                initial_prompt=make_json_serializable(event.payload),
             )
             self.current_run_id = run.id
             run_context.run_id = run.id 

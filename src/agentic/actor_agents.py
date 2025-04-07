@@ -1242,6 +1242,7 @@ class BaseAgentProxy:
                 )
             )
 
+
             # Transmit depth through the Prompt
             if hasattr(depthLocal, 'depth') and depthLocal.depth > prompt.depth:
                 prompt.depth = depthLocal.depth
@@ -1250,6 +1251,8 @@ class BaseAgentProxy:
 
         else:
             resume_input = ResumeWithInput(
+                self.name,
+                continue_result,
                 self.name,
                 continue_result,
                 request_id=request_id
@@ -1301,6 +1304,7 @@ class BaseAgentProxy:
             # Handle TurnEnd result validation
             if isinstance(event, TurnEnd):
                 event = self._process_turn_end(event)
+
 
             yield event
 

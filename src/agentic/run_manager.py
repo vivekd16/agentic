@@ -15,6 +15,7 @@ from agentic.common import RunContext
 from agentic.utils.json import make_json_serializable
 from agentic.db.db_manager import DatabaseManager
 from agentic.utils.directory_management import get_runtime_filepath
+import json
 
 class RunManager:
     """
@@ -40,7 +41,7 @@ class RunManager:
                 run_id=self.initial_run_id,
                 agent_id=run_context.agent_name,
                 user_id=self.user_id,
-                initial_prompt=make_json_serializable(event.payload),
+                initial_prompt=json.dumps(make_json_serializable(event.payload)),
             )
             self.current_run_id = run.id
             run_context.run_id = run.id 

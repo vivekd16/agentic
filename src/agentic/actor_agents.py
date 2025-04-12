@@ -1251,6 +1251,7 @@ class BaseAgentProxy:
                 )
             )
 
+
             # Transmit depth through the Prompt
             if hasattr(depthLocal, 'depth') and depthLocal.depth > prompt.depth:
                 prompt.depth = depthLocal.depth
@@ -1261,20 +1262,67 @@ class BaseAgentProxy:
             resume_input = ResumeWithInput(
                 self.name,
                 continue_result,
+                self.name,
+                continue_result,
                 request_id=request_id
             )
-            agent_gen = self._get_resume_generator(agent_instance, resume_input)
-                        
-        # Process events from generator
-        for event in self._process_generator(agent_gen):
+            return self._get_resume_generator(agent_instance, resume_input)
+
+
+    def _next_turn(self, request: str | Prompt, request_context: dict = {},
+               request_id: str = None, continue_result: dict = {},
+               debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> Generator[Event, Any, Any]:
+        """
+        Wraps `next_turn` to add run tracking and handle_event logging.
+        Always used internally by the proxy to ensure consistent behavior.
+        """
+        self.cancelled = False
+        self.debug.raise_level(debug)
+
+        if not request_id:
+            request_id = continue_result.get("request_id") or str(uuid.uuid4())
+            if isinstance(request, Prompt):
+                request.request_id = request_id
+
+        self._handle_mock_settings(self.mock_settings)
+
+        # Get agent instance for the run
+        agent_instance = self._get_agent_for_request(request_id)
+
+        # Initialize run tracking if needed
+        if not self.run_id and self.db_path:
+            self.init_run_tracking(agent_instance)
+
+        # Add run_id into context explicitly so child agents inherit it
+        request_context = {**request_context, "run_id": self.run_id}
+
+        # Call the user’s or default next_turn
+        event_gen = self.next_turn(
+            request=request,
+            request_context=request_context,
+            request_id=request_id,
+            continue_result=continue_result,
+            debug=debug
+        )
+
+        # Central logging of all events
+        for event in self._process_generator(event_gen):
             if self.cancelled:
-                raise TurnCancelledError()                
-            # Process results if needed
+                raise TurnCancelledError()
+
+            # Handle TurnEnd result validation
             if isinstance(event, TurnEnd):
                 event = self._process_turn_end(event)
 
             print(f"Yielding event: {event.type}, run_id: {self.run_id}, agent: {self.name}")
             yield event
+
+            # Only now: do logging after yielding
+            callback = self._agent.get_callback("handle_event") if hasattr(self, "_agent") else None
+            if callback:
+                context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id)
+                callback(event, context)
+
 
 
     def handle_event_wrapper(self, event: Event):
@@ -1282,7 +1330,6 @@ class BaseAgentProxy:
         if callback:
             context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id)
             callback(event, context)
-
         
     def _get_prompt_generator(self, agent_instance, prompt):
         """Get generator for a new prompt - to be implemented by subclasses"""

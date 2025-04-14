@@ -487,6 +487,9 @@ class GithubTool(OAuthTool):
         response = await self._github_request('GET', f'/repos/{owner}/{name}/issues', run_context, params=params)
         results = response.get('results', [])
 
+        # Filter out pull requests
+        issues_only = [issue for issue in results if not issue.get('pull_request')]
+
         slim_issues = [
             {
                 'number': issue.get('number'),
@@ -500,10 +503,9 @@ class GithubTool(OAuthTool):
                 'assignee': issue.get('assignee', {}).get('login') if issue.get('assignee') else None,
                 'creator': issue.get('user', {}).get('login') if issue.get('user') else None,
                 'comments': issue.get('comments'),
-                'pull_request_url': issue.get('pull_request', {}).get('html_url') if issue.get('pull_request') else None,
                 'description': issue.get('body'),
             }
-            for issue in results
+            for issue in issues_only  # Use filtered list instead of results
         ]
         return pd.DataFrame(slim_issues)
   

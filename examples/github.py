@@ -2,7 +2,7 @@ from typing import Any
 
 from agentic.tools import GithubTool
 from agentic.common import Agent, AgentRunner
-from agentic.models import CLAUDE
+from agentic.models import GPT_4O_MINI
 
 instructions = """
 You are an AI agent that can interact with GitHub repositories.
@@ -12,7 +12,7 @@ agent = Agent(
     name="Github Agent",
     welcome="I am an AI agent that can interact with GitHub repositories. I can search repositories, create issues, create pull requests, and more.",
     instructions=instructions,
-    model=CLAUDE,
+    model=GPT_4O_MINI,
     tools=[GithubTool()],
     memories=[
         "Use the default repository name and owner when the user does not provide a repository name or owner.",

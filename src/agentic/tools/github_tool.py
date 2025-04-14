@@ -505,7 +505,7 @@ class GithubTool(OAuthTool):
                 'comments': issue.get('comments'),
                 'description': issue.get('body'),
             }
-            for issue in issues_only  # Use filtered list instead of results
+            for issue in issues_only
         ]
         return pd.DataFrame(slim_issues)
   

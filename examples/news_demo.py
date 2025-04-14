@@ -9,18 +9,6 @@ def invoke_async(async_func: Callable, *args, **kwargs) -> Any:
     return asyncio.run(async_func(*args, **kwargs))
 
 
-linkedin = LinkedinDataTool()
-
-
-def search_profiles(name: str, company: str = ""):
-    """Searches for linkedin profiles."""
-    return invoke_async(linkedin.linkedin_people_search, name=name, company=company)
-
-
-def get_profile(url: str):
-    return invoke_async(linkedin.get_linkedin_profile_info, url)
-
-
 gnt = GoogleNewsTool()
 
 
@@ -46,6 +34,7 @@ Call Google News to get headlines on the indicated news topic.
     model=model,
     tools=[query_news],
 )
+
 producer = Agent(
     name="Producer",
     welcome="I am the news producer. Tell me the topic, and I'll get the news from my reporter.",

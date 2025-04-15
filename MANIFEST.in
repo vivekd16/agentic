@@ -1,0 +1,9 @@
+recursive-include src/agentic/dashboard/src *
+include src/agentic/dashboard/next.config.js
+include src/agentic/dashboard/postcss.config.js
+include src/agentic/dashboard/tailwind.config.ts
+include src/agentic/dashboard/tsconfig.json
+include src/agentic/dashboard/next-env.d.ts
+include src/agentic/dashboard/types.d.ts
+include src/agentic/dashboard/README.md
+include src/agentic/dashboard/components.json

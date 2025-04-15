@@ -85,8 +85,106 @@ class LinkedinDataTool(BaseAgenticTool):
 
         response.raise_for_status()
         profile_data = response.json()
-        df = pd.DataFrame([profile_data])
-        return str(df)
+        
+        # Create a formatted string with clear sections
+        profile_text = f"""
+PROFILE INFORMATION:
+Name: {profile_data.get('firstName', '')} {profile_data.get('lastName', '')}
+Headline: {profile_data.get('headline', '')}
+Location: {profile_data.get('geo', {}).get('full', '')}
+Profile URL: {profile_url}
+Profile Picture: {profile_data.get('profilePicture', '')}
+Background Image: {profile_data.get('backgroundImage', [{}])[0].get('url', '') if profile_data.get('backgroundImage') else ''}
+Is Top Voice: {profile_data.get('isTopVoice', False)}
+Is Premium: {profile_data.get('isPremium', False)}
+
+SUMMARY:
+{profile_data.get('summary', '')}
+
+CAREER PROGRESSION:"""
+
+        # Add career progression
+        positions = profile_data.get('position', [])
+        for position in positions:
+            start_year = position.get('start', {}).get('year', '')
+            start_month = position.get('start', {}).get('month', '')
+            end_year = position.get('end', {}).get('year', '')
+            end_month = position.get('end', {}).get('month', '')
+            
+            start_date = f"{start_month}/{start_year}" if start_month else str(start_year)
+            end_date = f"{end_month}/{end_year}" if end_month and end_year else "Present"
+            
+            profile_text += f"""
+
+Role: {position.get('title', '')}
+Company: {position.get('companyName', '')}
+Company URL: {position.get('companyURL', '')}
+Company Username: {position.get('companyUsername', '')}
+Company Logo: {position.get('companyLogo', '')}
+Company Industry: {position.get('companyIndustry', '')}
+Company Size: {position.get('companyStaffCountRange', '')}
+Duration: {start_date} - {end_date}
+Location: {position.get('location', '')}
+Employment Type: {position.get('employmentType', '')}
+Description: {position.get('description', '')}"""
+
+        profile_text += "\n\nEDUCATION:"
+        
+        # Add education
+        for edu in profile_data.get('educations', []):
+            profile_text += f"""
+
+School: {edu.get('schoolName', '')}
+School URL: {edu.get('url', '')}
+School Logo: {edu.get('logo', [{}])[0].get('url', '') if edu.get('logo') else ''}
+Degree: {edu.get('degree', '')}
+Field of Study: {edu.get('fieldOfStudy', '')}
+Grade: {edu.get('grade', '')}
+Activities: {edu.get('activities', '')}
+Start Year: {edu.get('start', {}).get('year', '')}
+End Year: {edu.get('end', {}).get('year', '')}"""
+
+        profile_text += "\n\nSKILLS:"
+        
+        # Add skills with endorsements
+        for skill in profile_data.get('skills', []):
+            profile_text += f"\n- {skill.get('name', '')} (Endorsements: {skill.get('endorsementsCount', 0)})"
+
+        # Add certifications if any
+        if profile_data.get('certifications'):
+            profile_text += "\n\nCERTIFICATIONS:"
+            for cert in profile_data.get('certifications', []):
+                profile_text += f"""
+- Name: {cert.get('name', '')}
+  Authority: {cert.get('authority', '')}
+  Company: {cert.get('company', {}).get('name', '')}"""
+
+        # Add honors if any
+        if profile_data.get('honors'):
+            profile_text += "\n\nHONORS & AWARDS:"
+            for honor in profile_data.get('honors', []):
+                profile_text += f"""
+- Title: {honor.get('title', '')}
+  Description: {honor.get('description', '')}
+  Issuer: {honor.get('issuer', '')}"""
+
+        # Add courses if any
+        if profile_data.get('courses'):
+            profile_text += "\n\nCOURSES:"
+            for course in profile_data.get('courses', []):
+                profile_text += f"\n- {course.get('name', '')}"
+
+        # Add volunteering if any
+        if profile_data.get('volunteering'):
+            profile_text += "\n\nVOLUNTEERING EXPERIENCE:"
+            for vol in profile_data.get('volunteering', []):
+                profile_text += f"""
+- Title: {vol.get('title', '')}
+  Organization: {vol.get('companyName', '')}
+  URL: {vol.get('companyUrl', '')}"""
+
+        return profile_text
+    
 
     async def get_company_linkedin_info(
         self, company_username_or_domain: str

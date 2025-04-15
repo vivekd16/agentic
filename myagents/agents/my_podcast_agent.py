@@ -35,7 +35,7 @@ def create_combined_podcast():
     try:
         for site in segment_sites:
             print(site)
-            ast.news_scrape_and_download(news_site=site, save_file=file_path, num_articles=2, is_summarize=True, sum_wc=150)
+            ast.news_scrape_and_download(news_site=site, save_file=file_path, num_articles=4, is_summarize=True, sum_wc=500)
             audio_file = ast.create_podcast_from_text(file_path)
             print(audio_file)
             audio_files.append(audio_file)

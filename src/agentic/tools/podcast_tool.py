@@ -1,30 +1,13 @@
-from typing import Any, Callable, List, Dict
-from collections import Counter
-from datetime import date
-from agentic.models import CLAUDE, GPT_4O_MINI, GPT_4O
+from typing import Callable
 
-#from agentic.tools.scaleserp_browser import ScaleSerpBrowserTool
 from agentic.tools.text_to_speech_tool import TextToSpeechTool
-#from .registry import tool_registry, Dependency, ConfigRequirement
-
-import asyncio
-import pandas as pd
-#from .scaleserp_browser import ScaleSerpBrowserTool
 from .base import BaseAgenticTool
 
-import os
 import requests
 from bs4 import BeautifulSoup
 import openai
 
-"""
-@tool_registry.register(
-    name="ArticleScraperTool",
-    description="Scrape online news articles and summarize"
-)
-"""
-
-class ArticleScraperTool(BaseAgenticTool):
+class PodcastTool(BaseAgenticTool):
     def __init__(self):
         super().__init__()
 

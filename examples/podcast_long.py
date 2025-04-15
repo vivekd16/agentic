@@ -1,13 +1,9 @@
 
 from agentic.common import Agent, AgentRunner
-from agentic.tools.text_to_speech_tool import TextToSpeechTool
-from agentic.tools.unit_test_tool import UnitTestingTool
-from agentic.tools.article_scraper import ArticleScraperTool
-from agentic.tools.auth_rest_api_tool import AuthorizedRESTAPITool
+from agentic.tools import AuthorizedRestApiTool, PodcastTool, TextToSpeechTool
 
-from agentic.models import CLAUDE, GPT_4O_MINI, GPT_4O
-from agentic.common import Agent, AgentRunner, PauseForInputResult, RunContext
-from typing import List
+from agentic.models import GPT_4O
+from agentic.common import Agent, AgentRunner
 
 from datetime import datetime
 from pydub import AudioSegment
@@ -15,7 +11,6 @@ import json
 import traceback
 import os
 
-#segment_sites: List[str]
 
 def create_combined_podcast():
     """
@@ -25,7 +20,7 @@ def create_combined_podcast():
     segment_sites=["https://www.nbcnews.com/news/us-news", "https://www.nbcnews.com/news/world", "https://www.nbcnews.com/tech"]
     base_url='https://e4ed-73-15-6-205.ngrok-free.app'
     
-    ast = ArticleScraperTool()
+    ast = PodcastTool()
 
     audio_dir = os.path.join(os.path.dirname(__file__), "audios")
     os.makedirs(audio_dir, exist_ok=True)
@@ -34,10 +29,8 @@ def create_combined_podcast():
     audio_files = []
     try:
         for site in segment_sites:
-            print(site)
             ast.news_scrape_and_download(news_site=site, save_file=file_path, num_articles=4, is_summarize=True, sum_wc=500)
             audio_file = ast.create_podcast_from_text(file_path)
-            print(audio_file)
             audio_files.append(audio_file)
         combined = AudioSegment.empty()
         for f in audio_files:
@@ -62,7 +55,6 @@ def create_combined_podcast():
     except Exception as e:
         traceback.print_exc()
         error_message = f"Error generating combined podcast: {str(e)}"
-        print(error_message)
         return json.dumps({"error": error_message})
 
 
@@ -91,7 +83,7 @@ upload_agent = Agent(
     name="TransistorFM",
     welcome="I can work with podcast episodes via the Transistor.fm API.",
     instructions=tfm_inst,
-    tools=[AuthorizedRESTAPITool("header", "TRANSISTOR_API_KEY", "x-api-key")],
+    tools=[AuthorizedRestApiTool("header", "TRANSISTOR_API_KEY", "x-api-key")],
     memories=["Default show ID is 60214"],
     model=GPT_4O,
     )
@@ -107,7 +99,7 @@ agent = Agent(
     name="Podcast Agent",
     instructions=inst_comb,
     model=GPT_4O,
-    tools=[ArticleScraperTool(), TextToSpeechTool(), upload_agent, create_combined_podcast]
+    tools=[PodcastTool(), TextToSpeechTool(), upload_agent, create_combined_podcast]
 )
 
 

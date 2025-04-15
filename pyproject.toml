@@ -142,3 +142,4 @@ packages = [
     "agentic.utils",
     "agentic_examples"
 ]
+include-package-data = true

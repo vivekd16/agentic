@@ -31,7 +31,7 @@ def get_human_input(request_message: str):
 person_report_writer = Agent(
     name="Person Report Writer",
     instructions="""
-You will receive the URL to a linkedin profile. Retreive and review the profile.
+You will receive the URL to a linkedin profile and the name of the company the person works for. Retreive and review the profile.
 Now call the Company Reporter to research the company the person works for.
 Finally, write an extensive background report on the person, focusing on their career progression
 and last 3 roles.
@@ -59,7 +59,7 @@ people_researcher = Agent(
 You do research on people. Given a name and a company:
 1. Search for matching profiles on linkedin.
 2. If you find multiple matches, please ask the user which one they are interested in.
-3. Now call the Person Report Writer and pass in the linked profile URL. Print the report and the linkedin profile URL.
+3. Now call the Person Report Writer and pass in the linked profile URL and the company name. Print the report and the linkedin profile URL.
 """,
     #model="lm_studio/qwen2.5-7b-instruct-1m",
     #model="lm_studio/deepseek-r1-distill-qwen-7B",

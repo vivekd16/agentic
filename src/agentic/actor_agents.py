@@ -390,17 +390,11 @@ class ActorBaseAgent:
 
         return partial_response, events
 
-    def handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput):
+    def handle_prompt_or_resume(self, actor_message: Prompt | ResumeWithInput):
         request_id = getattr(actor_message, 'request_id', None)
         if not request_id:
             raise ValueError("Request ID is required")
-                    
-        for event in self._handlePromptOrResume(actor_message, request_id):
-            if self._callbacks.get('handle_event'):
-                self._callbacks['handle_event'](event, self.run_context)
-            yield event
-
-    def _handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput, request_id: str):
+        
         if isinstance(actor_message, Prompt):
             self.run_context = (
                 RunContext(
@@ -601,8 +595,8 @@ class ActorBaseAgent:
         message,
     ):
         depth = self.depth if handoff else self.depth + 1
-        if hasattr(child_ref.handlePromptOrResume, 'remote'):
-            remote_gen = child_ref.handlePromptOrResume.remote(
+        if hasattr(child_ref.handle_prompt_or_resume, 'remote'):
+            remote_gen = child_ref.handle_prompt_or_resume.remote(
                 Prompt(
                     self.name,
                     message,
@@ -611,7 +605,7 @@ class ActorBaseAgent:
                 )
             )
         else:
-            remote_gen = child_ref.handlePromptOrResume(
+            remote_gen = child_ref.handle_prompt_or_resume(
                 Prompt(
                     self.name,
                     message,
@@ -1320,14 +1314,6 @@ class BaseAgentProxy:
             if callback:
                 context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id)
                 callback(event, context)
-
-
-
-    def handle_event_wrapper(self, event: Event):
-        callback = self._agent.get_callback("handle_event") if hasattr(self, "_agent") else None
-        if callback:
-            context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id)
-            callback(event, context)
         
     def _get_prompt_generator(self, agent_instance, prompt):
         """Get generator for a new prompt - to be implemented by subclasses"""
@@ -1510,11 +1496,11 @@ class RayAgentProxy(BaseAgentProxy):
         
     def _get_prompt_generator(self, agent, prompt):
         """Get generator for a new prompt from a Ray agent"""
-        return agent.handlePromptOrResume.remote(prompt)
+        return agent.handle_prompt_or_resume.remote(prompt)
 
     def _get_resume_generator(self, agent, resume_input):
         """Get generator for resuming with input from a Ray agent"""
-        return agent.handlePromptOrResume.remote(resume_input)
+        return agent.handle_prompt_or_resume.remote(resume_input)
         
     def _process_generator(self, generator):
         """Process generator events - Ray implementation"""
@@ -1625,11 +1611,11 @@ class LocalAgentProxy(BaseAgentProxy):
 
     def _get_prompt_generator(self, agent, prompt):
         """Get generator for a new prompt - Local implementation"""
-        return agent.handlePromptOrResume(prompt)
+        return agent.handle_prompt_or_resume(prompt)
         
     def _get_resume_generator(self, agent, resume_input):
         """Get generator for resuming with input - Local implementation"""
-        return agent.handlePromptOrResume(resume_input)
+        return agent.handle_prompt_or_resume(resume_input)
         
     def _process_generator(self, generator):
         """Process generator events - Local implementation"""

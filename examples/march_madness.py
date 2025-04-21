@@ -215,11 +215,12 @@ TEAMS_LIST = TeamList(teams=[
 class MarchMadnessAgent(Agent):
     tournament: Tournament | None = None
     
-    def __init__(self, name: str="March Madness Predictor", model: str=ANALYZER_MODEL, verbose: bool = False):
+    def __init__(self, name: str="March Madness Predictor", model: str=ANALYZER_MODEL, verbose: bool = False, **kwargs):
         super().__init__(
             name, 
             welcome="I am the March Madness Prediction agent. I'll analyze matchups and build a complete tournament bracket prediction.",
             model=model,
+            **kwargs
         )
         self.tavily_tool = TavilySearchTool(api_key=agentic_secrets.get_required_secret("TAVILY_API_KEY"))
         self.verbose = verbose

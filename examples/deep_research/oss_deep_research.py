@@ -38,11 +38,12 @@ class DeepResearchAgent(Agent):
     sections: Sections|None = None
     topic: str = ""
 
-    def __init__(self, name: str="OSS Deep Research", model: str=GPT_4O_MINI, playwright_fallback: bool = False, verbose: bool = False):
+    def __init__(self, name: str="OSS Deep Research", model: str=GPT_4O_MINI, playwright_fallback: bool = False, verbose: bool = False, **kwargs):
         super().__init__(
             name, 
             welcome="I am the OSS Deep Research agent. Please provide me with a topic to research.",
             model=model,
+            **kwargs
         )
         self.tavily_tool = TavilySearchTool(api_key=agentic_secrets.get_required_secret("TAVILY_API_KEY"))
 

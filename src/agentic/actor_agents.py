@@ -1260,8 +1260,6 @@ class BaseAgentProxy:
             resume_input = ResumeWithInput(
                 self.name,
                 continue_result,
-                self.name,
-                continue_result,
                 request_id=request_id
             )
             return self._get_resume_generator(agent_instance, resume_input)

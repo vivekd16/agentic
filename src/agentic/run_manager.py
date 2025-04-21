@@ -53,7 +53,6 @@ class RunManager:
         if not self.current_run_id:
             run_context.run_id = self.initial_run_id
             self.current_run_id = self.initial_run_id
-        # print(f"Handling event: {event.type}, run ID: {self.current_run_id}")
         # Skip if we haven't initialized a run yet
         if not self.current_run_id:
             return

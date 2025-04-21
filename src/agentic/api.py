@@ -200,7 +200,6 @@ class AgentAPIServer:
         ):
             """Process a new request"""
             ctx = {"user": user} if user else {}
-            print("In process request, context is: ", ctx)
             req_event = agent.start_request(
                 request=request.prompt,
                 request_context=ctx,
@@ -208,7 +207,8 @@ class AgentAPIServer:
                 debug=DebugLevel(request.debug) if request.debug else self.debug
             )
             # abusing the "registry" to track the agent per request
-            self.agent_registry[req_event.request_id] = agent
+            # Commented out 4/21/25 because it breaks resume with input
+            # self.agent_registry[req_event.request_id] = agent
             return req_event
                 
         # Resume endpoint
@@ -240,12 +240,14 @@ class AgentAPIServer:
             request_id: str, 
             agent_name: str,
             stream: bool = False, 
+            agent = Depends(get_agent)
         ):
             """Get events for a request"""
-            if request_id in self.agent_registry:
-                agent = self.agent_registry[request_id]
-            else:
-                agent: Agent = get_agent(agent_name)
+            # Commented out 4/21/25 because it breaks resume with input
+            # if request_id in self.agent_registry:
+            #     agent = self.agent_registry[request_id]
+            # else:
+            #     agent: Agent = get_agent(agent_name)
 
             if not stream:
                 # Non-streaming response

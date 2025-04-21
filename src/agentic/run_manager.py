@@ -15,7 +15,6 @@ from agentic.common import RunContext
 from agentic.utils.json import make_json_serializable
 from agentic.db.db_manager import DatabaseManager
 from agentic.utils.directory_management import get_runtime_filepath
-import json
 
 class RunManager:
     """

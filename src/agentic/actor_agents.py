@@ -401,7 +401,6 @@ class ActorBaseAgent:
             yield event
 
     def _handlePromptOrResume(self, actor_message: Prompt | ResumeWithInput, request_id: str):
-        print("HANDLING PROMPT OR RESUME: ", request_id)
         if isinstance(actor_message, Prompt):
             self.run_context = (
                 RunContext(
@@ -1174,7 +1173,6 @@ class BaseAgentProxy:
                      continue_result: dict = {}, run_id: Optional[str] = None,
                      debug: DebugLevel = DebugLevel(DebugLevel.OFF)) -> StartRequestResponse:
         """Start a new agent request"""
-        print(f"Starting request")
         self.debug.raise_level(debug)
 
         if not hasattr(depthLocal, 'depth'):
@@ -1314,8 +1312,10 @@ class BaseAgentProxy:
             if isinstance(event, TurnEnd):
                 event = self._process_turn_end(event)
 
-            print(f"Yielding event: {event.type}, run_id: {self.run_id}, agent: {self.name}")
             yield event
+
+            if hasattr(event, "agent") and event.agent != self.name:
+                continue    
 
             # Only now: do logging after yielding
             callback = self._agent.get_callback("handle_event") if hasattr(self, "_agent") else None

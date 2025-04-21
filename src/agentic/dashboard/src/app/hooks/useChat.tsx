@@ -20,8 +20,6 @@ export function useChat(agentPath: string, agentName: string, currentRunId: stri
   const prevRunIdRef = useRef<string | undefined | null>(currentRunId);
   
   // Fetch run logs when runId changes
-  // If running Deep Researcher or other custom next_turn agents uncomment this line and comment out the next one
-  // const { data: runLogs, isLoading: isLoadingRunLogs } = useRunLogs(agentPath, null);
   const { data: runLogs, isLoading: isLoadingRunLogs } = useRunLogs(agentPath, currentRunId ?? null);
   
   // Reset events when currentRunId changes to undefined/null

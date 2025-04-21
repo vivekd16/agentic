@@ -26,6 +26,7 @@ class RunManager:
         self.user_id = user_id
         self.initial_run_id: Optional[str] = initial_run_id
         self.current_run_id: Optional[str] = current_run_id
+        # Should this not be propagated from the next_turn?
         self.usage_data: Dict = {}
         self.db_path = get_runtime_filepath(db_path)
     
@@ -35,15 +36,23 @@ class RunManager:
         # Initialize a new run when we see a Prompt event
 
         if isinstance(event, PromptStarted) and not self.current_run_id:
+            if type(event.payload)==dict:
+                prompt = event.payload['content']
+            else:
+                prompt = str(event.payload)
             run = db_manager.create_run(
                 run_id=self.initial_run_id,
                 agent_id=run_context.agent_name,
                 user_id=self.user_id,
-                initial_prompt=event.payload,
+                initial_prompt=prompt
             )
             self.current_run_id = run.id
             run_context.run_id = run.id 
             
+        self.current_run_id = run_context.run_id
+        if not self.current_run_id:
+            run_context.run_id = self.initial_run_id
+            self.current_run_id = self.initial_run_id
         # Skip if we haven't initialized a run yet
         if not self.current_run_id:
             return

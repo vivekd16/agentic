@@ -18,6 +18,7 @@ from agentic.common import RunContext, PauseForInputResult
         ),
     ],
 )
+
 class ExampleTool(BaseAgenticTool):
     """
     A tool that demonstrates the standard patterns for implementing agentic tools.

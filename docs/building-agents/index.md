@@ -56,10 +56,10 @@ keys in your environment, but this approach gets very unwieldy with lots of keys
 Agentic includes a simple system for managing `secrets`. They are stored encrypted
 in a local SQLite database file (inside `~/.agentic`).
 
-    agentic list-secrets    - list your secrets
+    agentic secrets list   - list your secrets
 
-    agentic set-secret <secret name> <value>
-    agentic get-secret <secret name>
+    agentic secrets set <secret name>=<value>
+    agentic secrets get <secret name>
 
 All secrets are automatically injected into the environment when your agent runs,
 but it is recommended to get values from the `RunContext` using `get_config` and `get_secret`.

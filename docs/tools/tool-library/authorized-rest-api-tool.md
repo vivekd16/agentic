@@ -143,7 +143,7 @@ from agentic.common import Agent
 from agentic.tools import AuthorizedRestApiTool
 
 # Set up the secret first
-# agentic set-secret GITHUB_TOKEN your_token_here
+# agentic secrets set GITHUB_TOKEN=your_token_here
 
 # Create an agent with authenticated API capability
 github_api = AuthorizedRestApiTool("bearer", "GITHUB_TOKEN")
@@ -180,10 +180,10 @@ Before using the tool, you need to set up your secrets:
 
 ```bash
 # For GitHub API
-agentic set-secret GITHUB_TOKEN your_github_token
+agentic secrets set GITHUB_TOKEN=your_github_token
 
 # For Weather API
-agentic set-secret WEATHER_API_KEY your_weather_api_key
+agentic secrets set WEATHER_API_KEY=your_weather_api_key
 ```
 
 ## Common API Configurations

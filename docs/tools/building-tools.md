@@ -20,10 +20,10 @@ If you haven't already installed the agentic framework, do so with pip. It is be
 
 ```bash
 pip install uv
-uv venv
+uv venv  --python 3.12
 source .venv/bin/activate
 
-uv pip install agentic-framework[all]
+uv pip install "agentic-framework[all]"
 ```
 
 ### 2. Project Setup

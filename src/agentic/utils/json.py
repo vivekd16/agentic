@@ -1,4 +1,4 @@
-from litellm.types.utils import Message
+from litellm.types.utils import Message, ChatCompletionMessageToolCall
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -10,21 +10,28 @@ def make_json_serializable(obj):
         return [make_json_serializable(item) for item in obj]
     elif isinstance(obj, Message):
         # Convert Message object to a dictionary manually
-        return {
+        result = {
             "role": obj.role,
             "content": make_json_serializable(obj.content),
-            "tool_calls": [
-                {
+            "function_call": make_json_serializable(obj.function_call),
+        }
+
+        tool_calls = []
+        for tc in obj.tool_calls or []:
+            if isinstance(tc, ChatCompletionMessageToolCall):
+                tool_calls.append({
                     "function": {
-                        "arguments": make_json_serializable(tc.function.arguments),
-                        "name": tc.function.name
-                    },
+                        "arguments": make_json_serializable(tc.function.arguments) if tc.function.arguments else None,
+                        "name": tc.function.name if tc.function.name else None,
+                    } if tc.function else None,
                     "id": tc.id,
                     "type": tc.type
-                } for tc in (obj.tool_calls or [])
-            ] if obj.tool_calls else None,
-            "function_call": make_json_serializable(obj.function_call)
-        }
+                })
+            elif isinstance(tc, dict):
+                tool_calls.append(tc)
+
+        result["tool_calls"] = tool_calls
+        return result
     elif isinstance(obj, BaseModel):
         return obj.model_dump()
     elif isinstance(obj, datetime):

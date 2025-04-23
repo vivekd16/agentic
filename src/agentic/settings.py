@@ -6,7 +6,7 @@ T = TypeVar("T")
 
 
 class Settings:
-    def __init__(self, db_path=".agentsdb", cache_dir="~/.agentic", key=None):
+    def __init__(self, db_path="agentsdb", cache_dir="~/.agentic", key=None):
         self.cache_dir = Path(cache_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = Path(cache_dir).expanduser() / db_path

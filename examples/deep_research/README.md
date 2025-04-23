@@ -15,14 +15,13 @@ of the process is written in code, rather than determined solely by the LLM.
 Start by installing the Agentic project:
 
     git clone git@github.com:supercog-ai/agentic.git
-    cd agentic
     uv venv --python 3.12
-    uv pip install -e ".[all,dev]"
     source .venv/bin/activate
+    uv pip install -e "./agentic[all,dev]"
 
 You need a `TAVILY_API_KEY`, and the API key for whatever model you are using, like `OPENAI_API_KEY`
 or `ANTHROPIC_API_KEY`.
-Set these in your environment or use the CLI command `agentic set-secret` to set them.
+Set these in your environment or use the CLI command `agentic secrets set KEY_NAME=<key_value>` to set them.
 
 Now run from the command line:
 

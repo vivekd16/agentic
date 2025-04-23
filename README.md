@@ -67,10 +67,9 @@ At this stage it's probably easiest to run this repo from source. We use `uv` fo
 
 ```
 git clone git@github.com:supercog-ai/agentic.git
-cd agentic
-uv venv .venv
+uv venv  --python 3.12
 source .venv/bin/activate
-uv pip install -e ".[all,dev]"
+uv pip install -e ".agentic[all,dev]"
 ```
 
 these commands will install the `agentic` package locally so that you can use the `agentic` cli command
@@ -80,7 +79,7 @@ and so your pythonpath is set correctly.
 
 You can also try installing just the package:
 
-`pip install agentic-framework[all]`
+`pip install "agentic-framework[all]"`
 
 Now setup your folder to hold your agents:
 

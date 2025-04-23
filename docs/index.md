@@ -30,12 +30,11 @@ Agentic is an opinionated framework that provides:
 
 ```bash
 # Install from PyPI
-pip install agentic-framework[all]
+pip install "agentic-framework[all]"
 
 # Or run from source
 git clone git@github.com:supercog-ai/agentic.git
-cd agentic
-uv pip install -e ".[all,dev]"
+uv pip install -e "./agentic[all,dev]"
 
 # Initialize your project
 agentic init .

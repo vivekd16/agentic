@@ -121,7 +121,7 @@ The tool can access database credentials in multiple ways:
 
 1. Direct initialization: `DatabaseTool("connection_string")`
 2. Environment variables
-3. Agentic's secret system: `agentic set-secret database_url "connection_string"`
+3. Agentic's secret system: `agentic secrets set database_url="connection_string"`
 4. Interactive prompting: The tool will pause and ask for credentials if needed
 
 ## Supported Database Features

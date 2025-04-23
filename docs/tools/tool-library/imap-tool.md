@@ -147,8 +147,8 @@ email_agent = Agent(
 )
 
 # The agent will prompt for IMAP credentials if they aren't already set
-# agentic set-secret IMAP_USERNAME "your.email@gmail.com"
-# agentic set-secret IMAP_PASSWORD "your-app-password"
+# agentic secrets set IMAP_USERNAME="your.email@gmail.com"
+# agentic secrets set IMAP_PASSWORD="your-app-password"
 
 # Use the agent to check recent emails
 response = email_agent << "Show me my latest emails"

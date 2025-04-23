@@ -51,25 +51,25 @@ class AgentAPIServer:
         self._setup_app()
 
     async def get_current_user(self, authorization: Optional[str] = Header(None)):
-            """
-            Call "lookup_user" from our caller to resolve the current user ID based on the Authorization header.
-            """
-            if authorization is None or self.lookup_user is None:
-                return None
-                
-            # Here you would implement your actual authorization logic
-            if authorization.startswith("Bearer "):
-                token = authorization.replace("Bearer ", "")
-            else:
-                token = authorization
+        """
+        Call "lookup_user" from our caller to resolve the current user ID based on the Authorization header.
+        """
+        if authorization is None or self.lookup_user is None:
+            return None
+            
+        # Here you would implement your actual authorization logic
+        if authorization.startswith("Bearer "):
+            token = authorization.replace("Bearer ", "")
+        else:
+            token = authorization
 
-            # Call the lookup_user function to resolve the user ID
-            # call async if needed
-            if asyncio.iscoroutinefunction(self.lookup_user):
-                return await self.lookup_user(token)
-            else:
-                # Call the synchronous function 
-                return self.lookup_user(token)
+        # Call the lookup_user function to resolve the user ID
+        # call async if needed
+        if asyncio.iscoroutinefunction(self.lookup_user):
+            return await self.lookup_user(token)
+        else:
+            # Call the synchronous function 
+            return self.lookup_user(token)
                     
     def _setup_app(self):
         """Configure the FastAPI application with middleware and routes"""

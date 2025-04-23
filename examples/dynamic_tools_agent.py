@@ -1,6 +1,5 @@
 from agentic.tools import (
     AutomaticTools,
-    BrowserUseTool,
     DatabaseTool,
     DuckDuckGoTool,
     GoogleNewsTool,

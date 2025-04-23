@@ -1709,12 +1709,11 @@ and can use tools to do work on your behalf.</p>
 <p><strong>Note</strong>: Agentic requires Python 3.12. It does not work with Python 3.13+ due to <a href="https://github.com/ray-project/ray/issues/50226">Ray compatibility issues</a>.</p>
 </blockquote>
 <div class="codehilite"><pre><span></span><code><span class="c1"># Install from PyPI</span>
-pip<span class="w"> </span>install<span class="w"> </span>agentic-framework<span class="o">[</span>all<span class="o">]</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;agentic-framework[all]&quot;</span>
 
 <span class="c1"># Or run from source</span>
 git<span class="w"> </span>clone<span class="w"> </span>git@github.com:supercog-ai/agentic.git
-<span class="nb">cd</span><span class="w"> </span>agentic
-uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[all,dev]&quot;</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;./agentic[all,dev]&quot;</span>
 
 <span class="c1"># Initialize your project</span>
 agentic<span class="w"> </span>init<span class="w"> </span>.

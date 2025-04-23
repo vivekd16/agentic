@@ -1924,8 +1924,8 @@ List of dictionaries containing email data (only unread/unprocessed emails).</p>
 <span class="p">)</span>
 
 <span class="c1"># The agent will prompt for IMAP credentials if they aren&#39;t already set</span>
-<span class="c1"># agentic set-secret IMAP_USERNAME &quot;your.email@gmail.com&quot;</span>
-<span class="c1"># agentic set-secret IMAP_PASSWORD &quot;your-app-password&quot;</span>
+<span class="c1"># agentic secrets set IMAP_USERNAME=&quot;your.email@gmail.com&quot;</span>
+<span class="c1"># agentic secrets set IMAP_PASSWORD=&quot;your-app-password&quot;</span>
 
 <span class="c1"># Use the agent to check recent emails</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">email_agent</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Show me my latest emails&quot;</span>

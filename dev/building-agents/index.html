@@ -1627,10 +1627,10 @@ memories - A list of facts to inject into the Agent&#39;s context for every Run
 keys in your environment, but this approach gets very unwieldy with lots of keys.</p>
 <p>Agentic includes a simple system for managing <code>secrets</code>. They are stored encrypted
 in a local SQLite database file (inside <code>~/.agentic</code>).</p>
-<div class="codehilite"><pre><span></span><code>agentic list-secrets    - list your secrets
+<div class="codehilite"><pre><span></span><code>agentic secrets list   - list your secrets
 
-agentic set-secret &lt;secret name&gt; &lt;value&gt;
-agentic get-secret &lt;secret name&gt;
+agentic secrets set &lt;secret name&gt;=&lt;value&gt;
+agentic secrets get &lt;secret name&gt;
 </code></pre></div>
 
 <p>All secrets are automatically injected into the environment when your agent runs,

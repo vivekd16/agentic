@@ -1941,7 +1941,7 @@ The parsed response based on content type.</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">AuthorizedRestApiTool</span>
 
 <span class="c1"># Set up the secret first</span>
-<span class="c1"># agentic set-secret GITHUB_TOKEN your_token_here</span>
+<span class="c1"># agentic secrets set GITHUB_TOKEN=your_token_here</span>
 
 <span class="c1"># Create an agent with authenticated API capability</span>
 <span class="n">github_api</span> <span class="o">=</span> <span class="n">AuthorizedRestApiTool</span><span class="p">(</span><span class="s2">&quot;bearer&quot;</span><span class="p">,</span> <span class="s2">&quot;GITHUB_TOKEN&quot;</span><span class="p">)</span>
@@ -1975,10 +1975,10 @@ The parsed response based on content type.</p>
 <h2 id="setting-up-secrets">Setting Up Secrets</h2>
 <p>Before using the tool, you need to set up your secrets:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># For GitHub API</span>
-agentic<span class="w"> </span>set-secret<span class="w"> </span>GITHUB_TOKEN<span class="w"> </span>your_github_token
+agentic<span class="w"> </span>secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="nv">GITHUB_TOKEN</span><span class="o">=</span>your_github_token
 
 <span class="c1"># For Weather API</span>
-agentic<span class="w"> </span>set-secret<span class="w"> </span>WEATHER_API_KEY<span class="w"> </span>your_weather_api_key
+agentic<span class="w"> </span>secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="nv">WEATHER_API_KEY</span><span class="o">=</span>your_weather_api_key
 </code></pre></div>
 
 <h2 id="common-api-configurations">Common API Configurations</h2>

@@ -103,7 +103,10 @@ const ChatInputForm: React.FC<ChatInputFormProps> = ({
         <CardTitle className="text-md font-medium">
           {formDisabled 
             ? 'Information provided:' 
-            : 'Please provide the following information:'}
+            : resumeValues && Object.keys(resumeValues).length > 0
+              ? 'Please confirm or edit the following information (previous submission detected):'
+              : 'Please provide the following information:'}
+
         </CardTitle>
       </CardHeader>
       <form onSubmit={handleSubmit}>

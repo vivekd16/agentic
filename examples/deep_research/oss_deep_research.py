@@ -6,7 +6,7 @@ from datetime import datetime
 
 from agentic.agentic_secrets import agentic_secrets
 from agentic.common import Agent, AgentRunner, RunContext
-from agentic.events import Event, ChatOutput, WaitForInput, Prompt, PromptStarted, TurnEnd
+from agentic.events import Event, ChatOutput, WaitForInput, Prompt, PromptStarted, TurnEnd, ResumeWithInput
 from agentic.models import GPT_4O_MINI, CLAUDE, GPT_4O
 from agentic.tools import PlaywrightTool, TavilySearchTool
 
@@ -115,11 +115,22 @@ class DeepResearchAgent(Agent):
     ) -> Generator[Event, Any, Any]:
         """Main workflow orchestration"""
 
-        if request:
+        if not continue_result:
+        # Starting a new turn with a Prompt
             self.topic = request.payload if isinstance(request, Prompt) else request
-
-        # Yield the initial prompt
-        yield PromptStarted(self.name, {"content": self.topic})
+            prompt_event = PromptStarted(
+                self.name,
+                {"content": self.topic}
+            )
+            yield prompt_event
+        else:
+            # Resuming a previous turn with ResumeWithInput
+            resume_event = ResumeWithInput(
+                self.name,
+                continue_result,
+                request_id=request_id
+            )
+            yield resume_event
 
         if not continue_result:
             self.reset_history() # by default chat history is retained

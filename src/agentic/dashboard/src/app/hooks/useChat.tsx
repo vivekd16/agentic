@@ -341,22 +341,31 @@ export function useChat(agentPath: string, agentName: string, currentRunId: stri
   const messages = events
     .filter(event => (
       !event.isBackground &&
-      (event.type === AgentEventType.PROMPT_STARTED || 
+      (event.type === AgentEventType.PROMPT_STARTED ||
+       event.type === AgentEventType.RESUME_WITH_INPUT ||
        event.type === AgentEventType.CHAT_OUTPUT || 
        event.type === AgentEventType.WAIT_FOR_INPUT) &&
       event.agentName === agentName
     ))
     .map((event, index, filteredEvents) => {
-      if (event.type === AgentEventType.PROMPT_STARTED) {
+      if (event.type === AgentEventType.PROMPT_STARTED || event.type === AgentEventType.RESUME_WITH_INPUT) {
         // Check if the previous message was a WAIT_FOR_INPUT
         const prevEvent = index > 0 ? filteredEvents[index - 1] : null;
         const isFormSubmission = prevEvent?.type === AgentEventType.WAIT_FOR_INPUT;
         
         // TODO: Maybe don't show this since it is already in the form
         let content = typeof event.payload === 'string' ? event.payload : event.payload?.content || '';
-        if (isFormSubmission && typeof event.payload === 'object' && event.payload.content) {
-          content = Object.values(JSON.parse(event.payload.content)).join('\n');
+        if (isFormSubmission) {
+          if (typeof event.payload === 'string') {
+            content = event.payload;
+          } else if (typeof event.payload === 'object') {
+            const values = event.payload.content 
+              ? JSON.parse(event.payload.content)
+              : event.payload;
+            content = Object.values(values).join('\n');
+          }
         }
+        
         
         return {
           role: 'user' as const,
@@ -365,9 +374,13 @@ export function useChat(agentPath: string, agentName: string, currentRunId: stri
       } else if (event.type === AgentEventType.WAIT_FOR_INPUT) {
         // Check if there's a PROMPT_STARTED event after this WAIT_FOR_INPUT event
         // This would contain the user's form submission
+        // This is built around deep_researcher. It may need an OR resumeWithInput according to how the next_turn in deep_research is handled. 
         const promptStartedIndex = filteredEvents.findIndex((e, i) => 
           i > index && 
-          e.type === AgentEventType.PROMPT_STARTED && 
+          (
+            e.type === AgentEventType.PROMPT_STARTED ||
+            e.type === AgentEventType.RESUME_WITH_INPUT
+          ) && 
           e.agentName === event.agentName
         );
         

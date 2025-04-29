@@ -14,7 +14,6 @@ from agentic.tools import PlaywrightTool, TavilySearchTool
 # Or use aliases 'GPT_4O' or 'CLAUDE'
 PLANNER_MODEL = GPT_4O
 WRITER_MODEL = CLAUDE
-# TODO: REVERT THIS
 
 class Section(BaseModel):
     name: str = Field(

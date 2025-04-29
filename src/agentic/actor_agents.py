@@ -1281,7 +1281,7 @@ class BaseAgentProxy:
 
         # Initialize run tracking if needed
         if (not self.run_id) and self.db_path:
-            self.init_run_tracking(agent_instance, run_id)
+            self.init_run_tracking(agent_instance, self.run_id)
 
         # Add run_id into context explicitly so child agents inherit it
         request_context = {**request_context, "run_id": self.run_id}

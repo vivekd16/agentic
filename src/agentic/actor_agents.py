@@ -1039,12 +1039,12 @@ class BaseAgentProxy:
             db_manager = DatabaseManager()
         return db_manager
 
-    def get_runs(self) -> list[Run]:
+    def get_runs(self, user_id: str|None) -> list[Run]:
         """Get all runs for this agent"""
         db_manager = self.get_db_manager()
         
         try:
-            return db_manager.get_runs_by_agent(self.name)
+            return db_manager.get_runs_by_agent(self.name, user_id=user_id)
         except Exception as e:
             print(f"Error getting runs: {e}")
             return []
@@ -1312,7 +1312,7 @@ class BaseAgentProxy:
             # Only now: do logging after yielding
             callback = self._agent.get_callback("handle_event") if hasattr(self, "_agent") else None
             if callback:
-                context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id)
+                context = RunContext(agent=self._agent, agent_name=self.name, run_id=self.run_id, context=request_context)
                 callback(event, context)
         
     def _get_prompt_generator(self, agent_instance, prompt):
@@ -1408,6 +1408,7 @@ class RayAgentProxy(BaseAgentProxy):
             "memories": self.memories,
             "debug": self.debug,
             "result_model": self.result_model,
+            "prompts": self.prompts,
             # Functions will be added when creating instances
         }
         _AGENT_REGISTRY.append(self)
@@ -1518,6 +1519,7 @@ class LocalAgentProxy(BaseAgentProxy):
         self.agent_config = {
             "name": self.name,
             "instructions": self.instructions,
+            "welcome": self.welcome,
             "tools": self._tools.copy(),
             "model": self.model,
             "max_tokens": self.max_tokens,
@@ -1525,6 +1527,7 @@ class LocalAgentProxy(BaseAgentProxy):
             "debug": self.debug,
             "handle_turn_start": self._handle_turn_start,
             "result_model": self.result_model,
+            "prompts": self.prompts,
             # Functions will be added when creating instances
         }
         _AGENT_REGISTRY.append(self)
@@ -1557,7 +1560,7 @@ class LocalAgentProxy(BaseAgentProxy):
             self._agent = agent
 
         return agent
-            
+
     def init_run_tracking(self, agent, run_id: Optional[str] = None):
         """Initialize run tracking"""
         from .run_manager import init_run_tracking

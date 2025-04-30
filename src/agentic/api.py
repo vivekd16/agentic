@@ -4,8 +4,9 @@ from sse_starlette.sse import EventSourceResponse
 import json
 import os
 import uvicorn
-from typing import List, Optional, Dict, Any, Callable
+from typing import List, Optional, Dict, Any, Callable, Annotated
 import asyncio
+import uuid
 
 from agentic.actor_agents import ProcessRequest, ResumeWithInputRequest
 from agentic.common import Agent
@@ -45,6 +46,8 @@ class AgentAPIServer:
         self.port = port
         self.app = FastAPI(title="Agentic API")
         self.agent_registry = {agent.safe_name: agent for agent in self.agent_instances}
+        # When multiple users are running, keep their separate agent instances
+        self.per_user_agents: dict[str, Agent] = {}
         self.lookup_user = lookup_user
         self.debug = DebugLevel(os.environ.get("AGENTIC_DEBUG") or "")
         
@@ -62,7 +65,7 @@ class AgentAPIServer:
             token = authorization.replace("Bearer ", "")
         else:
             token = authorization
-
+        
         # Call the lookup_user function to resolve the user ID
         # call async if needed
         if asyncio.iscoroutinefunction(self.lookup_user):
@@ -90,8 +93,8 @@ class AgentAPIServer:
         def get_agent(
             agent_name: str = FastAPIPath(...),
             current_user: Optional[Any] = Depends(self.get_current_user)
-        ):
-            # Check if the agent exists
+        ) -> Optional[Agent]:
+            # Check if the agent (original registry instance) exists
             if agent_name not in self.agent_registry:
                 raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
             
@@ -103,20 +106,26 @@ class AgentAPIServer:
             user_agent_name = agent_name + ":" + str(hash(current_user))
             
             # If this user doesn't have an instance of this agent yet, create one
-            if user_agent_name not in self.agent_registry:
+            if user_agent_name not in self.per_user_agents:
                 # Get the default agent as a template
                 base_agent = self.agent_registry[agent_name]
                 new_agent = base_agent.__class__(**base_agent.agent_config)
-                self.agent_registry[user_agent_name] = new_agent
+                self.per_user_agents[user_agent_name] = new_agent
                 
             # Return the user-specific agent instance
-            return self.agent_registry[user_agent_name]
+            ag = self.per_user_agents[user_agent_name]
+            return ag
         
         # Add discovery endpoint
         @self.app.get("/_discovery")
         async def list_endpoints():
             """Discovery endpoint that lists all available agents"""
             return [f"/{name}" for name in self.agent_registry.keys()]
+        
+        @self.app.post("/login")
+        async def login():
+            """Just generates a random token to represent the current user"""
+            return {"token": str(uuid.uuid4())}
         
         @self.app.get("/{agent_name}/oauth/callback/{tool_name}")
         async def handle_oauth_static_callback(
@@ -195,7 +204,7 @@ class AgentAPIServer:
         @agent_router.post("/{agent_name}/process")
         async def process_request(
             request: ProcessRequest, 
-            agent = Depends(get_agent),
+            agent: Annotated[Agent, Depends(get_agent)],
             user = Depends(self.get_current_user),
         ):
             """Process a new request"""
@@ -206,16 +215,14 @@ class AgentAPIServer:
                 run_id=request.run_id,
                 debug=DebugLevel(request.debug) if request.debug else self.debug
             )
-            # abusing the "registry" to track the agent per request
-            # Commented out 4/21/25 because it breaks resume with input
-            # self.agent_registry[req_event.request_id] = agent
+
             return req_event
                 
         # Resume endpoint
         @agent_router.post("/{agent_name}/resume")
         async def resume_request(
             request: ResumeWithInputRequest, 
-            agent = Depends(get_agent)
+            agent: Annotated[Agent, Depends(get_agent)],
         ):
             """Resume an existing request"""
             return agent.start_request(
@@ -228,7 +235,7 @@ class AgentAPIServer:
         # Reset endpoint. Need to use this for now to create a new session
         @agent_router.post("/{agent_name}/reset")
         async def reset_agent(
-            agent = Depends(get_agent)
+            agent: Annotated[Agent, Depends(get_agent)],
         ):
             """Reset the agent"""
             agent.reset_history()
@@ -238,17 +245,10 @@ class AgentAPIServer:
         @agent_router.get("/{agent_name}/getevents")
         async def get_events(
             request_id: str, 
-            agent_name: str,
+            agent: Annotated[Agent, Depends(get_agent)],
             stream: bool = False, 
-            agent = Depends(get_agent)
         ):
             """Get events for a request"""
-            # Commented out 4/21/25 because it breaks resume with input
-            # if request_id in self.agent_registry:
-            #     agent = self.agent_registry[request_id]
-            # else:
-            #     agent: Agent = get_agent(agent_name)
-
             if not stream:
                 # Non-streaming response
                 results = []
@@ -288,7 +288,7 @@ class AgentAPIServer:
         @agent_router.post("/{agent_name}/stream_request")
         async def stream_request(
             request: ProcessRequest, 
-            agent = Depends(get_agent)
+            agent: Annotated[Agent, Depends(get_agent)],
         ):
             """Stream a request response"""
             def render_events():
@@ -298,16 +298,19 @@ class AgentAPIServer:
         
         # Get runs endpoint
         @agent_router.get("/{agent_name}/runs")
-        async def get_runs(agent = Depends(get_agent)):
+        async def get_runs(
+            agent: Annotated[Agent, Depends(get_agent)],
+            current_user: Optional[Any] = Depends(self.get_current_user)
+        ):
             """Get all runs for this agent"""
-            runs = agent.get_runs()
+            runs = agent.get_runs(user_id=current_user)
             return [run.model_dump() for run in runs]
         
         # Get run logs endpoint
         @agent_router.get("/{agent_name}/runs/{run_id}/logs")
         async def get_run_logs(
             run_id: str, 
-            agent = Depends(get_agent)
+            agent: Annotated[Agent, Depends(get_agent)],
         ):
             """Get logs for a specific run"""
             run_logs = agent.get_run_logs(run_id)
@@ -319,7 +322,7 @@ class AgentAPIServer:
             run_id: str, 
             callback_name: str,
             request: Request,
-            agent = Depends(get_agent)
+            agent: Annotated[Agent, Depends(get_agent)],
         ):
             """Handle webhook callbacks"""
             # Get query parameters
@@ -356,7 +359,9 @@ class AgentAPIServer:
         
         # Describe endpoint
         @agent_router.get("/{agent_name}/describe")
-        async def describe(agent = Depends(get_agent)):
+        async def describe(
+            agent: Annotated[Agent, Depends(get_agent)]
+        ):
             """Get agent description"""
             return AgentDescriptor(
                 name=agent.name,

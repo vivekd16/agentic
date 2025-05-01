@@ -611,7 +611,7 @@ class ActorBaseAgent:
                     message,
                     depth=depth,
                     debug=self.debug,
-                    request_context=self.run_context.context,
+                    request_context=self.run_context.get_context(),
                     request_id=str(uuid.uuid4())
                 )
             )

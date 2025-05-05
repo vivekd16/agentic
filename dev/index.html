@@ -1545,6 +1545,61 @@
   
   
   
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="deployment/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Deployment
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Deployment
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="rag-support/" class="md-nav__link">
         
@@ -1731,14 +1786,23 @@ and can use tools to do work on your behalf.</p>
 </ul>
 <h2 id="quick-install">Quick Install</h2>
 <blockquote>
-<p><strong>Note</strong>: Agentic requires Python 3.12. It does not work with Python 3.13+ due to <a href="https://github.com/ray-project/ray/issues/50226">Ray compatibility issues</a>.</p>
+<p><strong>Note</strong> If you're on Linux or Windows and installing the <code>rag</code> extra you will need to add <code>--extra-index-url https://download.pytorch.org/whl/cpu</code> to install the CPU version of PyTorch.</p>
 </blockquote>
 <div class="codehilite"><pre><span></span><code><span class="c1"># Install from PyPI</span>
-pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;agentic-framework[all]&quot;</span>
+<span class="c1"># For MacOS</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;agentic-framework[all,dev]&quot;</span>
+
+<span class="c1"># For Linux or Windows</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;agentic-framework[all,dev]&quot;</span><span class="w"> </span>--extra-index-url<span class="w"> </span>https://download.pytorch.org/whl/cpu
 
 <span class="c1"># Or run from source</span>
 git<span class="w"> </span>clone<span class="w"> </span>git@github.com:supercog-ai/agentic.git
+
+<span class="c1"># For MacOS</span>
 uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;./agentic[all,dev]&quot;</span>
+
+<span class="c1"># For Linux or Windows</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;./agentic[all,dev]&quot;</span><span class="w"> </span>--extra-index-url<span class="w"> </span>https://download.pytorch.org/whl/cpu
 
 <span class="c1"># Initialize your project</span>
 agentic<span class="w"> </span>init<span class="w"> </span>.

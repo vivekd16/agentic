@@ -1604,6 +1604,61 @@
   
   
   
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../deployment/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Deployment
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Deployment
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../rag-support/" class="md-nav__link">
         
@@ -1848,6 +1903,7 @@ uv<span class="w"> </span>venv<span class="w"> </span>--python<span class="w"> <
 <p>To install Agentic you can either install from source or from PyPI.</p>
 <blockquote>
 <p><strong>Note</strong>: In this guide we'll install the <code>all</code> extra which includes all tools and features. To customize your installation, see the <a href="https://github.com/supercog-ai/agentic/blob/main/pyproject.toml">pyproject.toml</a> for a list of all available extras.</p>
+<p>If you're on Linux or Windows you will need to add <code>--extra-index-url https://download.pytorch.org/whl/cpu</code> to install the CPU version of PyTorch.</p>
 </blockquote>
 <table>
 <tr>
@@ -1859,7 +1915,13 @@ uv<span class="w"> </span>venv<span class="w"> </span>--python<span class="w"> <
 
 
 <div class="codehilite"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:supercog-ai/agentic.git
-uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;./agentic[all]&quot;</span>
+
+<span class="c1"># For MacOS</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;./agentic[all]&quot;</span>
+
+<span class="c1"># For Linux or Windows</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;./agentic[all]&quot;</span><span class="w"> </span><span class="se">\</span>
+--extra-index-url<span class="w"> </span>https://download.pytorch.org/whl/cpu
 </code></pre></div>
 
 
@@ -1868,7 +1930,12 @@ uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </s
 <td>
 
 
-<div class="codehilite"><pre><span></span><code>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;agentic-framework[all]&quot;</span>
+<div class="codehilite"><pre><span></span><code><span class="c1"># For MacOS</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;agentic-framework[all]&quot;</span>
+
+<span class="c1"># For Linux or Windows</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;agentic-framework[all]&quot;</span><span class="w"> </span><span class="se">\</span>
+--extra-index-url<span class="w"> </span>https://download.pytorch.org/whl/cpu
 </code></pre></div>
 
 

@@ -8,9 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/dev/data-model/">
+        <link rel="canonical" href="https://supercog.ai/agentic/dev/deployment/">
       
       
+        <link rel="prev" href="../tools/tool-library/weather-tool/">
+      
+      
+        <link rel="next" href="../rag-support/">
       
       
       <link rel="icon" href="../assets/favicon.ico">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Data Model - Agentic Docs</title>
+        <title>Agentic AWS Deployment Guide - Agentic Docs</title>
       
     
     
@@ -68,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#data-model" class="md-skip">
+        <a href="#agentic-aws-deployment-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -107,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Data Model
+              Agentic AWS Deployment Guide
             
           </span>
         </div>
@@ -1445,6 +1449,8 @@
       
   
   
+    
+  
   
   
     
@@ -1458,15 +1464,15 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../deployment/" class="md-nav__link ">
+            <a href="./" class="md-nav__link md-nav__link--active">
               
   
   
@@ -1480,7 +1486,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Deployment
@@ -1582,6 +1588,221 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-set-up-local-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Set Up Local Environment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-install-agentic-framework" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Install Agentic Framework
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-initialize-your-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Initialize Your Project
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-build-your-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Build Your Agent
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-configure-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Configure Secrets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 5: Configure Secrets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-environment-file-env" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 1: Environment File (.env)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-aws-secrets-manager-via-terraform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Option 2: AWS Secrets Manager (via Terraform)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-configure-terraform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Configure Terraform
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-build-the-terraform-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Build the Terraform Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-8-build-and-deploy-the-docker-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 8: Build and Deploy the Docker Image
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-9-test-your-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 9: Test Your Deployment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-10-monitor-your-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 10: Monitor Your Deployment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#container-fails-to-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      Container Fails to Start
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-not-accessible" class="md-nav__link">
+    <span class="md-ellipsis">
+      API Not Accessible
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication Issues
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cleaning-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cleaning Up
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customizing-your-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customizing Your Deployment
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customizing Your Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scaling-your-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaling Your Agent
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-a-custom-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using a Custom Domain
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1599,14 +1820,237 @@
   
 
 
-<h1 id="data-model">Data Model</h1>
-<p><code>Agent</code> - a named unit of execution which supports one or more operations and maintains a persistent state.</p>
-<p><code>Thread</code> - when you interact with an agent you do so in the context of a "thread", which maintains a
-history of interactions (events in and events out) with the agent. A Thread has no definite "end" state.</p>
-<p><code>Run</code> - requesting the agent to perform an operation constitutes a "run". So Threads are composed of
-a sequence of Runs. A Run might be in-process, interrupted, continued, or completed.</p>
-<p><code>Event</code> - as the agent runs it publishes events, keyed to the Run and the Thread.</p>
-<p>?? "request_id"</p>
+<h1 id="agentic-aws-deployment-guide">Agentic AWS Deployment Guide</h1>
+<p>This guide provides step-by-step instructions for deploying your Agentic agents to AWS using Docker and Terraform. </p>
+<blockquote>
+<p><strong>Note:</strong> If you have already completed the <a href="../getting-started/">Getting Started</a> guide, you can skip to <a href="#step-5-configure-secrets">Step 5</a>.</p>
+</blockquote>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before you begin, make sure you have the following:</p>
+<ul>
+<li><a href="https://www.python.org/downloads/">Python 3.12</a></li>
+<li><a href="https://docs.docker.com/get-docker/">Docker</a> installed and running</li>
+<li><a href="https://aws.amazon.com/cli/">AWS CLI</a> installed and configured</li>
+<li><a href="https://developer.hashicorp.com/terraform/downloads">Terraform</a> installed (v1.0.0+)</li>
+<li><a href="https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/">AWS Account</a> with appropriate permissions</li>
+<li>API keys for your LLMs (<a href="https://platform.openai.com/api-keys">OpenAI</a>, <a href="https://console.anthropic.com/settings/keys">Anthropic</a>, etc.)</li>
+<li><a href="https://github.com/astral-sh/uv">uv</a> for Python package management</li>
+</ul>
+<h2 id="step-1-set-up-local-environment">Step 1: Set Up Local Environment</h2>
+<p>Create a new directory for your project and navigate to it:</p>
+<div class="codehilite"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>~/agentic
+<span class="nb">cd</span><span class="w"> </span>~/agentic
+uv<span class="w"> </span>venv<span class="w"> </span>--python<span class="w"> </span><span class="m">3</span>.12
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+</code></pre></div>
+
+<h2 id="step-2-install-agentic-framework">Step 2: Install Agentic Framework</h2>
+<p>Next, install the Agentic framework with all optional dependencies:</p>
+<div class="codehilite"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>agentic-framework<span class="o">[</span>all<span class="o">]</span>
+</code></pre></div>
+
+<h2 id="step-3-initialize-your-project">Step 3: Initialize Your Project</h2>
+<p>Initialize a new Agentic project:</p>
+<div class="codehilite"><pre><span></span><code>agentic<span class="w"> </span>init
+</code></pre></div>
+
+<p>This will create the basic project structure with example agents and tools.</p>
+<h2 id="step-4-build-your-agent">Step 4: Build Your Agent</h2>
+<p>Create or modify an agent in the <code>agents</code> directory. For example, <code>agents/my_agent.py</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">AgentRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">WeatherTool</span>
+
+<span class="n">my_agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Weather Agent&quot;</span><span class="p">,</span>
+    <span class="n">welcome</span><span class="o">=</span><span class="s2">&quot;I can give you weather reports! Just tell me which city.&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;You are a helpful assistant specializing in weather information.&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">WeatherTool</span><span class="p">()],</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;openai/gpt-4o-mini&quot;</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">AgentRunner</span><span class="p">(</span><span class="n">my_agent</span><span class="p">)</span><span class="o">.</span><span class="n">repl_loop</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Test your agent locally:</p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>agents/my_agent.py
+</code></pre></div>
+
+<h2 id="step-5-configure-secrets">Step 5: Configure Secrets</h2>
+<p>You have three options for configuring your secrets:</p>
+<h3 id="option-1-environment-file-env">Option 1: Environment File (.env)</h3>
+<ol>
+<li>Copy the example environment file:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
+</code></pre></div>
+
+<ol>
+<li>Edit <code>.env</code> to add your API keys and other secrets:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code>OPENAI_API_KEY=sk-your-openai-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+<span class="gh">#</span> Add other secrets as needed
+</code></pre></div>
+
+<p>When you build the docker image, the secrets will be automatically loaded into the container.</p>
+<h3 id="option-2-aws-secrets-manager-via-terraform">Option 2: AWS Secrets Manager (via Terraform)</h3>
+<p>Secrets will be automatically configured in AWS Secrets Manager when you deploy using Terraform. You'll need to add your API keys to the <code>terraform/terraform.tfvars</code> file in step 6.</p>
+<p>This approach is recommended for production deployments as it provides better security and centralized management.</p>
+<h2 id="step-6-configure-terraform">Step 6: Configure Terraform</h2>
+<ol>
+<li>Copy the example Terraform variables file:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code>cp<span class="w"> </span>terraform/terraform.tfvars.example<span class="w"> </span>terraform/terraform.tfvars
+</code></pre></div>
+
+<ol>
+<li>Edit <code>terraform/terraform.tfvars</code> to configure your deployment:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="c1"># AWS Region</span>
+<span class="na">aws_region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;us-east-1&quot;</span>
+
+<span class="c1"># Network Settings</span>
+<span class="na">vpc_name</span><span class="w">            </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;agentic-vpc&quot;</span>
+<span class="na">vpc_cidr</span><span class="w">            </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;10.0.0.0/16&quot;</span>
+<span class="na">availability_zones</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;us-east-1a&quot;, &quot;us-east-1b&quot;</span><span class="p">]</span>
+<span class="na">private_subnet_cidrs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;10.0.1.0/24&quot;, &quot;10.0.2.0/24&quot;</span><span class="p">]</span>
+<span class="na">public_subnet_cidrs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;10.0.101.0/24&quot;, &quot;10.0.102.0/24&quot;</span><span class="p">]</span>
+
+<span class="c1"># ECR Settings</span>
+<span class="na">ecr_repository_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;agentic-api&quot;</span>
+
+<span class="c1"># ECS Settings</span>
+<span class="na">ecs_cluster_name</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;agentic-cluster&quot;</span>
+<span class="na">task_cpu</span><span class="w">              </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;1024&quot;</span><span class="c1">  # 1 vCPU</span>
+<span class="na">task_memory</span><span class="w">           </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2048&quot;</span><span class="c1">  # 2 GB</span>
+<span class="na">service_desired_count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># Agent Settings</span>
+<span class="na">agent_path</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;agents/basic_agent.py&quot;</span><span class="c1">  # Path to your agent file</span>
+<span class="na">user_agents</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">false</span><span class="c1">  # Set to true if you want to enable user-specific agents</span>
+<span class="na">use_ray</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="no">false</span><span class="c1">  # Set to true if you want to use Ray for agent execution</span>
+
+<span class="c1"># Secrets Settings</span>
+<span class="na">secrets_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;agentic-api-secrets&quot;</span>
+
+<span class="c1"># Replace these with your actual API keys in a secure way - DO NOT commit this file with real values</span>
+<span class="nb">secrets_values</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="na">OPENAI_API_KEY</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-openai-api-key&quot;</span>
+<span class="w">  </span><span class="na">ANTHROPIC_API_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;your-anthropic-api-key&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="step-7-build-the-terraform-configuration">Step 7: Build the Terraform Configuration</h2>
+<p>Navigate to the terraform directory and initialize Terraform:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>terraform
+terraform<span class="w"> </span>init
+</code></pre></div>
+
+<p>Review the infrastructure plan:</p>
+<div class="codehilite"><pre><span></span><code>terraform<span class="w"> </span>plan
+</code></pre></div>
+
+<p>Apply the configuration to create the AWS resources:</p>
+<div class="codehilite"><pre><span></span><code>terraform<span class="w"> </span>apply
+</code></pre></div>
+
+<p>You'll need to confirm the changes by typing <code>yes</code> when prompted.</p>
+<h2 id="step-8-build-and-deploy-the-docker-image">Step 8: Build and Deploy the Docker Image</h2>
+<p>Return to the project root directory and log in to your ECR repository:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>..<span class="w">  </span><span class="c1"># Return to the project root from the terraform directory</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_REGION</span><span class="o">=</span><span class="k">$(</span>aws<span class="w"> </span>configure<span class="w"> </span>get<span class="w"> </span>region<span class="k">)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ECR_REPO_URL</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>ecr_repository_url<span class="k">)</span>
+aws<span class="w"> </span>ecr<span class="w"> </span>get-login-password<span class="w"> </span>--region<span class="w"> </span><span class="si">${</span><span class="nv">AWS_REGION</span><span class="si">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>docker<span class="w"> </span>login<span class="w"> </span>--username<span class="w"> </span>AWS<span class="w"> </span>--password-stdin<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>
+</code></pre></div>
+
+<p>Build and push the Docker image:</p>
+<div class="codehilite"><pre><span></span><code>docker<span class="w"> </span>build<span class="w"> </span>--platform<span class="w"> </span>linux/amd64<span class="w"> </span>-t<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest
+</code></pre></div>
+
+<h2 id="step-9-test-your-deployment">Step 9: Test Your Deployment</h2>
+<p>Test your agent API by sending a request to the endpoint:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Get the API endpoint URL from Terraform output</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">API_URL</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>agent_endpoint<span class="k">)</span>
+
+<span class="c1"># Send a test request to the discovery endpoint</span>
+curl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$API_URL</span><span class="s2">/_discovery&quot;</span>
+</code></pre></div>
+
+<p>You should see a list of available agent endpoints.</p>
+<p>To test your agent, send a request to the process endpoint:</p>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$API_URL</span><span class="s2">/weather-agent/process&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;prompt&quot;: &quot;What is the weather like in New York?&quot;}&#39;</span>
+</code></pre></div>
+
+<p>This will return a request ID, which you can use to get the events:</p>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$API_URL</span><span class="s2">/weather-agent/getevents?request_id=YOUR_REQUEST_ID&quot;</span>
+</code></pre></div>
+
+<h2 id="step-10-monitor-your-deployment">Step 10: Monitor Your Deployment</h2>
+<p>You can monitor your agent in the AWS Console:</p>
+<ol>
+<li><strong>ECS</strong>: Check the status of your agent service</li>
+<li><strong>CloudWatch</strong>: View logs from your agent</li>
+<li><strong>ECR</strong>: Manage your Docker images</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="container-fails-to-start">Container Fails to Start</h3>
+<p>Check CloudWatch Logs for detailed error messages:</p>
+<ol>
+<li>Go to the AWS Console</li>
+<li>Navigate to CloudWatch &gt; Log Groups</li>
+<li>Find the log group for your agent (usually <code>/ecs/your-agent-name</code>)</li>
+<li>Check the latest log stream for error messages</li>
+</ol>
+<h3 id="api-not-accessible">API Not Accessible</h3>
+<p>Verify security group rules allow traffic to the container port:</p>
+<ol>
+<li>Go to the AWS Console</li>
+<li>Navigate to EC2 &gt; Security Groups</li>
+<li>Find the security group associated with your agent</li>
+<li>Ensure it allows inbound traffic on the container port (default: 8086)</li>
+</ol>
+<h3 id="authentication-issues">Authentication Issues</h3>
+<p>Ensure your API keys are correctly set up:</p>
+<ol>
+<li><strong>For AWS Secrets Manager</strong>:</li>
+<li>Go to the AWS Console</li>
+<li>Navigate to Secrets Manager &gt; Secrets</li>
+<li>
+<p>Check the value of your agent secrets</p>
+</li>
+<li>
+<p><strong>For .env file</strong>:</p>
+</li>
+<li>Verify the .env file has been correctly copied into the Docker image</li>
+<li>Check the container logs for any environment variable related errors</li>
+</ol>
+<h2 id="cleaning-up">Cleaning Up</h2>
+<p>To destroy all AWS resources created by Terraform:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>~/agentic/terraform<span class="w">  </span><span class="c1"># Navigate to the terraform directory</span>
+terraform<span class="w"> </span>destroy
+</code></pre></div>
+
+<p>You'll need to confirm the deletion by typing <code>yes</code> when prompted.</p>
+<h2 id="customizing-your-deployment">Customizing Your Deployment</h2>
+<h3 id="scaling-your-agent">Scaling Your Agent</h3>
+<p>To scale your agent deployment, adjust the following in <code>terraform/terraform.tfvars</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="na">service_desired_count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="c1">  # Number of instances to run</span>
+<span class="na">task_cpu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2048&quot;</span><span class="c1">          # CPU units (1024 = 1 vCPU)</span>
+<span class="na">task_memory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;4096&quot;</span><span class="c1">       # Memory in MB</span>
+</code></pre></div>
+
+<h3 id="using-a-custom-domain">Using a Custom Domain</h3>
+<p>To use a custom domain with your agent API:</p>
+<ol>
+<li>Create an HTTPS certificate in AWS Certificate Manager</li>
+<li>Configure an HTTPS listener on the load balancer</li>
+<li>Create a DNS record pointing to the load balancer</li>
+</ol>
+<p>Refer to AWS documentation for detailed instructions.</p>
 
 
 

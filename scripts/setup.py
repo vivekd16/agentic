@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from glob import glob
 import sys
 sys.setrecursionlimit(10000)
 
@@ -38,6 +39,11 @@ OPTIONS = {
     'qt_plugins': ['platforms', 'styles'],
     'semi_standalone': True,
     'site_packages': True,
+    'resources': [
+        'resources/dashboard',    # <-- Add explicitly here
+        'resources/examples',     # <-- Add explicitly here (if needed)
+        'resources/plugins',      # <-- Add explicitly here (if needed)
+    ],
     'excludes': [
         'tkinter', 'matplotlib', 'scipy', 'pytest', 'packaging', 'PyInstaller',
         'typing_extensions', 'backports', 'backports.tarfile',

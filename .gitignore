@@ -4,6 +4,7 @@ __pycache__/
 **.egg-info
 build/
 .pytest_cache/
+Agentic.dmg
 
 # Virtual environments
 .venv/
@@ -30,6 +31,7 @@ uv.lock
 
 # Logs
 *.log
+launch_log.txt
 
 # System files
 .DS_Store

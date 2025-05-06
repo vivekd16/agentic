@@ -14,12 +14,16 @@ if [ -d "src/agentic/dashboard" ]; then
     cd src/agentic/dashboard
     npm install
     npm run build
-    
+    #npx next export
+
     # Create dashboard directory in resources
     mkdir -p ../../resources/dashboard
     
     # Copy all exported files to resources/dashboard
-    cp -r out/* ../../resources/dashboard/
+    #cp -r out/* ../../resources/dashboard/
+    rm -rf ../../resources/dashboard
+    mkdir -p ../../resources/dashboard
+    cp -R out/* ../../resources/dashboard/
     
     cd ../../..
     pwd
@@ -48,6 +52,9 @@ fi
 
 pwd
 
+
+
+
 # Copy examples
 
 echo "Copying examples..."
@@ -55,6 +62,10 @@ cp examples/*.py resources/examples/
 
 echo "Examples copied to resources/examples:"
 ls -l resources/examples
+
+
+
+
 
 # Copy Qt plugins
 echo "Copying Qt plugins..."
@@ -69,38 +80,55 @@ fi
 echo "Cleaning previous build artifacts..."
 rm -rf build dist
 
+
+
+
+
 # Build app (now using the permanent setup.py file)
 echo "Building app ..."
-uv run --active python setup.py py2app
+uv run --active python scripts/setup.py py2app
+
+
+
+
+
+
+# Copy missing/problematic modules
+./scripts/build_copy_missing_modules.sh
 
 # === Copying standard library modules that py2app skips ===
-BUNDLED_PYTHON="dist/Agentic.app/Contents/Resources/lib/python3.12"
+#BUNDLED_PYTHON="dist/Agentic.app/Contents/Resources/lib/python3.12"
+#echo "Copying standard library modules that py2app skips..."
+# HTML_SRC_DIR="/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/html"
+# HTML_DST_DIR="$BUNDLED_PYTHON/html"
 
-echo "Copying standard library modules that py2app skips..."
+# if [ -d "$HTML_SRC_DIR" ]; then
+#     echo "Copying html module..."
+#     mkdir -p "$HTML_DST_DIR"
+#     cp -R "$HTML_SRC_DIR/"* "$HTML_DST_DIR/"
+# else
+#     echo "WARNING: html module not found at $HTML_SRC_DIR"
+# fi
 
-HTML_SRC_DIR="/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/html"
-HTML_DST_DIR="$BUNDLED_PYTHON/html"
+# SOCKETSERVER_SRC_FILE="/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/socketserver.py"
+# if [ -f "$SOCKETSERVER_SRC_FILE" ]; then
+#     echo "Copying socketserver module..."
+#     cp "$SOCKETSERVER_SRC_FILE" "$BUNDLED_PYTHON/"
+# else
+#     echo "WARNING: socketserver.py not found at $SOCKETSERVER_SRC_FILE"
+# fi
 
-if [ -d "$HTML_SRC_DIR" ]; then
-    echo "Copying html module..."
-    mkdir -p "$HTML_DST_DIR"
-    cp -R "$HTML_SRC_DIR/"* "$HTML_DST_DIR/"
-else
-    echo "WARNING: html module not found at $HTML_SRC_DIR"
-fi
 
-SOCKETSERVER_SRC_FILE="/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/socketserver.py"
-if [ -f "$SOCKETSERVER_SRC_FILE" ]; then
-    echo "Copying socketserver module..."
-    cp "$SOCKETSERVER_SRC_FILE" "$BUNDLED_PYTHON/"
-else
-    echo "WARNING: socketserver.py not found at $SOCKETSERVER_SRC_FILE"
-fi
+
 
 
 echo "Copying Qt plugins to PyQt5 location..."
-mkdir -p "dist/Agentic.app/Contents/Resources/lib/python3.11/PyQt5/Qt5/plugins/platforms"
-cp "$QT_PLUGINS_PATH/platforms/libqcocoa.dylib" "dist/Agentic.app/Contents/Resources/lib/python3.11/PyQt5/Qt5/plugins/platforms/"
+
+mkdir -p "dist/Agentic.app/Contents/Resources/lib/python3.12/PyQt5/Qt5/plugins/platforms"
+cp "$QT_PLUGINS_PATH/platforms/libqcocoa.dylib" "dist/Agentic.app/Contents/Resources/lib/python3.12/PyQt5/Qt5/plugins/platforms/"
+
+
+
 
 # Now manually copy the resources into the app bundle
 echo "Copying resources into app bundle..."
@@ -115,6 +143,8 @@ cp -r resources/plugins/* "dist/Agentic.app/Contents/Resources/plugins/"
 # Create runtime directory in app bundle
 mkdir -p "dist/Agentic.app/Contents/Resources/runtime"
 
+
+
 # Patch __boot__.py to fix sys.path issue
 BOOT_PATH="dist/Agentic.app/Contents/Resources/__boot__.py"
 if [ -f "$BOOT_PATH" ]; then
@@ -127,6 +157,9 @@ else
     echo "Error: __boot__.py not found in the bundle."
     exit 1
 fi
+
+
+
 
 SITE_PACKAGES="dist/Agentic.app/Contents/Resources/lib/python3.12/site-packages"
 if [ ! -d "$SITE_PACKAGES/agentic" ]; then

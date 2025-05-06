@@ -10,8 +10,9 @@ import webbrowser
 
 import agentic
 import transformers
-
+import threading
 import sys
+
 print("\n".join(sys.path))
 
 # Very early in agent_launcher.py
@@ -119,11 +120,12 @@ def setup_qt_plugins():
 setup_qt_plugins()
 
 def find_examples():
-    """Find examples directory using environment variable or fallback paths"""
+    """Find examples directory with Python files in both app bundle and development environments"""
     from pathlib import Path
     import os
     import sys
 
+    # Check environment variable first
     env_path = os.environ.get("AGENTIC_EXAMPLES_DIR")
     if env_path:
         path = Path(env_path)
@@ -134,60 +136,59 @@ def find_examples():
                 print(f"Found examples directory with {len(py_files)} Python files")
                 return path
 
-    # Fallback locations in order of likelihood
-    base_dir = Path(sys.executable).parent.parent  # e.g., /Contents/MacOS/../..
-    candidate_paths = [
-        base_dir / "Resources" / "resources" / "examples",  # main correct location
-        base_dir / "Resources" / "examples",                # fallback
-        Path.cwd() / "resources" / "examples",
-        Path.cwd() / "examples"
-    ]
-
+    # Detect if we're running from a frozen app bundle
+    is_frozen = getattr(sys, 'frozen', False)
+    
+    # Candidate paths - order matters
+    candidate_paths = []
+    
+    if is_frozen:
+        # App bundle paths
+        base_dir = Path(sys.executable).parent.parent  # e.g., /Contents/MacOS/../..
+        candidate_paths.extend([
+            base_dir / "Resources" / "resources" / "examples",  # Main app bundle location
+            base_dir / "Resources" / "examples",                # Fallback location
+        ])
+    
+    # Development environment paths - add these regardless of frozen state
+    # (as fallbacks for frozen state and primaries for dev mode)
+    script_dir = Path(os.path.abspath(os.path.dirname(sys.argv[0] or '.')))
+    candidate_paths.extend([
+        script_dir / "examples",                     # Examples at same level as script
+        script_dir.parent / "examples",              # Examples in parent directory
+        Path.cwd() / "examples",                     # Examples in current directory
+        Path(__file__).parent.parent / "examples",   # Examples relative to module
+        Path.cwd() / "resources" / "examples",       # Examples in resources subdirectory
+    ])
+    
+    # Try each path in order
     for path in candidate_paths:
         print(f"Checking for examples in: {path}")
-        if path.exists() and any(path.glob("*.py")):
-            print(f"Found examples in: {path}")
-            return path
-
+        if path.exists() and path.is_dir():
+            py_files = list(path.glob('*.py'))
+            if py_files:
+                print(f"Found examples directory with {len(py_files)} Python files")
+                return path
+    
     print("Examples directory not found.")
-    return None
+    # Return a default path even if nothing found (caller can check if it exists)
+    return Path.cwd() / "examples"
 
-        
-# Import our path helpers
-from path_helpers import get_examples_dir, get_resource_path, get_runtime_dir
+#---------------------------- Initialzation steps -----------------------------------------#
 
-# Ensure we're using the right attributes for high DPI displays on macOS
+
+
+
+#----------------------------- Ensure we're using the right attributes for high DPI displays on macOS
 if hasattr(Qt, 'AA_EnableHighDpiScaling'):
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
-# --- [Rest of the agent_launcher.py file] ---
 
-# Import our path helpers
-from path_helpers import get_examples_dir, get_resource_path, get_runtime_dir
-
-# Ensure we're using the right attributes for high DPI displays on macOS
-if hasattr(Qt, 'AA_EnableHighDpiScaling'):
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-
-# --- [Rest of the agent_launcher.py file] ---
-
-# Import our path helpers
-from path_helpers import get_examples_dir, get_resource_path, get_runtime_dir
-
-# Ensure we're using the right attributes for high DPI displays on macOS
-if hasattr(Qt, 'AA_EnableHighDpiScaling'):
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-
-# --- [Rest of the agent_launcher.py file] ---
+    
 import logging
-
-# Configure logging
+#---------------------------- Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -197,13 +198,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("agentic.launcher")
 
-# Initialize PyQt high DPI settings
+
+
+#---------------------------- Initialize PyQt high DPI settings
 if hasattr(Qt, 'AA_EnableHighDpiScaling'):
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
-# Import path helpers
+
+    
+#---------------------------- Import our path helpers
 try:
     from path_helpers import get_examples_dir, get_resource_path, get_runtime_dir
 except ImportError:
@@ -239,19 +244,25 @@ except ImportError:
         os.makedirs(runtime_dir, exist_ok=True)
         return runtime_dir
 
-# Setup runtime directory
+    
+#------------------------------ Setup runtime directory
 os.makedirs(get_runtime_dir(), exist_ok=True)
 os.chdir(get_runtime_dir())
 logger.info(f"Working directory set to {os.getcwd()}")
 
+
+
+
+
+
+
+
+
+
+#-------------------------------------------- Agent and Dashboard threads -------------------------------#
+
 class AgentThread(QThread):
     update_signal = pyqtSignal(str)
-    
-    def __init__(self, agent_path):
-        super().__init__()
-        self.agent_path = agent_path
-        self.process = None
-        self.running = True
         
     def __init__(self, agent_path, env=None):
         super().__init__()
@@ -262,87 +273,161 @@ class AgentThread(QThread):
         
     def run(self):
         try:
-
+            # Get the current Python executable - this is the one inside our app bundle
+            python_exe = sys.executable
+            
+            # Log debugging info
+            self.update_signal.emit(f"[debug] Python executable: {python_exe}")
+            self.update_signal.emit(f"[debug] Agent path: {self.agent_path}")
+            self.update_signal.emit(f"[debug] Current working directory: {os.getcwd()}")
+            
+            # Prepare environment with correct PYTHONPATH
             env = os.environ.copy()
-            # Add project source directory to PYTHONPATH
-            env["PYTHONPATH"] = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))), "src") + os.pathsep + env.get("PYTHONPATH", "")
-
-            cmd = [sys.executable, "-m", "agentic.cli", "serve", agent_absolute_path]
+            
+            # Get app bundle directories
+            app_dir = Path(python_exe).parent.parent  # /Contents/MacOS/python -> /Contents
+            resources_dir = app_dir / "Resources"
+            bundle_lib = resources_dir / "lib" / "python3.12"
+            site_pkgs = bundle_lib / "site-packages"
+            
+            # Set PYTHONPATH to include our bundled paths
+            env["PYTHONPATH"] = os.pathsep.join([
+                str(site_pkgs),
+                str(bundle_lib),
+                str(resources_dir),
+            ])
+            
+            # Explicitly unset PYTHONHOME if it exists (let the interpreter find its home directory)
+            if "PYTHONHOME" in env:
+                del env["PYTHONHOME"]
+            
+            # Make sure working directory is the runtime directory (could have been changed)
+            runtime_dir = resources_dir / "runtime"
+            os.makedirs(str(runtime_dir), exist_ok=True)
+            os.chdir(str(runtime_dir))
+            
+            # Log the environment setup
+            self.update_signal.emit(f"[debug] Environment for subprocess:")
+            self.update_signal.emit(f"  PYTHONPATH = {env['PYTHONPATH']}")
+            self.update_signal.emit(f"  Using Python: {python_exe}")
+            self.update_signal.emit(f"  Working directory: {os.getcwd()}")
+            
+            # Construct command with the exact same Python executable
+            cmd = [
+                python_exe,
+                "-m", "agentic.cli", "serve", str(self.agent_path)
+            ]
+            
+            self.update_signal.emit(f"[debug] Launching agent subprocess with command: {' '.join(cmd)}")
+            
+            # Create the subprocess with the prepared environment
             self.process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
                 bufsize=1,
-                env=env
+                env=env,
+                cwd=str(runtime_dir)  # Ensure consistent working directory
             )
-            #______________
-            # cmd = [sys.executable, "-m", "agentic.cli", "serve", str(self.agent_path)]
-            # self.update_signal.emit(f"Running command: {' '.join(cmd)}")
             
-            # self.process = subprocess.Popen(
-            #     cmd,
-            #     stdout=subprocess.PIPE,
-            #     stderr=subprocess.PIPE,
-            #     text=True,
-            #     bufsize=1
-            # )
+            # A buffer to collect error output in case of crash
+            error_buffer = []
+            max_error_lines = 50  # Keep the last 50 lines of error output
             
-            # Create separate threads for stdout and stderr
+            # Read output in the thread loop
             while self.running and self.process and self.process.poll() is None:
-                stdout_line = self.process.stdout.readline()
-                if stdout_line:
+                stdout_line = self.process.stdout.readline() if self.process.stdout else ""
+                if stdout_line.strip():
                     self.update_signal.emit(stdout_line.strip())
                 
-                stderr_line = self.process.stderr.readline()
-                if stderr_line:
+                stderr_line = self.process.stderr.readline() if self.process.stderr else ""
+                if stderr_line.strip():
+                    # Add to error buffer for complete error context
+                    error_buffer.append(stderr_line.strip())
+                    if len(error_buffer) > max_error_lines:
+                        error_buffer.pop(0)  # Keep buffer at max size
+                    
+                    # Output the error line to the UI
                     self.update_signal.emit(f"ERROR: {stderr_line.strip()}")
                 
                 # Short sleep to prevent high CPU usage
                 time.sleep(0.01)
+            
+            # Check why the process ended
+            exit_code = self.process.returncode if self.process else None
+            
+            # Collect any remaining output
+            if self.process:
+                # Get any remaining stdout
+                for line in self.process.stdout:
+                    if line.strip():
+                        self.update_signal.emit(line.strip())
+                
+                # Get any remaining stderr
+                for line in self.process.stderr:
+                    if line.strip():
+                        error_buffer.append(line.strip())
+                        if len(error_buffer) > max_error_lines:
+                            error_buffer.pop(0)
+                        self.update_signal.emit(f"ERROR: {line.strip()}")
+            
+            # If process crashed (exit code != 0), show the complete error context
+            if exit_code != 0:
+                self.update_signal.emit(f"[debug] Agent process exited with code: {exit_code}")
+                self.update_signal.emit(f"===== FULL ERROR CONTEXT =====")
+                for line in error_buffer:
+                    self.update_signal.emit(line)
+                self.update_signal.emit(f"===== END ERROR CONTEXT =====")
+            else:
+                self.update_signal.emit(f"[debug] Agent process exited with code: {exit_code}")
                 
         except Exception as e:
+            import traceback
             self.update_signal.emit(f"Error: {str(e)}")
-
-    def run(self):
-        try:
-            cmd = [sys.executable, "-m", "agentic.cli", "serve", str(self.agent_path)]
-            self.update_signal.emit(f"Running command: {' '.join(cmd)}")
-            
-            self.process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1,
-                env=self.env  # Use the environment
-            )
-            
-            # Create separate threads for stdout and stderr
-            while self.running and self.process and self.process.poll() is None:
-                stdout_line = self.process.stdout.readline()
-                if stdout_line:
-                    self.update_signal.emit(stdout_line.strip())
-                
-                stderr_line = self.process.stderr.readline()
-                if stderr_line:
-                    self.update_signal.emit(f"ERROR: {stderr_line.strip()}")
-                
-                # Short sleep to prevent high CPU usage
-                time.sleep(0.01)
-                
-        except Exception as e:
-            self.update_signal.emit(f"Error: {str(e)}")
-            
+            self.update_signal.emit(f"Traceback: {traceback.format_exc()}")
+    
     def stop(self):
+        """Stop the agent process"""
         self.running = False
+        
         if self.process:
+            # First try a gentle terminate
             self.update_signal.emit("Terminating agent process...")
-            self.process.terminate()
-            time.sleep(1)
-            if self.process.poll() is None:
-                self.update_signal.emit("Force killing agent process...")
-                self.process.kill()
+            try:
+                self.process.terminate()
+                
+                # Give it a moment to terminate gracefully
+                try:
+                    self.process.wait(timeout=3)
+                    self.update_signal.emit(f"Process terminated with exit code: {self.process.returncode}")
+                except subprocess.TimeoutExpired:
+                    # If it doesn't terminate within timeout, force kill
+                    self.update_signal.emit("Force killing agent process...")
+                    self.process.kill()
+                    try:
+                        self.process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        self.update_signal.emit("WARNING: Process could not be killed within timeout")
+            except Exception as e:
+                self.update_signal.emit(f"Error during process termination: {str(e)}")
+                
+            # Make sure to close the pipes to avoid resource leaks
+            try:
+                if self.process.stdout:
+                    self.process.stdout.close()
+                if self.process.stderr:
+                    self.process.stderr.close()
+            except Exception as e:
+                self.update_signal.emit(f"Error closing pipes: {str(e)}")
+                
+            # Set to None to ensure garbage collection
+            self.process = None
+            
+            
+
+            
+
 
 class DashboardThread(QThread):
     update_signal = pyqtSignal(str)
@@ -354,64 +439,66 @@ class DashboardThread(QThread):
         self.running = True
         self.env = env or os.environ.copy()
         self.server = None # for compiled dashboard
-        
+
+
     def run(self):
         try:
-            # Import our static dashboard server
-            from static_dashboard_server import start_dashboard
+            # Check if we should use static dashboard
+            use_static = self.env.get("USE_STATIC_DASHBOARD", "0") == "1"
             
-            self.update_signal.emit(f"Starting static dashboard server on port {self.port}...")
-            
-            # Get the API URL from environment
-            api_url = self.env.get("AGENT_SERVER_URL", f"http://localhost:8086")
-            self.update_signal.emit(f"Using API URL: {api_url}")
-            
-            # Start the dashboard
-            self.server, dashboard_url = start_dashboard(
-                port=self.port,
-                api_url=api_url,
-                open_browser=False  # We'll open the browser separately
-            )
-            
-            self.update_signal.emit(f"Dashboard started at {dashboard_url}")
-            
-            # Keep the thread running
-            while self.running and self.server:
-                time.sleep(1)
-
-            
-            # Use the same command as the CLI version
-            #cmd = [sys.executable, "-m", "agentic.cli", "dashboard", "start", "--dev", "--port", str(self.port)]
-            #self.update_signal.emit(f"Running command: {' '.join(cmd)}")
-            
-            # Use the environment with our custom variables
-            #self.process = subprocess.Popen(
-                #cmd,
-                #stdout=subprocess.PIPE,
-                #stderr=subprocess.PIPE,
-                #text=True,
-                #bufsize=1,
-                #env=self.env,  # Use our env with AGENT_SERVER_URL
-                #cwd=os.getcwd()  # Use current working directory
-            #)
-            
-            # Read output in the thread loop
-            #while self.running and self.process and self.process.poll() is None:
-                #stdout_line = self.process.stdout.readline()
-                #if stdout_line:
-                    #self.update_signal.emit(stdout_line.strip())
+            if use_static:
+                # Use static dashboard server
+                from static_dashboard_server import start_dashboard
                 
-                #stderr_line = self.process.stderr.readline()
-                #if stderr_line:
-                    #self.update_signal.emit(stderr_line.strip())
+                self.update_signal.emit(f"Starting static dashboard server on port {self.port}...")
                 
-                # Short sleep to prevent high CPU usage
-                #time.sleep(0.01)
+                # Get the API URL from environment
+                api_url = self.env.get("AGENT_SERVER_URL", f"http://localhost:8086")
+                self.update_signal.emit(f"Using API URL: {api_url}")
+                
+                # Start the dashboard
+                self.server, dashboard_url = start_dashboard(
+                    port=self.port,
+                    api_url=api_url,
+                    open_browser=False
+                )
+                
+                self.update_signal.emit(f"Dashboard started at {dashboard_url}")
+                
+                # Keep the thread running
+                while self.running and self.server:
+                    time.sleep(1)
+            else:
+                # Use the CLI dashboard
+                cmd = [sys.executable, "-m", "agentic.cli", "dashboard", "start", "--dev", "--port", str(self.port)]
+                self.update_signal.emit(f"Running command: {' '.join(cmd)}")
+                
+                # Use the environment with our custom variables
+                self.process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,
+                    env=self.env,
+                    cwd=os.getcwd()
+                )
+                
+                # Read output in the thread loop
+                while self.running and self.process and self.process.poll() is None:
+                    stdout_line = self.process.stdout.readline()
+                    if stdout_line:
+                        self.update_signal.emit(stdout_line.strip())
+                    
+                    stderr_line = self.process.stderr.readline()
+                    if stderr_line:
+                        self.update_signal.emit(stderr_line.strip())
+                    
+                    # Short sleep to prevent high CPU usage
+                    time.sleep(0.01)
                 
         except Exception as e:
             self.update_signal.emit(f"Error: {str(e)}")
-
-
             
     def stop(self): 
         self.running = False
@@ -433,7 +520,11 @@ class AgenticApp(QMainWindow):
         super().__init__()
         # Kill any existing dashboard processes first
         self.cleanup_existing_processes()
+        # Initialize UI and other components
         self.initUI()
+        # Set up crash logging
+        self.setup_crash_logging()
+        self.current_error_message = None
 
     def cleanup_existing_processes(self):
         """Kill any existing dashboard processes that might be running"""
@@ -640,22 +731,110 @@ class AgenticApp(QMainWindow):
         else:
             self.add_log(f"Examples directory not found: {examples_dir}")
 
-    def start_agent(self):
-        import sys
-        import os
-        self.add_log(f"Python executable: {sys.executable}")
-        self.add_log(f"Python path: {sys.path}")
+
+    def is_port_in_use(self, port):
+        """Check if a port is already in use"""
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('localhost', port)) == 0
+
+    def detect_module_error(self):
+        """
+        Detect the most recent ModuleNotFoundError in the log output.
+        Returns the error message or None if no module error found.
+        """
+        try:
+            # Get the log text and split into lines
+            log_text = self.log_output.toPlainText()
+            lines = log_text.split('\n')
+            
+            # Search for the most recent ModuleNotFoundError
+            for line in reversed(lines):  # Start from the most recent log line
+                if "ModuleNotFoundError:" in line:
+                    # Extract the specific module name from the error
+                    error_part = line.split("ModuleNotFoundError:")[1].strip()
+                    return f"Missing module: {error_part}"
+            
+            # If no specific module error found
+            return "Check the logs for more details."
+        except Exception as e:
+            self.add_log(f"Error detecting module error: {str(e)}")
+            return "Check the logs for more details."
+
+    def find_module_errors(self):
+        """Find all ModuleNotFoundError instances in the log output"""
+        try:
+            # Get the log text
+            log_text = self.log_output.toPlainText()
+            
+            # Find ModuleNotFoundError lines
+            module_errors = []
+            for line in log_text.split('\n'):
+                # Look specifically for the ModuleNotFoundError line format
+                if "ModuleNotFoundError: No module named" in line:
+                    # Extract module name - be specific about the format
+                    parts = line.split("ModuleNotFoundError: No module named")
+                    if len(parts) > 1:
+                        # The module name is usually in quotes in the error message
+                        module_name = parts[1].strip()
+                        # Remove quotes if present
+                        module_name = module_name.strip("'").strip('"')
+                        module_errors.append(f"Missing module: {module_name}")
+            
+            # If we found module errors, use those
+            if module_errors:
+                return "\n".join(module_errors)
+            
+            # If no module errors, check for import errors
+            import_errors = []
+            for line in log_text.split('\n'):
+                if "ImportError:" in line:
+                    parts = line.split("ImportError:")
+                    if len(parts) > 1:
+                        error_msg = parts[1].strip()
+                        import_errors.append(f"Import error: {error_msg}")
+            
+            if import_errors:
+                return "\n".join(import_errors)
+                
+            # If no specific errors found, return generic message
+            return "Check the logs for more details."
+            
+        except Exception as e:
+            return f"Error scanning logs: {str(e)}"
+
+    def find_last_module_error(self):
+        """Find the most recent ModuleNotFoundError in the logs for the current agent"""
+        try:
+            # First clear any old content from the log that might be from previous agents
+            current_log = self.log_output.toPlainText()
+            
+            # Find the last instance of a ModuleNotFoundError in the current log
+            last_error = None
+            for line in current_log.split('\n'):
+                if "ModuleNotFoundError: No module named" in line:
+                    # Extract just the module name inside the quotes
+                    import re
+                    match = re.search(r"No module named '([^']+)'", line)
+                    if match:
+                        last_error = f"Missing module: {match.group(1)}"
+            
+            # Return the last module error found, or a generic message
+            return last_error or "Check the logs for more details."
+            
+        except Exception as e:
+            print(f"Error in find_last_module_error: {e}")
+            return "Check the logs for more details."
+
+
         
+#----------------------------- starting and stopping agent and dashboard -------------------#
+    def start_agent(self):
+        """Start the agent with focused error detection"""
         if not self.agents:
             self.add_log("No agents available")
             return
-        
-        # First make sure any existing dashboard is stopped
-        if self.dashboard_thread:
-            self.add_log("Stopping existing dashboard before starting new agent...")
-            self.stop_dashboard()
-            time.sleep(2)  # Give it time to fully stop
-        
+
         selected_idx = self.agent_combo.currentIndex()
         if selected_idx < 0:
             self.add_log("No agent selected")
@@ -664,87 +843,618 @@ class AgenticApp(QMainWindow):
         # First make sure any existing agent is stopped
         if self.agent_thread:
             self.stop_agent()
+            time.sleep(2)
+
+        # Clear the log buffer to start with fresh logs for this agent
+        self.log_output.clear()
+        self.add_log("Log cleared for new agent")
 
         # Get the selected agent
         agent_path = self.agents[selected_idx][1]
         agent_name = self.agents[selected_idx][0]
 
-        # Set current directory to runtime dir
-        runtime_dir = get_runtime_dir()
-        os.chdir(runtime_dir)
-        self.add_log(f"Working directory set to: {runtime_dir}")
+        # Reset working directory
+        app_dir = Path(sys.executable).parent.parent
+        runtime_dir = app_dir / "Resources" / "runtime"
+        os.makedirs(str(runtime_dir), exist_ok=True)
+        os.chdir(str(runtime_dir))
+        self.add_log(f"Reset working directory to: {os.getcwd()}")
 
-        # Use the absolute path for the agent
-        agent_absolute_path = str(agent_path.absolute())
+        # Check path exists
+        if not os.path.exists(agent_path):
+            self.add_log(f"Error: Agent file not found: {agent_path}")
+            return
+
+        # Make sure port is free
+        if self.is_port_in_use(self.agent_port):
+            self.add_log(f"Port {self.agent_port} is in use, freeing it")
+            self.kill_process_on_port(self.agent_port)
+            time.sleep(2)
+
+        # Start the agent
+        agent_absolute_path = os.path.abspath(agent_path)
         self.add_log(f"Starting agent: {agent_name} (using path: {agent_absolute_path})")
-        
-        # Get the agentic module path
-        import sys
-        import os
-        agentic_path = None
-        for path in sys.path:
-            if 'agentic' in path and os.path.exists(path):
-                agentic_path = path
-                break
-        
-        if not agentic_path:
-            # Try to find the parent directory of the agentic module
-            try:
-                import agentic
-                agentic_path = os.path.dirname(os.path.dirname(agentic.__file__))
-                self.add_log(f"Found agentic parent directory at: {agentic_path}")
-            except ImportError:
-                self.add_log("Could not import agentic module")
-        
-        # Set up environment for subprocess
-        env = os.environ.copy()
-        if agentic_path:
-            self.add_log(f"Adding {agentic_path} to PYTHONPATH for subprocess")
-            if 'PYTHONPATH' in env:
-                env['PYTHONPATH'] = f"{agentic_path}:{env['PYTHONPATH']}"
-            else:
-                env['PYTHONPATH'] = agentic_path
-        
-        # Run the command with the modified environment
-        cmd = [sys.executable, "-m", "agentic.cli", "serve", agent_absolute_path]
-        self.add_log(f"Running command: {' '.join(cmd)} with custom PYTHONPATH")
-        
-        self.agent_thread = AgentThread(agent_absolute_path, env=env)
+
+        # Create and start thread
+        self.agent_thread = AgentThread(agent_absolute_path)
         self.agent_thread.update_signal.connect(self.add_log)
         self.agent_thread.start()
 
+        # Update UI
         self.start_agent_btn.setEnabled(False)
         self.stop_agent_btn.setEnabled(True)
+        self.agent_status.setText(f"Agent: Starting - {agent_name}")
 
         # Get the correct base name for the URL
         agent_base = os.path.splitext(os.path.basename(agent_absolute_path))[0].lower()
-        self.agent_status.setText(f"Agent: Running - {agent_name}")
         self.add_log(f"Agent API will be available at: http://localhost:{self.agent_port}/{agent_base}")
 
-        # Give the agent server a moment to start up
-        time.sleep(2)
+        # Wait for agent server to start
+        self.add_log("Waiting for agent server to initialize...")
+        agent_started = False
+        for i in range(10):
+            if self.is_port_in_use(self.agent_port):
+                self.add_log("Agent server is running")
+                agent_started = True
+                break
+                
+            # Check if process has exited with error
+            if self.agent_thread and hasattr(self.agent_thread, 'process') and self.agent_thread.process:
+                if self.agent_thread.process.poll() is not None:
+                    # Process has terminated - wait for logs to be processed
+                    self.add_log(f"Agent process exited with code: {self.agent_thread.process.returncode}")
+                    break
+                    
+            time.sleep(1)
+            
+        # If agent didn't start properly
+        if not agent_started:
+            # Wait to ensure all logs are processed
+            time.sleep(2)
+            
+            # Find the specific module error
+            error_message = self.find_last_module_error()
+            
+            # Show error dialog
+            from PyQt5.QtWidgets import QMessageBox
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Critical)
+            msg_box.setWindowTitle("Agent Start Error")
+            msg_box.setText(f"The agent '{agent_name}' failed to start.")
+            msg_box.setInformativeText(error_message)
+            msg_box.setStandardButtons(QMessageBox.Ok)
+            msg_box.exec_()
+            
+            # Reset UI
+            self.stop_agent()
+            self.start_agent_btn.setEnabled(True)
+            self.stop_agent_btn.setEnabled(False)
+            self.agent_status.setText("Agent: Failed to start")
+            return
 
-        # Start a fresh dashboard
+        # Start dashboard after agent is running
         self.start_dashboard()
+    
+    def stop_agent(self, show_messages=True):
+        """Stop the agent with improved cleanup and optional silent mode
         
-    def stop_agent(self, thorough_cleanup=False):
-        if self.agent_thread:
+        Args:
+            show_messages: Whether to show log messages during shutdown
+        """
+        if show_messages:
             self.add_log("Stopping agent...")
-            self.agent_thread.stop()
+        
+        if self.agent_thread:
+            if show_messages:
+                self.add_log("Terminating agent process...")
+            
+            # First check if the process has already exited
+            process_exited = False
+            if hasattr(self.agent_thread, 'process') and self.agent_thread.process:
+                exit_code = self.agent_thread.process.poll()
+                if exit_code is not None:
+                    process_exited = True
+                    if show_messages:
+                        self.add_log(f"Agent process already exited with code: {exit_code}")
+            
+            # Only try to stop if not already stopped
+            if not process_exited:
+                try:
+                    self.agent_thread.stop()
+                except Exception as e:
+                    if show_messages:
+                        self.add_log(f"Error stopping agent thread: {str(e)}")
 
             # Wait for the thread to finish properly (with timeout)
             if self.agent_thread.isRunning():
                 self.agent_thread.wait(5000)  # Wait up to 5 seconds
+                
+            # Ensure the agent thread is properly terminated if still running
+            if self.agent_thread.isRunning():
+                if show_messages:
+                    self.add_log("Force terminating agent thread...")
+                try:
+                    self.agent_thread.terminate()
+                    self.agent_thread.wait(2000)  # Wait a bit more
+                except Exception as e:
+                    if show_messages:
+                        self.add_log(f"Error terminating thread: {str(e)}")
 
-            # More thorough cleanup if requested
-            if thorough_cleanup:
-                self.clean_ray_completely()
-
+            # Always perform thorough cleanup to ensure the port is properly released
+            try:
+                if show_messages:
+                    self.add_log(f"Killing any process using port {self.agent_port}")
+                self.kill_process_on_port(self.agent_port)
+            except Exception as e:
+                if show_messages:
+                    self.add_log(f"Error during port cleanup: {str(e)}")
+            
+            # Reset the thread object
             self.agent_thread = None
+            
+            # Wait a moment to ensure complete port release
+            time.sleep(2)
 
+            # Make sure we verify the port is actually free
+            if self.is_port_in_use(self.agent_port):
+                if show_messages:
+                    self.add_log(f"WARNING: Port {self.agent_port} is still in use after cleanup!")
+                    self.add_log("Attempting stronger cleanup...")
+                try:
+                    self.kill_process_on_port(self.agent_port)
+                    time.sleep(1)
+                except Exception as e:
+                    if show_messages:
+                        self.add_log(f"Error during extra cleanup: {str(e)}")
+                
+                # Check again
+                if self.is_port_in_use(self.agent_port):
+                    if show_messages:
+                        self.add_log(f"CRITICAL: Port {self.agent_port} could not be freed!")
+                elif show_messages:
+                    self.add_log(f"Port {self.agent_port} successfully freed after extra cleanup")
+            elif show_messages:
+                self.add_log(f"Port {self.agent_port} successfully freed")
+
+        # Always update UI
         self.start_agent_btn.setEnabled(True)
         self.stop_agent_btn.setEnabled(False)
         self.agent_status.setText("Agent: Not running")
+        
+    def initialize_dashboard_flag(self):
+        """Initialize dashboard stop flag if it doesn't exist"""
+        if not hasattr(self, "dashboard_stop_flag"):
+            self.dashboard_stop_flag = False
+
+    def start_dashboard(self):
+        """Start the dashboard with minimal changes"""
+        self.add_log("Starting dashboard...")
+
+        # Initialize stop flag
+        self.initialize_dashboard_flag()
+        self.dashboard_stop_flag = False
+
+        # Check if port is in use
+        if self.is_port_in_use(self.dashboard_port):
+            self.add_log(f"Warning: Port {self.dashboard_port} already in use, trying to kill process")
+            self.kill_process_on_port(self.dashboard_port)
+            time.sleep(1)  # Wait for port to be released
+
+        # First stop any existing dashboard
+        if hasattr(self, "dashboard_server") and self.dashboard_server:
+            self.stop_dashboard()
+            time.sleep(1)
+
+        # Set environment variables
+        dashboard_env = os.environ.copy()
+        dashboard_env["AGENT_SERVER_URL"] = f"http://localhost:{self.agent_port}"
+
+        # Try to use the static dashboard server directly within the main thread
+        try:
+            from static_dashboard_server import start_dashboard as static_start_dashboard
+
+            self.add_log("Using static dashboard server")
+            api_url = f"http://localhost:{self.agent_port}"
+
+            # Simplify - start in the current thread but save server reference
+            server, url = static_start_dashboard(
+                port=self.dashboard_port,
+                api_url=api_url,
+                open_browser=False
+            )
+
+            # Store server reference - direct assignment, no threading
+            self.dashboard_server = server
+            self.add_log(f"Dashboard started at {url}")
+
+        except ImportError as e:
+            # Fall back to CLI if static server not available
+            self.add_log(f"Static dashboard server not available, falling back to CLI: {e}")
+
+            cmd = [
+                sys.executable, 
+                "-m", "agentic.cli", 
+                "dashboard", "start", 
+                "--dev", 
+                "--port", str(self.dashboard_port)
+            ]
+            self.add_log(f"Running command: {' '.join(cmd)}")
+
+            # Create subprocess
+            self.dashboard_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                env=dashboard_env
+            )
+
+        # Update UI
+        self.start_dashboard_btn.setEnabled(False)
+        self.stop_dashboard_btn.setEnabled(True)
+        self.dashboard_status.setText(f"Dashboard: Running (Port: {self.dashboard_port})")
+
+        # Show dashboard URL
+        dashboard_url = f"http://localhost:{self.dashboard_port}"
+        self.add_log(f"Dashboard available at: {dashboard_url}")
+
+        # Small delay to let things settle
+        time.sleep(1) 
+
+    
+    def stop_dashboard(self):
+        """Stop the dashboard with proven working approach"""
+        self.add_log("Stopping dashboard...")
+        
+        try:
+            # Set flag to stop dashboard thread if it's running
+            if hasattr(self, "dashboard_stop_flag"):
+                self.dashboard_stop_flag = True
+            
+            # Stop any running dashboard process
+            if hasattr(self, "dashboard_process") and self.dashboard_process:
+                try:
+                    self.add_log("Terminating dashboard process...")
+                    self.dashboard_process.terminate()
+                    try:
+                        self.dashboard_process.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        self.add_log("Force killing dashboard process...")
+                        self.dashboard_process.kill()
+                except Exception as e:
+                    self.add_log(f"Error while stopping dashboard process: {str(e)}")
+                finally:
+                    # Close pipes to avoid resource leaks
+                    if hasattr(self.dashboard_process, 'stdout') and self.dashboard_process.stdout:
+                        self.dashboard_process.stdout.close()
+                    if hasattr(self.dashboard_process, 'stderr') and self.dashboard_process.stderr:
+                        self.dashboard_process.stderr.close()
+                    self.dashboard_process = None
+            
+            # Shutdown dashboard server if running
+            if hasattr(self, "dashboard_server") and self.dashboard_server:
+                try:
+                    self.add_log("Shutting down dashboard server...")
+                    # Use a thread to avoid blocking
+                    def shutdown_server():
+                        try:
+                            self.dashboard_server.shutdown()
+                        except Exception as e:
+                            print(f"Error shutting down server: {e}")
+                    
+                    shutdown_thread = threading.Thread(target=shutdown_server)
+                    shutdown_thread.daemon = True
+                    shutdown_thread.start()
+                    
+                    # Only wait a short time for shutdown
+                    shutdown_thread.join(3.0)
+                    
+                    self.dashboard_server = None
+                except Exception as e:
+                    self.add_log(f"Error shutting down dashboard server: {str(e)}")
+            
+            # Force kill any processes on the dashboard port
+            self.add_log("Killing any process using port 3001...")
+            self.kill_process_on_port(self.dashboard_port)
+            
+            # Wait a moment to ensure resources are released
+            time.sleep(0.5)
+            
+            # Clean up threading resources
+            if hasattr(self, "dashboard_thread") and self.dashboard_thread:
+                self.dashboard_thread = None
+                
+            # Update UI
+            self.start_dashboard_btn.setEnabled(True)
+            self.stop_dashboard_btn.setEnabled(False)
+            self.dashboard_status.setText("Dashboard: Not running")
+            
+        except Exception as e:
+            # Catch any errors during shutdown to prevent app crashes
+            import traceback
+            self.add_log(f"Error during dashboard shutdown: {str(e)}")
+            self.add_log(traceback.format_exc())
+            
+            # Still update UI even if there were errors
+            self.start_dashboard_btn.setEnabled(True)
+            self.stop_dashboard_btn.setEnabled(False)
+            self.dashboard_status.setText("Dashboard: Error during shutdown")
+
+    def dashboard_debug_log(self, message, log_type="info"):
+        """Helper to log dashboard-related messages with consistent formatting
+
+        Args:
+            message: The message to log
+            log_type: Type of log message (info, error, warning)
+        """
+        prefix = "[Dashboard] "
+        if log_type == "error":
+            self.add_log(f"{prefix}ERROR: {message}")
+        elif log_type == "warning": 
+            self.add_log(f"{prefix}WARNING: {message}")
+        else:
+            self.add_log(f"{prefix}{message}")
+
+        # Print to stderr for console debugging
+        import sys
+        print(f"{prefix}{message}", file=sys.stderr)
+
+    def setup_dashboard_environment(self, server_port=8086):
+        """Prepare environment variables for dashboard startup"""
+        dashboard_env = os.environ.copy()
+        dashboard_env["AGENT_SERVER_URL"] = f"http://localhost:{server_port}"
+        dashboard_env["DASHBOARD_DEBUG"] = "1"  # Enable more verbose logging
+
+        # This is the most important part - different handling by platform
+        if sys.platform == "darwin":  # macOS
+            # On macOS, use static server mode for more stability
+            dashboard_env["USE_STATIC_DASHBOARD"] = "1"
+        else:
+            dashboard_env["USE_STATIC_DASHBOARD"] = "0"
+
+        return dashboard_env
+
+    def capture_error_log(self, error_info, context=""):
+        """Capture detailed error information to help with debugging
+
+        Args:
+            error_info: The exception or error string
+            context: Optional context about what was happening
+        """
+        import traceback
+        import os
+        import sys
+        import platform
+
+        log_path = os.path.expanduser("~/agentic_crash.log")
+
+        try:
+            with open(log_path, "a") as f:
+                f.write(f"\n\n===== ERROR LOG {time.strftime('%Y-%m-%d %H:%M:%S')} =====\n")
+
+                if context:
+                    f.write(f"Context: {context}\n")
+
+                # Write error info
+                if isinstance(error_info, Exception):
+                    f.write(f"Error: {type(error_info).__name__}: {str(error_info)}\n")
+                    f.write(traceback.format_exc())
+                else:
+                    f.write(f"Error: {error_info}\n")
+
+                # System info
+                f.write(f"\nSystem info:\n")
+                f.write(f"Python: {sys.version}\n")
+                f.write(f"Platform: {platform.platform()}\n")
+
+                # Dashboard status
+                dash_process = getattr(self, "dashboard_process", None)
+                dash_server = getattr(self, "dashboard_server", None)
+                f.write(f"\nDashboard status:\n")
+                f.write(f"dashboard_process: {dash_process}\n")
+                f.write(f"dashboard_server: {dash_server}\n")
+
+                # Thread info if possible
+                try:
+                    import threading
+                    f.write(f"\nActive threads: {threading.active_count()}\n")
+                    for thread in threading.enumerate():
+                        f.write(f"  {thread.name} - Daemon: {thread.daemon}\n")
+                except:
+                    f.write("Could not get thread info\n")
+
+            self.add_log(f"Error details logged to {log_path}")
+        except Exception as log_error:
+            self.add_log(f"Failed to write error log: {log_error}")
+
+    def setup_crash_logging(self):
+        """
+        Set up signal handlers to catch and log crashes
+        """
+        import signal
+        import traceback
+        
+        def log_crash(sig, frame):
+            """Signal handler to log crash information"""
+            crash_file = os.path.expanduser("~/agentic_crash.log")
+            try:
+                with open(crash_file, 'a') as f:
+                    f.write(f"\n\n===== CRASH DETECTED AT {time.strftime('%Y-%m-%d %H:%M:%S')} =====\n")
+                    f.write(f"Signal: {sig}\n")
+                    f.write("Stack trace:\n")
+                    f.write(''.join(traceback.format_stack(frame)))
+                    
+                    # Log the current state of dashboard-related attributes
+                    f.write("\nDashboard state:\n")
+                    for attr in ["dashboard_server", "dashboard_process", "dashboard_thread", "dashboard_stop_flag"]:
+                        if hasattr(self, attr):
+                            f.write(f"{attr}: {getattr(self, attr)}\n")
+                        else:
+                            f.write(f"{attr}: not found\n")
+            except Exception as e:
+                print(f"Error in crash handler: {e}")
+                
+        # Register handlers for common crash signals
+        signal.signal(signal.SIGABRT, log_crash)
+        signal.signal(signal.SIGSEGV, log_crash)
+        signal.signal(signal.SIGILL, log_crash)
+        signal.signal(signal.SIGFPE, log_crash)
+        
+        # Log message only if log_output is already initialized
+        if hasattr(self, 'log_output'):
+            self.add_log("Crash logging set up to ~/agentic_crash.log")
+        
+    def open_browser(self):
+        dashboard_url = f"http://localhost:{self.dashboard_port}"
+        self.add_log(f"Opening browser at {dashboard_url}")
+        # Wait a bit longer for the dashboard to be ready
+        time.sleep(2)
+        webbrowser.open(dashboard_url)
+    
+    def add_log(self, message):
+        timestamp = time.strftime("%H:%M:%S")
+        log_entry = f"[{timestamp}] {message}"
+        self.log_output.append(log_entry)
+        
+        # Auto-scroll to bottom
+        scrollbar = self.log_output.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+    
+    def clear_logs(self):
+        self.log_output.clear()
+        self.add_log("Logs cleared")
+        
+    def copy_logs(self):
+        """Copy all logs to clipboard"""
+        text = self.log_output.toPlainText()
+        clipboard = QApplication.clipboard()
+        clipboard.setText(text)
+        self.add_log("Logs copied to clipboard")
+    
+    def closeEvent(self, event):
+        """Clean up when window is closed"""
+        self.add_log("Shutting down...")
+        
+        # Stop dashboard
+        if self.dashboard_thread:
+            self.stop_dashboard()
+            
+        # Stop agent
+        if self.agent_thread:
+            self.stop_agent()
+            
+        event.accept()
+
+
+    def kill_process_on_port(self, port):
+        """Kill any process using the specified port - with enhanced reliability"""
+        self.add_log(f"Killing any process using port {port}")
+        
+        try:
+            if sys.platform == "darwin":  # macOS
+                # Try different approaches for more reliability
+                # 1. First attempt with standard lsof command
+                os.system(f"lsof -ti:{port} | xargs kill -9 2>/dev/null || true")
+                
+                # 2. Second attempt with a more aggressive approach
+                os.system(f"lsof -i:{port} | grep LISTEN | awk '{{print $2}}' | xargs kill -9 2>/dev/null || true")
+                
+            elif sys.platform.startswith("linux"):  # Linux
+                os.system(f"fuser -k {port}/tcp 2>/dev/null || true")
+                os.system(f"lsof -ti:{port} | xargs kill -9 2>/dev/null || true")
+                
+            else:  # Windows
+                os.system(f"FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :{port}') DO TaskKill /PID %P /F 2>nul")
+            
+            # Small delay to ensure port is released
+            time.sleep(0.5)
+            
+            # Verify port is actually free now
+            if self.is_port_in_use(port):
+                self.add_log(f"Warning: Port {port} is still in use after kill attempt")
+                # Try one more approach - the nuclear option
+                if sys.platform != "nt":  # Unix/macOS/Linux
+                    # This harder approach might work for stubborn processes
+                    os.system(f"pkill -f \".*:{port}.*\" 2>/dev/null || true")
+                time.sleep(1)
+            
+        except Exception as e:
+            # Log any errors but don't stop execution
+            self.add_log(f"Error killing process on port {port}: {str(e)}")
+            
+        self.add_log(f"Completed port {port} kill operation")
+
+    def restart_everything(self):
+        """Complete system restart with improved error handling"""
+        self.add_log("==== PERFORMING COMPLETE RESTART ====")
+
+        # Stop everything with catch blocks to ensure we continue even if errors occur
+        try:
+            self.stop_dashboard()
+        except Exception as e:
+            self.add_log(f"Error stopping dashboard: {str(e)}")
+        
+        try:
+            self.stop_agent()
+        except Exception as e:
+            self.add_log(f"Error stopping agent: {str(e)}")
+
+        # Kill any remaining processes on our ports
+        try:
+            self.kill_process_on_port(self.agent_port)
+        except Exception as e:
+            self.add_log(f"Error killing agent port processes: {str(e)}")
+            
+        try:
+            self.kill_process_on_port(self.dashboard_port)
+        except Exception as e:
+            self.add_log(f"Error killing dashboard port processes: {str(e)}")
+
+        # Clear any Ray state
+        try:
+            self.clean_ray_completely()
+        except Exception as e:
+            self.add_log(f"Error cleaning Ray state: {str(e)}")
+
+        # Reset member variables for threads
+        self.agent_thread = None
+        if hasattr(self, "dashboard_thread"):
+            self.dashboard_thread = None
+            
+        # Reset all flags
+        if hasattr(self, "dashboard_stop_flag"):
+            self.dashboard_stop_flag = False
+
+        # Reset to initial port values
+        self.dashboard_port = 3001
+        
+        # Make sure the working directory is reset to runtime
+        try:
+            app_dir = Path(sys.executable).parent.parent
+            runtime_dir = app_dir / "Resources" / "runtime"
+            os.makedirs(str(runtime_dir), exist_ok=True)
+            os.chdir(str(runtime_dir))
+            self.add_log(f"Reset working directory to: {os.getcwd()}")
+        except Exception as e:
+            self.add_log(f"Error resetting working directory: {str(e)}")
+
+        # Wait longer to ensure complete cleanup
+        self.add_log("Waiting for resources to be completely released...")
+        time.sleep(3)
+
+        # Start fresh
+        self.add_log("Starting fresh agent and dashboard...")
+
+        # Get current selection
+        selected_idx = self.agent_combo.currentIndex()
+        if selected_idx >= 0:
+            try:
+                self.start_agent()
+            except Exception as e:
+                self.add_log(f"Error restarting agent: {str(e)}")
+                import traceback
+                self.add_log(traceback.format_exc())
 
     def clean_ray_completely(self):
         """Complete cleanup of Ray processes and state"""
@@ -815,130 +1525,58 @@ class AgenticApp(QMainWindow):
         self.add_log("Waiting for resources to be released...")
         time.sleep(3)
 
-    def kill_process_on_port(self, port):
-        """Kill any process using the specified port (only processes we have permission to kill)"""
-        self.add_log(f"Killing any process using port {port}...")
-
-        if sys.platform == "darwin":  # macOS
-            try:
-                # First find the PID using the port
-                cmd = f"lsof -i :{port} -sTCP:LISTEN -t"
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = process.communicate()
-
-                if stdout:
-                    for pid in stdout.decode().strip().split('\n'):
-                        if pid:
-                            try:
-                                # Check if we own this process
-                                owner_cmd = f"ps -o user= -p {pid}"
-                                owner_process = subprocess.Popen(owner_cmd, shell=True, stdout=subprocess.PIPE)
-                                owner = owner_process.communicate()[0].decode().strip()
-
-                                # Get current username
-                                current_user = os.environ.get('USER') or subprocess.check_output(['whoami']).decode().strip()
-
-                                if owner == current_user:
-                                    self.add_log(f"Killing process {pid} using port {port}")
-                                    os.kill(int(pid), 9)  # SIGKILL
-                                else:
-                                    self.add_log(f"Process {pid} on port {port} is owned by {owner}, not current user")
-                            except Exception as e:
-                                self.add_log(f"Could not kill process {pid}: {e}")
-            except Exception as e:
-                self.add_log(f"Error finding/killing process on port {port}: {e}")
-        elif sys.platform.startswith("linux"):  # Linux
-            try:
-                # Similar to macOS but with ss command as alternative
-                cmd = f"ss -lptn 'sport = :{port}'"
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = process.communicate()
-
-                if stdout:
-                    for line in stdout.decode().strip().split('\n')[1:]:  # Skip header
-                        if 'pid=' in line:
-                            pid_match = re.search(r'pid=(\d+)', line)
-                            if pid_match:
-                                pid = pid_match.group(1)
-                                try:
-                                    # Check if we own this process
-                                    current_user = subprocess.check_output(['whoami']).decode().strip()
-                                    owner_cmd = f"ps -o user= -p {pid}"
-                                    owner = subprocess.check_output(owner_cmd, shell=True).decode().strip()
-
-                                    if owner == current_user:
-                                        self.add_log(f"Killing process {pid} using port {port}")
-                                        os.kill(int(pid), 9)  # SIGKILL
-                                    else:
-                                        self.add_log(f"Process {pid} on port {port} is owned by {owner}, not current user")
-                                except Exception as e:
-                                    self.add_log(f"Could not kill process {pid}: {e}")
-            except Exception as e:
-                self.add_log(f"Error finding/killing process on port {port}: {e}")
-        else:  # Windows
-            try:
-                cmd = f"netstat -ano | findstr :{port}"
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = process.communicate()
-
-                if stdout:
-                    for line in stdout.decode().strip().split('\n'):
-                        if 'LISTENING' in line:
-                            parts = line.strip().split()
-                            if len(parts) >= 5:
-                                pid = parts[4]
-                                self.add_log(f"Attempting to kill process {pid} using port {port}")
-                                try:
-                                    subprocess.run(f"taskkill /F /PID {pid}", shell=True)
-                                except Exception as e:
-                                    self.add_log(f"Could not kill process {pid}: {e}")
-            except Exception as e:
-                self.add_log(f"Error finding/killing process on port {port}: {e}")
-
-        # Check if port is now available
-        time.sleep(1)
-        if not self.is_port_available(port):
-            self.add_log(f"Warning: Port {port} is still in use after cleanup attempt")
-
-    def verify_agent_server(self, base_url: str, agent_name: str) -> bool:
+    def verify_agent_server(self, base_url: str, agent_name: str, max_retries=5, initial_delay=1) -> bool:
         """
-        Verify that the agent server is running and accessible.
-        
+        Verify that the agent server is running and accessible, with retries.
+
         Args:
             base_url: The base URL of the server (e.g., http://localhost:8086)
             agent_name: The name of the agent to check
-            
+            max_retries: Maximum number of retry attempts
+            initial_delay: Initial delay between retries in seconds (will be doubled each retry)
+
         Returns:
             bool: True if the server is accessible, False otherwise
         """
         import requests
+        import time
         from urllib.parse import urljoin
-        
-        self.add_log(f"Verifying agent server at {base_url}/{agent_name}...")
-        
-        try:
-            # First try the root endpoint to check if the server is running
-            response = requests.get(base_url, timeout=2)
-            if response.status_code != 200:
-                self.add_log(f"Agent server base URL returned status code {response.status_code}")
-                return False
-                
-            # Then try the agent-specific endpoint
-            agent_url = urljoin(base_url, f"/{agent_name}")
-            self.add_log(f"Checking agent endpoint: {agent_url}")
-            
-            response = requests.get(agent_url, timeout=2)
-            if response.status_code != 200:
-                self.add_log(f"Agent endpoint returned status code {response.status_code}")
-                return False
-                
-            self.add_log(f"Agent server verification successful")
-            return True
-            
-        except requests.RequestException as e:
-            self.add_log(f"Error connecting to agent server: {str(e)}")
-            return False
 
+        self.add_log(f"Verifying agent server at {base_url}/{agent_name}...")
+
+        delay = initial_delay
+        for attempt in range(max_retries):
+            try:
+                # First try the root endpoint to check if the server is running
+                self.add_log(f"Verification attempt {attempt+1}/{max_retries}...")
+                response = requests.get(base_url, timeout=2)
+
+                if response.status_code == 200:
+                    # Then try the agent-specific endpoint
+                    agent_url = urljoin(base_url, f"/{agent_name}")
+                    self.add_log(f"Base URL verified, checking agent endpoint: {agent_url}")
+
+                    agent_response = requests.get(agent_url, timeout=2)
+                    if agent_response.status_code == 200:
+                        self.add_log(f"Agent server verification successful")
+                        return True
+                    else:
+                        self.add_log(f"Agent endpoint returned status code {agent_response.status_code}, retrying...")
+                else:
+                    self.add_log(f"Base URL returned status code {response.status_code}, retrying...")
+
+            except requests.RequestException as e:
+                self.add_log(f"Connection attempt {attempt+1} failed: {str(e)}")
+
+            # Wait before retrying, with exponential backoff
+            if attempt < max_retries - 1:  # Don't sleep after the last attempt
+                self.add_log(f"Waiting {delay} seconds before next attempt...")
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+
+        self.add_log(f"Agent server verification failed after {max_retries} attempts")
+        return False
+    
     def is_port_available(self, port: int) -> bool:
         """
         Check if a port is available for use.
@@ -959,165 +1597,6 @@ class AgenticApp(QMainWindow):
         except socket.error:
             sock.close()
             return False
-        
-    def start_dashboard(self):
-        self.add_log("Starting dashboard...")
-
-        # First verify the agent server is running
-        if self.agent_thread:
-            # Get the agent name from the running agent
-            agent_name = os.path.splitext(os.path.basename(self.agent_thread.agent_path))[0].lower()
-
-            # Verify server is running
-            if not self.verify_agent_server(f"http://localhost:{self.agent_port}", agent_name):
-                self.add_log("WARNING: Agent server verification failed, dashboard might not connect properly")
-        else:
-            self.add_log("WARNING: No agent server is running, dashboard will not have any agents to display")
-        
-        # Try to find an available port starting from dashboard_port
-        port = self.dashboard_port
-        max_attempts = 5
-        
-        for attempt in range(max_attempts):
-            # Build the dashboard command with the current port
-            cmd = [sys.executable, "-m", "agentic.cli", "dashboard", "start", "--dev", "--port", str(port)]
-            self.add_log(f"Trying port {port}, attempt {attempt+1}/{max_attempts}")
-            self.add_log(f"Running command: {' '.join(cmd)}")
-            
-            # First check if the port is already in use
-            import socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            try:
-                sock.bind(('localhost', port))
-                sock.close()
-                # Port is available
-                break
-            except socket.error:
-                sock.close()
-                self.add_log(f"Port {port} is already in use, trying another...")
-                port += 1
-                
-        # Update the dashboard port to what we found
-        self.dashboard_port = port
-        dashboard_env = os.environ.copy()
-        dashboard_env["AGENT_SERVER_URL"] = f"http://localhost:{self.agent_port}"
-    
-        # Use the environment in the process
-        self.dashboard_thread = DashboardThread(self.dashboard_port, env=dashboard_env)
-        self.dashboard_thread.update_signal.connect(self.add_log)
-        self.dashboard_thread.start()
-        
-        self.start_dashboard_btn.setEnabled(False)
-        self.stop_dashboard_btn.setEnabled(True)
-        self.dashboard_status.setText(f"Dashboard: Running (Port: {self.dashboard_port})")
-        
-        # Show dashboard URL
-        self.add_log(f"Dashboard will be available at: http://localhost:{self.dashboard_port}")
-
-    
-    def stop_dashboard(self):
-        if self.dashboard_thread:
-            self.add_log("Stopping dashboard...")
-            self.dashboard_thread.stop()
-
-            # Wait for thread to finish
-            if self.dashboard_thread.isRunning():
-                self.dashboard_thread.wait(5000)  # Wait up to 5 seconds
-
-            # Force kill any remaining Next.js processes
-            if os.name != 'nt':  # Unix/macOS
-                os.system("pkill -f 'node' || true")
-                os.system("pkill -f 'next' || true")
-            else:  # Windows
-                os.system("taskkill /f /im node.exe /t 2>nul")
-
-            self.dashboard_thread = None
-
-        self.start_dashboard_btn.setEnabled(True)
-        self.stop_dashboard_btn.setEnabled(False)
-        self.dashboard_status.setText("Dashboard: Not running")
-
-        # Check for and kill any lingering processes on the dashboard ports
-        self.kill_process_on_port(self.dashboard_port)
-
-    def kill_process_on_port(self, port):
-        """Kill any process using the specified port"""
-        if os.name != 'nt':  # Unix/macOS
-            self.add_log(f"Killing any process using port {port}...")
-            os.system(f"lsof -ti:{port} | xargs kill -9 2>/dev/null || true")
-        else:  # Windows
-            os.system(f"FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :{port}') DO TaskKill /PID %P /F 2>nul")
-
-    def restart_everything(self):
-        """Complete system restart"""
-        self.add_log("==== PERFORMING COMPLETE RESTART ====")
-
-        # Stop everything
-        self.stop_dashboard()
-        self.stop_agent()
-
-        # Additional cleanup
-        self.clean_ray_completely()
-
-        # Kill any processes on our ports
-        self.kill_process_on_port(self.agent_port)
-        self.kill_process_on_port(self.dashboard_port)
-
-        # Clear all ports in use
-        self.dashboard_port = 3001  # Reset to initial value
-
-        # Wait longer
-        time.sleep(10)
-
-        # Start fresh
-        self.add_log("Starting fresh agent and dashboard...")
-
-        # Get current selection
-        selected_idx = self.agent_combo.currentIndex()
-        if selected_idx >= 0:
-            self.start_agent()
-    
-    def open_browser(self):
-        dashboard_url = f"http://localhost:{self.dashboard_port}"
-        self.add_log(f"Opening browser at {dashboard_url}")
-        # Wait a bit longer for the dashboard to be ready
-        time.sleep(2)
-        webbrowser.open(dashboard_url)
-    
-    def add_log(self, message):
-        timestamp = time.strftime("%H:%M:%S")
-        log_entry = f"[{timestamp}] {message}"
-        self.log_output.append(log_entry)
-        
-        # Auto-scroll to bottom
-        scrollbar = self.log_output.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
-    
-    def clear_logs(self):
-        self.log_output.clear()
-        self.add_log("Logs cleared")
-        
-    def copy_logs(self):
-        """Copy all logs to clipboard"""
-        text = self.log_output.toPlainText()
-        clipboard = QApplication.clipboard()
-        clipboard.setText(text)
-        self.add_log("Logs copied to clipboard")
-    
-    def closeEvent(self, event):
-        """Clean up when window is closed"""
-        self.add_log("Shutting down...")
-        
-        # Stop dashboard
-        if self.dashboard_thread:
-            self.stop_dashboard()
-            
-        # Stop agent
-        if self.agent_thread:
-            self.stop_agent()
-            
-        event.accept()
-
 def main():
     # Create QApplication before creating any QWidget
     app = QApplication(sys.argv)

@@ -190,6 +190,29 @@ def get_dashboard_dir():
     # If we get here, we didn't find the dashboard
     raise FileNotFoundError(f"Could not find dashboard files. Looked in: {search_paths}")
 
+def get_dashboard_dir():
+    # NEW: Allow override via env var
+    env_override = os.environ.get("DASHBOARD_DIR")
+    if env_override:
+        path = Path(env_override).resolve()
+        if (path / "index.html").exists():
+            return path
+        else:
+            print(f"[static_dashboard_server] DASHBOARD_DIR override '{path}' does not contain index.html")
+
+    # Fallback to previous hardcoded search paths
+    search_paths = [
+        Path(__file__).parent / "resources" / "dashboard",
+        Path(__file__).parent.parent / "resources" / "dashboard",
+        Path(__file__).parent.parent.parent / "resources" / "dashboard",
+    ]
+
+    for path in search_paths:
+        if (path / "index.html").exists():
+            return path
+
+    raise FileNotFoundError(f"Could not find dashboard files. Looked in: {search_paths}")
+
 def start_dashboard(port=None, api_url=None, open_browser=True):
     """Start the dashboard server
     

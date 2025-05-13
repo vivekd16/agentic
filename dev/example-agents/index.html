@@ -1621,6 +1621,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Podcast Producer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#short-podcast-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Short Podcast Agent
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-podcast-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Long Podcast Agent
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1749,6 +1773,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Podcast Producer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#short-podcast-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Short Podcast Agent
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long-podcast-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      Long Podcast Agent
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1842,20 +1890,36 @@
 </ul>
 <p>This agent demonstrates how Agentic can be used for practical workplace applications, combining real-time processing with knowledge management. It's particularly useful for teams looking to maintain institutional knowledge and improve meeting documentation.</p>
 <h2 id="podcast-producer">Podcast Producer</h2>
-<p>The <a href="https://github.com/supercog-ai/agentic/blob/main/examples/podcast">Podcast Producer</a> agent automatically creates and publishes daily podcasts by orchestrating a team of specialist agents. This agent demonstrates the power of agent teams and pipelines in Agentic:</p>
-<ul>
-<li>An AI News Reporter agent researches current AI developments</li>
-<li>A Sports Reporter agent collects sports updates</li>
-<li>A Finance Reporter agent gathers financial news</li>
-<li>A Podcast Producer agent combines these reports</li>
-<li>A TransistorFM agent publishes the podcast</li>
-</ul>
-<p>The agent pipeline handles the complete workflow from content generation to audio production and publication. It showcases how to:
-- Build complex agent teams with specialized roles
+<p>The <a href="https://github.com/supercog-ai/agentic/blob/main/examples/podcast">Podcast Producer</a> agent automatically creates and publishes daily podcasts. The agent handles the complete workflow from content generation to audio production and publication. It showcases how to:
 - Use text-to-speech tools for audio content generation
 - Integrate with third-party APIs (Transistor.fm)
 - Handle multi-stage content workflows</p>
+<h3 id="short-podcast-agent">Short Podcast Agent</h3>
+<p>The <a href="https://github.com/supercog-ai/agentic/blob/main/examples/podcast/podcast_short.py">Short Podcast Agent</a> demonstrates the use of agent teams and pipelines in Agentic.</p>
+<p>Key features:</p>
+<ul>
+<li>Multi-agent team with AI, sports, and finance reporters</li>
+<li>Compiles short daily summary using a producer agent</li>
+<li>Publishes audio via Transistor.fm API</li>
+</ul>
 <p>This example is particularly valuable for understanding how to coordinate multiple agents to accomplish complex tasks that involve content creation, transformation, and distribution.</p>
+<h3 id="long-podcast-agent">Long Podcast Agent</h3>
+<p>The <a href="https://github.com/supercog-ai/agentic/blob/main/examples/podcast/podcast_long.py">Long Podcast Agent</a> creates longer, more in-depth podcasts.</p>
+<p>Key features:</p>
+<ul>
+<li>Scrapes and downloads news articles</li>
+<li>Summarizes articles and converts to audio</li>
+<li>Stitches segments and publishes via Transistor.fm API</li>
+</ul>
+<p>Steps to set up ngrok devtunnel (to host audio url):</p>
+<ol>
+<li><a href="https://ngrok.com/downloads/mac-os">Download ngrok</a></li>
+<li>Login, retrieve auth token and run <code>ngrok config add-authtoken &lt;your_auth_token&gt;</code></li>
+<li>Start local server by running <code>python -m http.server 8000</code></li>
+<li>In a separate terminal, run <code>ngrok http 8000</code></li>
+<li>Use the output url as the <code>base_url</code> (e.g. <code>https://&lt;your-ngrok-id&gt;.ngrok-free.app</code>)</li>
+</ol>
+<p>This example demonstrates how to produce long-form content using external tools and APIs for content gathering, transformation, and distribution.</p>
 <h2 id="database-agent">Database Agent</h2>
 <p>The <a href="https://github.com/supercog-ai/agentic/blob/main/examples/database/database_agent.py">Database Agent</a> demonstrates basic Text-to-SQL capabilities for performing data analysis using natural language. This agent connects to a database and allows users to:</p>
 <ul>

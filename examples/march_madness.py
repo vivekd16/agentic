@@ -297,7 +297,7 @@ class MarchMadnessAgent(Agent):
         self.region_seeds = self.get_region_seeds(teams_list.teams)
 
         if self.verbose:
-            yield ChatOutput(self.name, {"content": f"Retrieved {len(teams_list)} teams for the {tournament_year} NCAA Tournament"})
+            yield ChatOutput(self.name, {"content": f"Retrieved {len(teams_list.teams)} teams for the {tournament_year} NCAA Tournament"})
         
         # 2. Research each team in depth
         for team in teams_list.teams:

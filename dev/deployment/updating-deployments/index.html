@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://supercog.ai/agentic/dev/core-concepts/agentic-design-principles/">
+        <link rel="canonical" href="https://supercog.ai/agentic/dev/deployment/updating-deployments/">
       
       
-        <link rel="prev" href="../introduction-to-agents/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../project-structure/">
+        <link rel="next" href="../../rag-support/">
       
       
       <link rel="icon" href="../../assets/favicon.ico">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Agentic Design Principles - Agentic Docs</title>
+        <title>Updating Deployments - Agentic Docs</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agentic-design-principles" class="md-skip">
+        <a href="#updating-your-agentic-agent-on-aws" class="md-skip">
           Skip to content
         </a>
       
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Agentic Design Principles
+              Updating Deployments
             
           </span>
         </div>
@@ -271,8 +271,6 @@
       
   
   
-    
-  
   
   
     
@@ -298,15 +296,15 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../core-concepts/" class="md-nav__link ">
               
   
   
@@ -325,7 +323,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Core Concepts
@@ -341,7 +339,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../introduction-to-agents/" class="md-nav__link">
+      <a href="../../core-concepts/introduction-to-agents/" class="md-nav__link">
         
   
   
@@ -361,32 +359,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Agentic Design Principles
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../core-concepts/agentic-design-principles/" class="md-nav__link">
         
   
   
@@ -397,116 +373,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-an-agentic-system-should-leverage-the-llm-as-much-as-possible" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. An agentic system should leverage the LLM as much as possible.
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-the-probabilistic-nature-of-llm-inference-is-a-feature" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. The probabilistic nature of LLM inference is a feature
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-agents-follow-the-actor-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Agents follow the actor model
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-tools-as-agents" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Tools as agents
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-the-best-tool-protocols-are-languages" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. The best tool protocols are languages
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#agent-trust" class="md-nav__link">
-    <span class="md-ellipsis">
-      Agent Trust
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-an-agent-must-be-trusted-by-humans-or-it-will-have-no-value" class="md-nav__link">
-    <span class="md-ellipsis">
-      6. An agent must be trusted by humans, or it will have no value
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-agents-must-only-run-under-the-authority-of-a-named-human-user" class="md-nav__link">
-    <span class="md-ellipsis">
-      7. Agents must only run under the authority of a named human user
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#8-agent-behavior-must-be-explainable" class="md-nav__link">
-    <span class="md-ellipsis">
-      8. Agent behavior must be explainable
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#9-agents-should-come-with-test-contracts" class="md-nav__link">
-    <span class="md-ellipsis">
-      9. Agents should come with test contracts
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -519,7 +385,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../project-structure/" class="md-nav__link">
+      <a href="../../core-concepts/project-structure/" class="md-nav__link">
         
   
   
@@ -542,7 +408,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../event-system/" class="md-nav__link">
+      <a href="../../core-concepts/event-system/" class="md-nav__link">
         
   
   
@@ -565,7 +431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../event-types/" class="md-nav__link">
+      <a href="../../core-concepts/event-types/" class="md-nav__link">
         
   
   
@@ -588,7 +454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models/" class="md-nav__link">
+      <a href="../../core-concepts/models/" class="md-nav__link">
         
   
   
@@ -1583,6 +1449,8 @@
       
   
   
+    
+  
   
   
     
@@ -1598,15 +1466,15 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../deployment/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1625,7 +1493,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Deployment
@@ -1638,10 +1506,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../deployment/updating-deployments/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Updating Deployments
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1652,6 +1542,224 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-update-your-agent-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Update Your Agent Code
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-test-your-changes-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Test Your Changes Locally
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-update-configuration-if-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Update Configuration (If Needed)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-rebuild-and-push-the-docker-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Rebuild and Push the Docker Image
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-force-a-new-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Force a New Deployment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-monitor-the-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 6: Monitor the Deployment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-test-the-updated-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 7: Test the Updated Deployment
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 7: Test the Updated Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-api-server-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      For API Server Deployments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-dashboard-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      For Dashboard Deployments
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-update-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Update Strategies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Update Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-image-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Image Versioning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rolling-back-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rolling Back Updates
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bluegreen-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Blue/Green Deployments
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maintaining-a-changelog" class="md-nav__link">
+    <span class="md-ellipsis">
+      Maintaining a Changelog
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#automating-updates-with-cicd" class="md-nav__link">
+    <span class="md-ellipsis">
+      Automating Updates with CI/CD
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting Updates
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-deployment-wont-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      New Deployment Won't Start
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#service-unhealthy-after-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      Service Unhealthy After Update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-not-behaving-as-expected" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agent Not Behaving as Expected
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1757,92 +1865,200 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-an-agentic-system-should-leverage-the-llm-as-much-as-possible" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      1. An agentic system should leverage the LLM as much as possible.
+      Prerequisites
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-the-probabilistic-nature-of-llm-inference-is-a-feature" class="md-nav__link">
+  <a href="#step-1-update-your-agent-code" class="md-nav__link">
     <span class="md-ellipsis">
-      2. The probabilistic nature of LLM inference is a feature
+      Step 1: Update Your Agent Code
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-agents-follow-the-actor-model" class="md-nav__link">
+  <a href="#step-2-test-your-changes-locally" class="md-nav__link">
     <span class="md-ellipsis">
-      3. Agents follow the actor model
+      Step 2: Test Your Changes Locally
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-tools-as-agents" class="md-nav__link">
+  <a href="#step-3-update-configuration-if-needed" class="md-nav__link">
     <span class="md-ellipsis">
-      4. Tools as agents
+      Step 3: Update Configuration (If Needed)
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-the-best-tool-protocols-are-languages" class="md-nav__link">
+  <a href="#step-4-rebuild-and-push-the-docker-image" class="md-nav__link">
     <span class="md-ellipsis">
-      5. The best tool protocols are languages
+      Step 4: Rebuild and Push the Docker Image
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#agent-trust" class="md-nav__link">
+  <a href="#step-5-force-a-new-deployment" class="md-nav__link">
     <span class="md-ellipsis">
-      Agent Trust
+      Step 5: Force a New Deployment
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-an-agent-must-be-trusted-by-humans-or-it-will-have-no-value" class="md-nav__link">
+  <a href="#step-6-monitor-the-deployment" class="md-nav__link">
     <span class="md-ellipsis">
-      6. An agent must be trusted by humans, or it will have no value
+      Step 6: Monitor the Deployment
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-agents-must-only-run-under-the-authority-of-a-named-human-user" class="md-nav__link">
+  <a href="#step-7-test-the-updated-deployment" class="md-nav__link">
     <span class="md-ellipsis">
-      7. Agents must only run under the authority of a named human user
+      Step 7: Test the Updated Deployment
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 7: Test the Updated Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-api-server-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      For API Server Deployments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-dashboard-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      For Dashboard Deployments
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-update-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Update Strategies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Update Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-image-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Image Versioning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rolling-back-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rolling Back Updates
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bluegreen-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Blue/Green Deployments
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maintaining-a-changelog" class="md-nav__link">
+    <span class="md-ellipsis">
+      Maintaining a Changelog
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-agent-behavior-must-be-explainable" class="md-nav__link">
+  <a href="#automating-updates-with-cicd" class="md-nav__link">
     <span class="md-ellipsis">
-      8. Agent behavior must be explainable
+      Automating Updates with CI/CD
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#9-agents-should-come-with-test-contracts" class="md-nav__link">
+  <a href="#troubleshooting-updates" class="md-nav__link">
     <span class="md-ellipsis">
-      9. Agents should come with test contracts
+      Troubleshooting Updates
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting Updates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-deployment-wont-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      New Deployment Won't Start
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#service-unhealthy-after-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      Service Unhealthy After Update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-not-behaving-as-expected" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agent Not Behaving as Expected
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1865,64 +2081,253 @@
   
 
 
-<h1 id="agentic-design-principles">Agentic Design Principles</h1>
-<h2 id="1-an-agentic-system-should-leverage-the-llm-as-much-as-possible">1. An agentic system should leverage the LLM as much as possible.</h2>
-<p>As much as possible an agentic app leverages the planning and reasoning of the LLM.
-Most logic should happen at inference-time rather than compile-time.</p>
-<h2 id="2-the-probabilistic-nature-of-llm-inference-is-a-feature">2. The probabilistic nature of LLM inference is a feature</h2>
-<p>Traditional software strives for perfectly deterministic behavior. But the probabilitic
-nature of the LLM gives us the ability to write software which is creative, reflective and
-self-improving. Many systems will need guardrails and self-healing logic to ensure
-reliable operation, but trying to get perfect determinism from an agent is misguided.</p>
-<h2 id="3-agents-follow-the-actor-model">3. Agents follow the actor model</h2>
-<p>Agents should follow the <em>actor model</em> from computer science, which means:
-- They are encapsulated programs which can only manipulate their own private state
-- They are event driven, responding to messages and generating messages</p>
-<h2 id="4-tools-as-agents">4. Tools as agents</h2>
-<p>It is common to want to apply <em>function calling</em> semantics to LLM programs, which
-is encouraged by OpenAI's function calling API. But function calling is the wrong
-paradigm for agents since it generally implies synchronous execution and strictly
-typed parameters. Both of these are poor assumptions when building AI agents.</p>
-<p>Rather than generalize everything as a function call, it is better to generalize
-<em>everything</em> as an <em>actor</em> (agent). So doing a "web search" call means sending
-a message event to the "web search agent", which will reply with events containing
-the results. We can easily implement this as a compile-time tool, but it also
-means that our "web search tool" could just as easily be another full agent.</p>
-<h2 id="5-the-best-tool-protocols-are-languages">5. The best tool protocols are languages</h2>
-<p>LLMs are <em>really good</em> at language, which implies that the best way to interface them
-into traditional systems is via some <em>protocol language</em>, rather than describing
-some huge set of REST endpoints. Wherever possible try to build tools on top of
-language protocols like SQL or GraphQL, where the LLM can express complex operations
-very efficiently. If your system doesn't support a language already known to your
-model, you can define a new language and teach it to your agent. </p>
-<h2 id="agent-trust"><strong>Agent Trust</strong></h2>
-<h2 id="6-an-agent-must-be-trusted-by-humans-or-it-will-have-no-value">6. An agent must be trusted by humans, or it will have no value</h2>
-<p>AI agents will not, and should not, be trusted by default. They have to earn trust.
-These guidelines are a starting point for building trustworthy agents. The
-key elements of trust include:
-    - the agent will only perform expected operations
-    - the behavior of the agent is explainable
-    - the agent will rely only on knowledge we expect it to use, and it will
-        explain its knowledge sources when it makes a decision
-    - the agent stays aligned with its operator's values, and the values of
-        human safety</p>
-<h2 id="7-agents-must-only-run-under-the-authority-of-a-named-human-user">7. Agents must only run under the authority of a named human user</h2>
-<p>Agents always inherit their authority to access information or resources
-from their human creators and operators.  Agents must never run <em>autonomously</em> 
-without any human being named as responsible for their operation. 
-Allowing anonymous (or "AI identity") operation is a dangerous anti-pattern. </p>
-<p><em>Human in the loop</em> is a key feature that agents should rely on until they can
-prove that they can operate autonomously.</p>
-<h2 id="8-agent-behavior-must-be-explainable">8. Agent behavior must be <em>explainable</em></h2>
-<p>We cannot necessarily predict agent behavior, but agentic systems must explain
-what they are doing and why as much as possible. Unexplainable behavior is
-a system bug to be fixed, and should not be tolerated. Part of explainability is
-transparency about the operations executed and resources used by the agent.</p>
-<p>Agent User Interface should always promote and provide explainability - they
-should never hide the actions of the agent.</p>
-<h2 id="9-agents-should-come-with-test-contracts">9. Agents should come with <em>test contracts</em></h2>
-<p>Test Contracts are a way of automatically testing for the correct behavior of your agent.
-These are critical to building reliable agentic systems, especially ones that run</p>
+<h1 id="updating-your-agentic-agent-on-aws">Updating Your Agentic Agent on AWS</h1>
+<p>This guide covers the process of updating your Agentic agent that has been deployed to AWS using the deployment process outlined in the Agentic AWS Deployment Guide.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before updating your agent, ensure you have:</p>
+<ul>
+<li>Access to your Agentic project codebase</li>
+<li>AWS CLI installed and configured</li>
+<li>Docker installed and running</li>
+<li>The necessary permissions to push to ECR and update ECS services</li>
+</ul>
+<h2 id="step-1-update-your-agent-code">Step 1: Update Your Agent Code</h2>
+<p>Modify your agent file in the <code>agents</code> directory with your desired changes:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agentic.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">Agent</span><span class="p">,</span> <span class="n">AgentRunner</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agentic.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">WeatherTool</span><span class="p">,</span> <span class="n">GoogleNewsTool</span>
+
+<span class="c1"># Update model, tools, instructions, etc.</span>
+<span class="n">updated_agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Weather Agent 2.0&quot;</span><span class="p">,</span>
+    <span class="n">welcome</span><span class="o">=</span><span class="s2">&quot;I can now give you detailed weather reports and the news!&quot;</span><span class="p">,</span>
+    <span class="n">instructions</span><span class="o">=</span><span class="s2">&quot;You are a helpful assistant specializing in comprehensive weather information and current events.&quot;</span><span class="p">,</span>
+    <span class="n">tools</span><span class="o">=</span><span class="p">[</span><span class="n">WeatherTool</span><span class="p">(),</span> <span class="n">GoogleNewsTool</span><span class="p">()],</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;openai/gpt-4o&quot;</span>  <span class="c1"># Upgraded model</span>
+<span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">AgentRunner</span><span class="p">(</span><span class="n">updated_agent</span><span class="p">)</span><span class="o">.</span><span class="n">repl_loop</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Common updates include:
+- Adding new tools or capabilities
+- Upgrading the underlying model
+- Refining the agent's instructions or prompt engineering
+- Implementing additional business logic
+- Improving error handling</p>
+<h2 id="step-2-test-your-changes-locally">Step 2: Test Your Changes Locally</h2>
+<p>Before deploying to AWS, test your updates locally to ensure they work as expected:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Activate your virtual environment</span>
+<span class="nb">cd</span><span class="w"> </span>~/agentic
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+
+<span class="c1"># Run your updated agent</span>
+python<span class="w"> </span>agents/your_updated_agent.py
+</code></pre></div>
+
+<p>Test all the new functionality and ensure there are no regressions in existing capabilities.</p>
+<h2 id="step-3-update-configuration-if-needed">Step 3: Update Configuration (If Needed)</h2>
+<p>If you've made changes that require configuration updates, modify your <code>terraform.tfvars</code> file:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>deployment/terraform
+</code></pre></div>
+
+<p>Edit <code>terraform.tfvars</code> to update relevant settings:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Update agent path if you renamed or moved the agent file</span>
+<span class="na">agent_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;agents/your_updated_agent.py&quot;</span>
+
+<span class="c1"># Update resource allocations if needed for larger models</span>
+<span class="na">task_cpu</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2048&quot;</span><span class="c1">  # 2 vCPU</span>
+<span class="na">task_memory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;4096&quot;</span><span class="c1">  # 4 GB</span>
+
+<span class="c1"># Update any other relevant configuration variables</span>
+<span class="na">use_ray</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="no">true</span><span class="c1">    # Enable Ray for parallel processing if needed</span>
+</code></pre></div>
+
+<p>If you've updated the configuration, apply the Terraform changes:</p>
+<div class="codehilite"><pre><span></span><code>terraform<span class="w"> </span>plan<span class="w">    </span><span class="c1"># Review the planned changes</span>
+terraform<span class="w"> </span>apply<span class="w">   </span><span class="c1"># Apply the changes</span>
+</code></pre></div>
+
+<h2 id="step-4-rebuild-and-push-the-docker-image">Step 4: Rebuild and Push the Docker Image</h2>
+<p>Build a new Docker image with your updated code:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Navigate to the project root</span>
+<span class="nb">cd</span><span class="w"> </span>~/agentic
+
+<span class="c1"># Get your ECR repository URL</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AWS_REGION</span><span class="o">=</span><span class="k">$(</span>aws<span class="w"> </span>configure<span class="w"> </span>get<span class="w"> </span>region<span class="k">)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ECR_REPO_URL</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>deployment/terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>ecr_repository_url<span class="k">)</span>
+
+<span class="c1"># Log in to ECR</span>
+aws<span class="w"> </span>ecr<span class="w"> </span>get-login-password<span class="w"> </span>--region<span class="w"> </span><span class="si">${</span><span class="nv">AWS_REGION</span><span class="si">}</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>docker<span class="w"> </span>login<span class="w"> </span>--username<span class="w"> </span>AWS<span class="w"> </span>--password-stdin<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>
+</code></pre></div>
+
+<p>Build and push the appropriate Docker image based on your deployment mode:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># For API Server Deployment</span>
+docker<span class="w"> </span>build<span class="w"> </span>--platform<span class="w"> </span>linux/amd64<span class="w"> </span>--tag<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest<span class="w"> </span>--file<span class="w"> </span>deployment/Dockerfile.api<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest
+
+<span class="c1"># OR</span>
+
+<span class="c1"># For Dashboard Deployment</span>
+docker<span class="w"> </span>build<span class="w"> </span>--platform<span class="w"> </span>linux/amd64<span class="w"> </span>--tag<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest<span class="w"> </span>--file<span class="w"> </span>deployment/Dockerfile.dashboard<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest
+</code></pre></div>
+
+<h2 id="step-5-force-a-new-deployment">Step 5: Force a New Deployment</h2>
+<p>ECS doesn't automatically detect when you've pushed a new image with the same tag. You need to force a new deployment to apply your updates:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Get the ECS cluster and service names</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ECS_CLUSTER</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>deployment/terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>ecs_cluster_name<span class="k">)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ECS_SERVICE</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>deployment/terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>ecs_service_name<span class="k">)</span>
+
+<span class="c1"># Force a new deployment</span>
+aws<span class="w"> </span>ecs<span class="w"> </span>update-service<span class="w"> </span>--cluster<span class="w"> </span><span class="nv">$ECS_CLUSTER</span><span class="w"> </span>--service<span class="w"> </span><span class="nv">$ECS_SERVICE</span><span class="w"> </span>--force-new-deployment
+</code></pre></div>
+
+<h2 id="step-6-monitor-the-deployment">Step 6: Monitor the Deployment</h2>
+<p>Monitor the deployment to ensure your updates are being applied successfully:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Check deployment status</span>
+aws<span class="w"> </span>ecs<span class="w"> </span>describe-services<span class="w"> </span>--cluster<span class="w"> </span><span class="nv">$ECS_CLUSTER</span><span class="w"> </span>--services<span class="w"> </span><span class="nv">$ECS_SERVICE</span><span class="w"> </span>--query<span class="w"> </span><span class="s2">&quot;services[0].deployments&quot;</span>
+</code></pre></div>
+
+<p>You should see a new deployment in progress with the status <code>PRIMARY</code> and the old deployment with the status <code>ACTIVE</code>. Once the new deployment is complete, the old deployment will be removed.</p>
+<p>Check the CloudWatch logs for any issues:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Get the name of the latest log stream</span>
+<span class="nv">LATEST_LOG_STREAM</span><span class="o">=</span><span class="k">$(</span>aws<span class="w"> </span>logs<span class="w"> </span>describe-log-streams<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--log-group-name<span class="w"> </span><span class="s2">&quot;/ecs/</span><span class="si">${</span><span class="nv">ECS_CLUSTER</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--order-by<span class="w"> </span>LastEventTime<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--descending<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s2">&quot;logStreams[0].logStreamName&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>text<span class="k">)</span>
+
+<span class="c1"># View the logs</span>
+aws<span class="w"> </span>logs<span class="w"> </span>get-log-events<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--log-group-name<span class="w"> </span><span class="s2">&quot;/ecs/</span><span class="si">${</span><span class="nv">ECS_CLUSTER</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--log-stream-name<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$LATEST_LOG_STREAM</span><span class="s2">&quot;</span>
+</code></pre></div>
+
+<h2 id="step-7-test-the-updated-deployment">Step 7: Test the Updated Deployment</h2>
+<p>Test your updated agent to ensure everything is working as expected:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Get the endpoint URL</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AGENT_ENDPOINT</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span><span class="w"> </span>deployment/terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>output<span class="w"> </span>-raw<span class="w"> </span>agent_endpoint<span class="k">)</span>
+</code></pre></div>
+
+<h3 id="for-api-server-deployments">For API Server Deployments</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Test the discovery endpoint</span>
+curl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$AGENT_ENDPOINT</span><span class="s2">/_discovery&quot;</span>
+
+<span class="c1"># Test your agent</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$AGENT_ENDPOINT</span><span class="s2">/your-agent-name/process&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;prompt&quot;: &quot;Test the new features&quot;}&#39;</span>
+</code></pre></div>
+
+<h3 id="for-dashboard-deployments">For Dashboard Deployments</h3>
+<p>Open a web browser and navigate to:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">http</span><span class="p">:</span><span class="o">//$</span><span class="n">AGENT_ENDPOINT</span>
+</code></pre></div>
+
+<p>Interact with your agent through the dashboard interface to ensure it's working correctly.</p>
+<h2 id="advanced-update-strategies">Advanced Update Strategies</h2>
+<h3 id="using-image-versioning">Using Image Versioning</h3>
+<p>Instead of always using the <code>latest</code> tag, consider implementing versioning for your Docker images:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Tag with version number</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">VERSION</span><span class="o">=</span><span class="s2">&quot;1.2.0&quot;</span>
+docker<span class="w"> </span>build<span class="w"> </span>--platform<span class="w"> </span>linux/amd64<span class="w"> </span>--tag<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:<span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span><span class="w"> </span>--file<span class="w"> </span>deployment/Dockerfile.api<span class="w"> </span>.
+docker<span class="w"> </span>push<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:<span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span>
+
+<span class="c1"># Also update latest for backward compatibility</span>
+docker<span class="w"> </span>tag<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:<span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span><span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest
+docker<span class="w"> </span>push<span class="w"> </span><span class="si">${</span><span class="nv">ECR_REPO_URL</span><span class="si">}</span>:latest
+</code></pre></div>
+
+<p>Update your task definition to use the specific version:</p>
+<div class="codehilite"><pre><span></span><code><span class="na">container_definitions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">jsonencode</span><span class="p">([</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="na">name</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="nv">var.project</span>
+<span class="w">    </span><span class="na">image</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;${aws_ecr_repository.app.repository_url}:1.2.0&quot;</span>
+<span class="c1">    # ...other config</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">])</span>
+</code></pre></div>
+
+<h3 id="rolling-back-updates">Rolling Back Updates</h3>
+<p>If you need to roll back to a previous version:</p>
+<ol>
+<li>Push the previous version image or use an existing tagged version</li>
+<li>Update the task definition to use the previous version</li>
+<li>Force a new deployment</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Update task definition to use previous version</span>
+<span class="c1"># (Edit in Terraform or via AWS Console)</span>
+
+<span class="c1"># Force a new deployment</span>
+aws<span class="w"> </span>ecs<span class="w"> </span>update-service<span class="w"> </span>--cluster<span class="w"> </span><span class="nv">$ECS_CLUSTER</span><span class="w"> </span>--service<span class="w"> </span><span class="nv">$ECS_SERVICE</span><span class="w"> </span>--force-new-deployment
+</code></pre></div>
+
+<h3 id="bluegreen-deployments">Blue/Green Deployments</h3>
+<p>For zero-downtime updates, consider implementing blue/green deployments:</p>
+<ol>
+<li>Deploy the new version to a new ECS service</li>
+<li>Test the new deployment</li>
+<li>Switch the load balancer target group to the new service</li>
+<li>Terminate the old service once traffic is successfully routed</li>
+</ol>
+<p>This requires additional Terraform configuration but provides safer updates for production environments.</p>
+<h2 id="maintaining-a-changelog">Maintaining a Changelog</h2>
+<p>For better tracking of agent changes, maintain a changelog in your project:</p>
+<div class="codehilite"><pre><span></span><code><span class="gh"># Changelog</span>
+
+<span class="gu">## v1.2.0 (2025-05-15)</span>
+<span class="k">-</span><span class="w"> </span>Added climate history tool
+<span class="k">-</span><span class="w"> </span>Upgraded to GPT-4o model
+<span class="k">-</span><span class="w"> </span>Improved error handling for API rate limits
+
+<span class="gu">## v1.1.0 (2025-04-10)</span>
+<span class="k">-</span><span class="w"> </span>Added forecast capability
+<span class="k">-</span><span class="w"> </span>Expanded location support
+<span class="k">-</span><span class="w"> </span>Fixed bug in temperature conversion
+
+<span class="gu">## v1.0.0 (2025-03-01)</span>
+<span class="k">-</span><span class="w"> </span>Initial release
+<span class="k">-</span><span class="w"> </span>Basic weather information support
+</code></pre></div>
+
+<h2 id="automating-updates-with-cicd">Automating Updates with CI/CD</h2>
+<p>Consider setting up a CI/CD pipeline (using GitHub Actions, GitLab CI, or AWS CodePipeline) to automate the update process:</p>
+<ol>
+<li>Push changes to your repository</li>
+<li>Automated tests run to validate the changes</li>
+<li>Docker image is built and pushed to ECR</li>
+<li>ECS service is updated with the new image</li>
+<li>Post-deployment tests verify the update</li>
+</ol>
+<p>This provides a more streamlined and reliable update process for production environments.</p>
+<h2 id="troubleshooting-updates">Troubleshooting Updates</h2>
+<h3 id="new-deployment-wont-start">New Deployment Won't Start</h3>
+<p>If the new task won't start:</p>
+<ol>
+<li>Check the task definition for any issues</li>
+<li>Verify resource constraints (CPU/memory)</li>
+<li>Check the Docker image exists in ECR</li>
+<li>Look for errors in the CloudWatch logs</li>
+</ol>
+<h3 id="service-unhealthy-after-update">Service Unhealthy After Update</h3>
+<p>If the service is unhealthy after the update:</p>
+<ol>
+<li>Check that health check endpoints are working</li>
+<li>Verify the agent is starting up correctly</li>
+<li>Check for any runtime errors in the logs</li>
+<li>Ensure the correct ports are exposed</li>
+</ol>
+<h3 id="agent-not-behaving-as-expected">Agent Not Behaving as Expected</h3>
+<p>If the agent isn't working as expected after the update:</p>
+<ol>
+<li>Verify the correct agent file is being used</li>
+<li>Check environment variables and secrets are properly set</li>
+<li>Verify API keys are valid and have sufficient quota</li>
+<li>Test the specific functionality that's not working correctly</li>
+</ol>
 
 
 

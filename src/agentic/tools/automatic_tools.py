@@ -1,14 +1,12 @@
 from typing import Callable, Any, Optional, Type
 import re
 from pydantic import BaseModel
-import pandas as pd
 
 from agentic.llm import llm_generate_with_format
 from agentic.common import RunContext
 from agentic.tools.base  import BaseAgenticTool
 from agentic.tools.utils.registry import tool_registry
 from agentic.tools.file_download import FileDownloadTool
-from agentic.tools.rag_tool import RAGTool
 
 def get_docstring(obj: Any) -> str:
     return obj.__doc__ or ""
@@ -38,7 +36,6 @@ class AutomaticTools(BaseAgenticTool):
             self.get_tool_listing,
             self.search_for_tool,
             self.enable_agent_tool,
-            self.universal_read_file,
         ]
 
     async def get_tool_listing(
@@ -120,16 +117,3 @@ Return no results if no tool fits the purpose.
         # In case the agent requested a tool that doesn't exist, see if we can suggest one
         suggestions = await self.search_for_tool(tool_name)
         return f"Error: Tool not found: {tool_name}. Perhaps you want one of: {', '.join(suggestions)}"
-
-    async def universal_read_file(self, file_name: str) -> Any:
-        """Reads the contents for any file type. Also supports reading from URLs."""
-        try:
-            value, mime_type = await RAGTool._universal_read_file(
-                file_name, self.run_context
-            )
-            if isinstance(value, str):
-                return value
-            elif isinstance(value, pd.DataFrame):
-                return self.get_dataframe_preview(value)
-        except ValueError as e:
-            return f"Error reading file: {e}"

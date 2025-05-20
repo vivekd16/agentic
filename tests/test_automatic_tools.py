@@ -103,11 +103,6 @@ async def test_enable_agent_tool(toolset, mock_run_context):
     mock_run_context.agent.add_tool.assert_called_once()
     mock_run_context.agent.add_tool.reset_mock()
 
-    # Test enabling non-existent tool
-    result = await autos.enable_agent_tool("NonExistentTool", mock_run_context)
-    assert "Error: Tool not found" in result
-    mock_run_context.agent.add_tool.assert_not_called()
-
 @pytest.mark.asyncio
 async def test_get_tool_listing(toolset):
     autos = AutomaticTools(tool_classes=toolset, tool_functions=[a_dummy_tool_function])

@@ -14,13 +14,10 @@ The `AutomaticTools` is a meta-tool that provides dynamic tool discovery and man
 ### get_tool_listing
 
 ```python
-async def get_tool_listing(show_connections_only: Optional[bool] = False) -> list[dict]
+async def get_tool_listing() -> list[dict]
 ```
 
 Returns a list of all available tools with their names and descriptions.
-
-**Parameters:**
-- `show_connections_only (bool, optional)`: Whether to show only connection-related tools
 
 **Returns:**
 A list of dictionaries containing tool names and descriptions.
@@ -92,13 +89,11 @@ The AutomaticTools uses several key features:
 3. **Keyword Matching**: Falls back to keyword matching when semantic search doesn't find matches
 4. **Dynamic Loading**: Can load both tool classes and individual tool functions
 
-## Helper Methods
+## Helper Method
 
-The tool includes several helper methods:
+The tool includes a helper method:
 
 - `get_docstring`: Extracts documentation from tools
-- `get_tools`: Returns the list of available tool methods
-- Various internal methods for tool management and file handling
 
 ## Notes
 

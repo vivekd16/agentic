@@ -38,16 +38,15 @@ class AutomaticTools(BaseAgenticTool):
             self.enable_agent_tool,
         ]
 
-    async def get_tool_listing(
-        self, show_connections_only: Optional[bool] = False
-    ) -> list[dict]:
-        """ " Returns the list of all available tools."""
+    async def get_tool_listing(self) -> list[dict]:
+        """Returns the list of all available tools."""
 
         records = []
         for tool_class in self.tool_classes:
             records.append(
                 {"name": tool_class.__name__, "description": get_docstring(tool_class)}
             )
+                
         for tool_function in self.tool_functions:
             records.append(
                 {

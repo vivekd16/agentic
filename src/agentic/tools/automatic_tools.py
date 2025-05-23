@@ -96,6 +96,8 @@ Return no results if no tool fits the purpose.
                 # sort candidates by longest name first
                 candidates.sort(key=lambda x: len(x), reverse=True)
                 return candidates
+            else:
+                return []  # Return empty list if no candidates found
         else:
             return result.tool_choices
 

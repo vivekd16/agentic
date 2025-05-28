@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 DEFAULT_MODEL = settings.get("DEFAULT_CODE_LLM", "openai/gpt-4o-mini")
 
-CLAUDE_DEFAULT_MODEL = "anthropic/claude-3-5-sonnet-20240620"
+CLAUDE_DEFAULT_MODEL = "anthropic/claude-sonnet-4-20250514"
 GPT_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 

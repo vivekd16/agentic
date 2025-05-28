@@ -53,7 +53,7 @@ def test_models_claude(mock_llm_generate):
     # Verify the mock was called with correct arguments
     mock_llm_generate.assert_called_once_with(
         test_prompt,
-        model="anthropic/claude-3-5-sonnet-20240620",
+        model="anthropic/claude-sonnet-4-20250514",
         usage=ANY
     )
     # Verify usage object was passed

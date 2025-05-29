@@ -445,9 +445,9 @@ class ActorBaseAgent:
             yield from events
             self.history.extend(partial_response.messages)
 
-        # Main conversation loop
+        # Main conversation loop: allow 25 tool calls in a row before stopping
         init_len = len(self.history)
-        while len(self.history) - init_len < 10:
+        while len(self.history) - init_len < 50:
             for event in self._yield_completion_steps(request_id):
                 yield event
 

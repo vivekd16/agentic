@@ -1,5 +1,6 @@
 from agentic.common import Agent, AgentRunner
 from agentic.tools import MCPTool
+from agentic.models import GPT_4O
 
 def create_sequential_thinker():
     """Create Sequential Thinking MCP tool with proper error handling"""
@@ -30,8 +31,12 @@ agent = Agent(
     2. Think through each step carefully
     3. Revise your thinking if needed
     4. Consider alternative approaches
+    5. Return the final answer with a summary of the steps you took to get to the answer.
+
+    Most importantly, you should only return the final answer with a summary of the steps you took to get to the answer after all steps are complete.
+    Don't return any other information or thoughts before all steps are complete.
     """,
-    model="openai/gpt-4o",
+    model=GPT_4O,
     tools=[sequential_thinker]
 )
 

@@ -1214,7 +1214,7 @@ class BaseAgentProxy:
         t.start()
         return StartRequestResponse(request_id=request_id, run_id=self.run_id)
 
-    def get_events(self, request_id: str, timeout: Optional[float] = 45.0) -> Generator[Event, Any, Any]:
+    def get_events(self, request_id: str, timeout: Optional[float] = None) -> Generator[Event, Any, Any]:
         """Get events for a request"""
         queue = self.request_queues[request_id]
         start_time = time.time()

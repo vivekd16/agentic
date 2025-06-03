@@ -1218,15 +1218,34 @@ class BaseAgentProxy:
         t.start()
         return StartRequestResponse(request_id=request_id, run_id=self.run_id)
 
-    def get_events(self, request_id: str) -> Generator[Event, Any, Any]:
+    def get_events(self, request_id: str, timeout: Optional[float] = None) -> Generator[Event, Any, Any]:
         """Get events for a request"""
         queue = self.request_queues[request_id]
+        start_time = time.time()
+        
         while True:
-            event = queue.get()
-            if event == self.queue_done_sentinel:
+            try:
+                if timeout is not None:
+                    remaining_time = timeout - (time.time() - start_time)
+                    if remaining_time <= 0:
+                        # Timeout exceeded, set sentinel and return
+                        queue.put(self.queue_done_sentinel)
+                        break
+                    event = queue.get(timeout=remaining_time)
+                else:
+                    event = queue.get()
+                    
+                if event == self.queue_done_sentinel:
+                    break
+                    
+                yield event
+                time.sleep(0.01)
+                
+            except Exception:
+                # Timeout or other exception, set sentinel and break
+                queue.put(self.queue_done_sentinel)
                 break
-            yield event
-            time.sleep(0.01)
+        
         depthLocal.depth -= 1
 
     def next_turn(self, request: str | Prompt, request_context: dict = {},

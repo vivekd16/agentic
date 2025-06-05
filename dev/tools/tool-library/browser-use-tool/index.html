@@ -1868,13 +1868,13 @@
 </ul>
 <h2 id="methods">Methods</h2>
 <h3 id="run_browser_agent">run_browser_agent</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_browser_agent</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">instructions</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="o">|</span><span class="n">FinishCompletion</span><span class="p">]</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_browser_agent</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">instructions</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="o">|</span><span class="n">FinishCompletion</span><span class="p">]</span>
 </code></pre></div>
 
 <p>Execute a set of instructions via browser automation. Instructions can be in natural language.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The execution context</li>
+<li><code>thread_context (ThreadContext)</code>: The execution context</li>
 <li><code>instructions (str)</code>: Natural language instructions for what to do with the browser</li>
 <li><code>model (Optional[str])</code>: Override the default LLM model</li>
 </ul>

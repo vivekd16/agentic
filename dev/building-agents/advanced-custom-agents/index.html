@@ -711,13 +711,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#subagent-run_id-propagation-for-subagents" class="md-nav__link">
+  <a href="#subagent-thread_id-propagation-for-subagents" class="md-nav__link">
     <span class="md-ellipsis">
-      Subagent run_id Propagation for Subagents
+      Subagent thread_id Propagation for Subagents
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Subagent run_id Propagation for Subagents">
+    <nav class="md-nav" aria-label="Subagent thread_id Propagation for Subagents">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1922,13 +1922,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#subagent-run_id-propagation-for-subagents" class="md-nav__link">
+  <a href="#subagent-thread_id-propagation-for-subagents" class="md-nav__link">
     <span class="md-ellipsis">
-      Subagent run_id Propagation for Subagents
+      Subagent thread_id Propagation for Subagents
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Subagent run_id Propagation for Subagents">
+    <nav class="md-nav" aria-label="Subagent thread_id Propagation for Subagents">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2105,15 +2105,15 @@
 <li>The turn is ended properly.</li>
 </ul>
 <hr />
-<h2 id="subagent-run_id-propagation-for-subagents">Subagent <code>run_id</code> Propagation for Subagents</h2>
-<p>To ensure events from subagents (like planners or tools) are grouped with the top-level agent in the event-logs, you must pass run_id in request_context and ensure it is picked up by the subagent. </p>
+<h2 id="subagent-thread_id-propagation-for-subagents">Subagent <code>thread_id</code> Propagation for Subagents</h2>
+<p>To ensure events from subagents (like planners or tools) are grouped with the top-level agent in the event-logs, you must pass thread_id in request_context and ensure it is picked up by the subagent. </p>
 <h3 id="what-to-do">What to do</h3>
-<p>pass <code>run_id</code> in every subagent request:</p>
+<p>pass <code>thread_id</code> in every subagent request:</p>
 <div class="codehilite"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">section_planner</span><span class="o">.</span><span class="n">final_result</span><span class="p">(</span>
     <span class="s2">&quot;Plan sections&quot;</span><span class="p">,</span>
     <span class="n">request_context</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span>
-        <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">run_context</span><span class="o">.</span><span class="n">run_id</span>  <span class="c1"># Required for shared logging</span>
+        <span class="s2">&quot;thread_id&quot;</span><span class="p">:</span> <span class="n">thread_context</span><span class="o">.</span><span class="n">thread_id</span>  <span class="c1"># Required for shared logging</span>
     <span class="p">}</span>
 <span class="p">)</span>
 </code></pre></div>
@@ -2158,7 +2158,7 @@
     <span class="c1"># Example: Plan → Research → Write</span>
     <span class="n">plan</span> <span class="o">=</span> <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">planner_agent</span><span class="o">.</span><span class="n">final_result</span><span class="p">(</span>
         <span class="s2">&quot;Make a plan&quot;</span><span class="p">,</span> 
-        <span class="n">request_context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="n">topic</span><span class="p">,</span> <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="n">request_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run_id&quot;</span><span class="p">)}</span>
+        <span class="n">request_context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="n">topic</span><span class="p">,</span> <span class="s2">&quot;thread_id&quot;</span><span class="p">:</span> <span class="n">request_context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thread_id&quot;</span><span class="p">)}</span>
     <span class="p">)</span>
 
     <span class="k">yield</span> <span class="n">ChatOutput</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Plan: </span><span class="si">{</span><span class="n">plan</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
@@ -2185,12 +2185,12 @@
 </thead>
 <tbody>
 <tr>
-<td><code>run_id</code></td>
+<td><code>thread_id</code></td>
 <td>Must be consistent per top-level request.</td>
 </tr>
 <tr>
 <td>Logging</td>
-<td>Only logs events for current agent, unless propagating via shared <code>run_id</code></td>
+<td>Only logs events for current agent, unless propagating via shared <code>thread_id</code></td>
 </tr>
 <tr>
 <td>History</td>

@@ -1918,13 +1918,13 @@
 </ul>
 <h2 id="methods">Methods</h2>
 <h3 id="save_content_to_knowledge_index">save_content_to_knowledge_index</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">save_content_to_knowledge_index</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">index_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">save_content_to_knowledge_index</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">index_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
 </code></pre></div>
 
 <p>Save content to a knowledge index. Accepts both text and file paths/URLs.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The execution context</li>
+<li><code>thread_context (ThreadContext)</code>: The execution context</li>
 <li><code>content (str)</code>: Text content or path to file/URL to index</li>
 <li><code>index_name (str)</code>: Name of the index to save to (defaults to default_index)</li>
 </ul>

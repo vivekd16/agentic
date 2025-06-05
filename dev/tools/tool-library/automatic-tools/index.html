@@ -1751,13 +1751,13 @@ A list of dictionaries containing tool names and descriptions.</p>
 <p><strong>Returns:</strong>
 A list of tool names that match the purpose.</p>
 <h3 id="enable_agent_tool">enable_agent_tool</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enable_agent_tool</span><span class="p">(</span><span class="n">tool_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enable_agent_tool</span><span class="p">(</span><span class="n">tool_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
 </code></pre></div>
 
 <p>Enables a specific tool for the agent to use.</p>
 <p><strong>Parameters:</strong>
 - <code>tool_name (str)</code>: The name of the tool to enable
-- <code>run_context (RunContext)</code>: The agent's running context</p>
+- <code>thread_context (ThreadContext)</code>: The agent's running context</p>
 <p><strong>Returns:</strong>
 A status message indicating whether the tool was successfully enabled or suggestions for similar tools.</p>
 <h2 id="example-usage">Example Usage</h2>

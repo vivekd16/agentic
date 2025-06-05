@@ -43,7 +43,7 @@
     "/{agent_name}/oauth/callback/{tool_name}": {
       "get": {
         "summary": "Handle Oauth Static Callback",
-        "description": "Static OAuth callback endpoint that extracts run_id from state parameter",
+        "description": "Static OAuth callback endpoint that extracts thread_id from state parameter",
         "operationId": "handle_oauth_static_callback__agent_name__oauth_callback__tool_name__get",
         "parameters": [
           {
@@ -91,19 +91,19 @@
         }
       }
     },
-    "/{agent_name}/oauth/{run_id}/{tool_name}": {
+    "/{agent_name}/oauth/{thread_id}/{tool_name}": {
       "get": {
         "summary": "Handle Oauth Callback",
         "description": "Core OAuth callback handler implementation",
-        "operationId": "handle_oauth_callback__agent_name__oauth__run_id___tool_name__get",
+        "operationId": "handle_oauth_callback__agent_name__oauth__thread_id___tool_name__get",
         "parameters": [
           {
-            "name": "run_id",
+            "name": "thread_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Run Id"
+              "title": "Thread Id"
             }
           },
           {
@@ -133,7 +133,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Handle Oauth Callback  Agent Name  Oauth  Run Id   Tool Name  Get"
+                  "title": "Response Handle Oauth Callback  Agent Name  Oauth  Thread Id   Tool Name  Get"
                 }
               }
             }
@@ -470,11 +470,11 @@
         }
       }
     },
-    "/{agent_name}/runs": {
+    "/{agent_name}/threads": {
       "get": {
-        "summary": "Get Runs",
-        "description": "Get all runs for this agent",
-        "operationId": "get_runs__agent_name__runs_get",
+        "summary": "Get Threads",
+        "description": "Get all threads for this agent",
+        "operationId": "get_threads__agent_name__threads_get",
         "parameters": [
           {
             "name": "agent_name",
@@ -524,19 +524,19 @@
         }
       }
     },
-    "/{agent_name}/runs/{run_id}/logs": {
+    "/{agent_name}/threads/{thread_id}/logs": {
       "get": {
-        "summary": "Get Run Logs",
-        "description": "Get logs for a specific run",
-        "operationId": "get_run_logs__agent_name__runs__run_id__logs_get",
+        "summary": "Get Thread Logs",
+        "description": "Get logs for a specific thread",
+        "operationId": "get_thread_logs__agent_name__threads__thread_id__logs_get",
         "parameters": [
           {
-            "name": "run_id",
+            "name": "thread_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Run Id"
+              "title": "Thread Id"
             }
           },
           {
@@ -587,19 +587,19 @@
         }
       }
     },
-    "/{agent_name}/webhook/{run_id}/{callback_name}": {
+    "/{agent_name}/webhook/{thread_id}/{callback_name}": {
       "post": {
         "summary": "Handle Webhook",
         "description": "Handle webhook callbacks",
-        "operationId": "handle_webhook__agent_name__webhook__run_id___callback_name__post",
+        "operationId": "handle_webhook__agent_name__webhook__thread_id___callback_name__post",
         "parameters": [
           {
-            "name": "run_id",
+            "name": "thread_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Run Id"
+              "title": "Thread Id"
             }
           },
           {
@@ -746,7 +746,7 @@
             ],
             "title": "Debug"
           },
-          "run_id": {
+          "thread_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -755,7 +755,7 @@
                 "type": "null"
               }
             ],
-            "title": "Run Id"
+            "title": "Thread Id"
           }
         },
         "type": "object",
@@ -784,7 +784,7 @@
             ],
             "title": "Debug"
           },
-          "run_id": {
+          "thread_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -793,7 +793,7 @@
                 "type": "null"
               }
             ],
-            "title": "Run Id"
+            "title": "Thread Id"
           }
         },
         "type": "object",

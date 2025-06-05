@@ -2030,7 +2030,7 @@
 <li>Chat with any registered agent</li>
 <li>View real-time agent event logs</li>
 <li>Run agents in the background while continuing to use the interface</li>
-<li>Browse run history to review past agent executions</li>
+<li>Browse thread history to review past agent executions</li>
 <li>Monitor agent performance metrics</li>
 </ul>
 <h2 id="setup-and-installation">Setup and Installation</h2>
@@ -2092,18 +2092,18 @@ agentic<span class="w"> </span>dashboard<span class="w"> </span>start<span class
 <li><code>/&lt;agent_path&gt;/describe</code> - Gets agent information</li>
 <li><code>/&lt;agent_path&gt;/process</code> - Sends prompts to an agent</li>
 <li><code>/&lt;agent_path&gt;/getevents</code> - Streams events from an agent</li>
-<li><code>/&lt;agent_path&gt;/runs</code> - Gets run history</li>
-<li><code>/&lt;agent_path&gt;/runs/{id}/logs</code> - Gets logs for a specific run</li>
+<li><code>/&lt;agent_path&gt;/threads</code> - Gets thread history</li>
+<li><code>/&lt;agent_path&gt;/threads/{id}/logs</code> - Gets logs for a specific thread</li>
 </ul>
 <p>The API integration is implemented in <code>src/app/lib/api.ts</code>, which provides a client-side wrapper around these endpoints.</p>
 <h2 id="component-structure">Component Structure</h2>
 <p>The dashboard is built with modular React components:</p>
 <ul>
 <li><code>AgentChat</code> - The main chat interface for interacting with agents</li>
-<li><code>AgentSidebar</code> - Navigation sidebar for agent selection and run history</li>
+<li><code>AgentSidebar</code> - Navigation sidebar for agent selection and thead history</li>
 <li><code>EventLogs</code> - Real-time event log viewer</li>
 <li><code>BackgroundTasks</code> - Background task manager</li>
-<li><code>RunsTable</code> - Table of historical agent runs</li>
+<li><code>ThreadsTable</code> - Table of historical agent threads</li>
 <li><code>MarkdownRenderer</code> - Renderer for agent markdown responses</li>
 </ul>
 <h3 id="data-flow">Data Flow</h3>

@@ -1856,52 +1856,52 @@
 <p>Requires an Airbnb calendar URL (iCal format) which can be stored in Agentic's secrets system as <code>AIRBNB_CALENDAR_URL</code>. This URL can be found in your Airbnb host dashboard under Calendar &gt; Availability &gt; Connect to another website.</p>
 <h2 id="methods">Methods</h2>
 <h3 id="list_events">list_events</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_events</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_events</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
 </code></pre></div>
 
 <p>List all events/bookings in the calendar within the specified date range.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The execution context</li>
+<li><code>thread_context (ThreadContext)</code>: The execution context</li>
 <li><code>start_date (Optional[str])</code>: Start date in ISO format (YYYY-MM-DD)</li>
 <li><code>end_date (Optional[str])</code>: End date in ISO format (YYYY-MM-DD)</li>
 </ul>
 <p><strong>Returns:</strong>
 A JSON string containing the events in the calendar.</p>
 <h3 id="check_availability">check_availability</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_availability</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_availability</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
 </code></pre></div>
 
 <p>Check if the property is available for a specific date range.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The execution context</li>
+<li><code>thread_context (ThreadContext)</code>: The execution context</li>
 <li><code>start_date (Optional[str])</code>: Start date in ISO format (YYYY-MM-DD)</li>
 <li><code>end_date (Optional[str])</code>: End date in ISO format (YYYY-MM-DD)</li>
 </ul>
 <p><strong>Returns:</strong>
 A JSON string indicating availability and any conflicts.</p>
 <h3 id="get_booking_stats">get_booking_stats</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_booking_stats</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_booking_stats</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
 </code></pre></div>
 
 <p>Get booking statistics for a specified date range.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The execution context</li>
+<li><code>thread_context (ThreadContext)</code>: The execution context</li>
 <li><code>start_date (Optional[str])</code>: Start date in ISO format (YYYY-MM-DD)</li>
 <li><code>end_date (Optional[str])</code>: End date in ISO format (YYYY-MM-DD)</li>
 </ul>
 <p><strong>Returns:</strong>
 A JSON string containing booking statistics including total days, booked days, booking count, and occupancy rate.</p>
 <h3 id="get_blocked_dates">get_blocked_dates</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_blocked_dates</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_blocked_dates</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">start_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
 </code></pre></div>
 
 <p>Get a list of blocked/unavailable dates.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The execution context</li>
+<li><code>thread_context (ThreadContext)</code>: The execution context</li>
 <li><code>start_date (Optional[str])</code>: Start date in ISO format (YYYY-MM-DD)</li>
 <li><code>end_date (Optional[str])</code>: End date in ISO format (YYYY-MM-DD)</li>
 </ul>

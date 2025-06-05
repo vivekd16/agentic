@@ -1876,7 +1876,7 @@
 - Stored in Agentic's secrets system as <code>TAVILY_API_KEY</code></p>
 <h2 id="methods">Methods</h2>
 <h3 id="perform_web_search">perform_web_search</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_web_search</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">include_images</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">include_content</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_web_search</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">include_images</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">include_content</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>
 </code></pre></div>
 
 <p>Performs a web search using Tavily's search engine and returns results with metadata.</p>
@@ -1885,31 +1885,31 @@
 <li><code>query (str)</code>: The search query</li>
 <li><code>include_images (bool)</code>: Whether to include images in the results</li>
 <li><code>include_content (bool)</code>: Whether to return the full page contents</li>
-<li><code>run_context (RunContext)</code>: The agent's running context</li>
+<li><code>thread_context (ThreadContext)</code>: The agent's running context</li>
 </ul>
 <p><strong>Returns:</strong>
 A list of dictionaries containing search results with metadata such as titles, URLs, and snippets.</p>
 <h3 id="query_for_news">query_for_news</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">query_for_news</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">days_back</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">PauseForInputResult</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">query_for_news</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">days_back</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">PauseForInputResult</span>
 </code></pre></div>
 
 <p>Returns the latest headlines on a given topic using Tavily's news search.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The agent's running context</li>
+<li><code>thread_context (ThreadContext)</code>: The agent's running context</li>
 <li><code>query (str)</code>: The news topic to search for</li>
 <li><code>days_back (int)</code>: Number of days back to search (default: 1)</li>
 </ul>
 <p><strong>Returns:</strong>
 A pandas DataFrame containing news articles related to the query.</p>
 <h3 id="tavily_download_pages">tavily_download_pages</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">tavily_download_pages</span><span class="p">(</span><span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">urls</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">include_images</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">tavily_download_pages</span><span class="p">(</span><span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">urls</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">include_images</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
 </code></pre></div>
 
 <p>Downloads content from one or more web page URLs using Tavily's content extraction API.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
-<li><code>run_context (RunContext)</code>: The agent's running context</li>
+<li><code>thread_context (ThreadContext)</code>: The agent's running context</li>
 <li><code>urls (list[str])</code>: List of URLs to download</li>
 <li><code>include_images (bool)</code>: Whether to include images in the results</li>
 </ul>

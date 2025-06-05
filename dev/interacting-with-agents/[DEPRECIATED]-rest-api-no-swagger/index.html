@@ -1885,14 +1885,14 @@
 <div class="codehilite"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;prompt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;What&#39;s the weather in New York?&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;debug&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tools&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1">// Optional: Enable debug logging</span>
-<span class="w">  </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="w"> </span><span class="c1">// Optional: Specify run ID for tracking</span>
+<span class="w">  </span><span class="nt">&quot;thread_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="w"> </span><span class="c1">// Optional: Specify run ID for tracking</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <p><em>Example Response:</em></p>
 <div class="codehilite"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;request_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;550e8400-e29b-41d4-a716-446655440000&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
+<span class="w">  </span><span class="nt">&quot;thread_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
@@ -1965,7 +1965,7 @@
 <div class="codehilite"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;prompt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;What&#39;s the weather in New York?&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;debug&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tools&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
+<span class="w">  </span><span class="nt">&quot;thread_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
@@ -1983,14 +1983,14 @@ A series of SSE events, each containing a serialized Event object.</p>
 <span class="w">    </span><span class="nt">&quot;request_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;550e8400-e29b-41d4-a716-446655440000&quot;</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">&quot;debug&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tools&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
+<span class="w">  </span><span class="nt">&quot;thread_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
 <p><em>Example Response:</em></p>
 <div class="codehilite"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;request_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;550e8400-e29b-41d4-a716-446655440000&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
+<span class="w">  </span><span class="nt">&quot;thread_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span>
 <span class="p">}</span>
 </code></pre></div>
 
@@ -2014,7 +2014,7 @@ A series of SSE events, each containing a serialized Event object.</p>
 </code></pre></div>
 
 <h4 id="get-run-logs">Get Run Logs</h4>
-<div class="codehilite"><pre><span></span><code>GET /&lt;agent_name&gt;/runs/{run_id}/logs
+<div class="codehilite"><pre><span></span><code>GET /&lt;agent_name&gt;/runs/{thread_id}/logs
 </code></pre></div>
 
 <p>Returns detailed logs for a specific run.</p>
@@ -2022,14 +2022,14 @@ A series of SSE events, each containing a serialized Event object.</p>
 <div class="codehilite"><pre><span></span><code><span class="p">[</span>
 <span class="w">  </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;log1&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;thread_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-03-25T14:30:22.123456&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;event_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;prompt_started&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;What&#39;s the weather in New York?&quot;</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;log2&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;run_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;thread_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-03-25T14:30:23.456789&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;event_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tool_call&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;name\&quot;: \&quot;get_current_weather\&quot;, \&quot;arguments\&quot;: {\&quot;location\&quot;: \&quot;New York\&quot;}}&quot;</span>
@@ -2038,13 +2038,13 @@ A series of SSE events, each containing a serialized Event object.</p>
 </code></pre></div>
 
 <h4 id="webhook">Webhook</h4>
-<div class="codehilite"><pre><span></span><code>POST /&lt;agent_name&gt;/webhook/{run_id}/{callback_name}
+<div class="codehilite"><pre><span></span><code>POST /&lt;agent_name&gt;/webhook/{thread_id}/{callback_name}
 </code></pre></div>
 
 <p>Handles webhook callbacks for asynchronous tool operations.</p>
 <p><em>Path Parameters:</em></p>
 <ul>
-<li><code>run_id</code>: The ID of the agent run</li>
+<li><code>thread_id</code>: The ID of the agent run</li>
 <li><code>callback_name</code>: Name of the tool function to call</li>
 </ul>
 <p><em>Request Body:</em>

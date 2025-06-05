@@ -1983,14 +1983,14 @@
 <p>Requires a MeetingBaaS API key, which can be stored in Agentic's secrets system as <code>MEETING_BAAS_API_KEY</code>.</p>
 <h2 id="methods">Methods</h2>
 <h3 id="join_meeting">join_meeting</h3>
-<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">join_meeting</span><span class="p">(</span><span class="n">meeting_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">run_context</span><span class="p">:</span> <span class="n">RunContext</span><span class="p">,</span> <span class="n">bot_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Meeting Assistant&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">join_meeting</span><span class="p">(</span><span class="n">meeting_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">thread_context</span><span class="p">:</span> <span class="n">ThreadContext</span><span class="p">,</span> <span class="n">bot_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Meeting Assistant&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span>
 </code></pre></div>
 
 <p>Join a video meeting and start recording.</p>
 <p><strong>Parameters:</strong></p>
 <ul>
 <li><code>meeting_url (str)</code>: URL of the meeting to join</li>
-<li><code>run_context (RunContext)</code>: The execution context</li>
+<li><code>thread_context (ThreadContext)</code>: The execution context</li>
 <li><code>bot_name (str)</code>: Name to display for the bot in the meeting (default: "Meeting Assistant")</li>
 </ul>
 <p><strong>Returns:</strong>

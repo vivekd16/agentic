@@ -15,7 +15,7 @@ from typing import Callable, Optional, List
 from agentic.tools.base import BaseAgenticTool
 from agentic.tools.utils.registry import tool_registry, Dependency, ConfigRequirement
 from agentic.agentic_secrets import agentic_secrets
-from agentic.common import RunContext
+from agentic.common import ThreadContext
 from agentic.utils.directory_management import get_runtime_directory
 from agentic.utils.rag_helper import init_weaviate, create_collection, init_embedding_model, init_chunker, search_collection
 
@@ -170,7 +170,7 @@ class MeetingBaasTool(BaseAgenticTool):
     def join_meeting(
         self, 
         meeting_url: str,
-        run_context: RunContext,
+        thread_context: ThreadContext,
         bot_name: str = "Meeting Assistant"
     ) -> dict:
         """Dispatches a bot to join a meeting and return the bot id"""
@@ -189,12 +189,12 @@ class MeetingBaasTool(BaseAgenticTool):
                 }
             
             # Get the agent's safe name for URL routing
-            agent_safe_name = "".join(c if c.isalnum() else "_" for c in run_context.agent_name).lower()
+            agent_safe_name = "".join(c if c.isalnum() else "_" for c in thread_context.agent_name).lower()
             # Create the full base URL with the safe name path
             agent_base_url = f"{self.webhook_addr}/{agent_safe_name}"
             
-            run_context.api_endpoint = agent_base_url
-            webhook_url = run_context.get_webhook_endpoint("process_webhook")
+            thread_context.api_endpoint = agent_base_url
+            webhook_url = thread_context.get_webhook_endpoint("process_webhook")
 
             data = {
                 "meeting_url": meeting_url,

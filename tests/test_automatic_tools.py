@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 
 from agentic.tools import AutomaticTools, DatabaseTool, GoogleNewsTool, WeatherTool
-from agentic.common import RunContext, Agent
+from agentic.common import ThreadContext, Agent
 
 def a_dummy_tool_function(name: str):
     """ This turns the parameter into a dummy. """
@@ -13,8 +13,8 @@ def toolset():
     return [WeatherTool, GoogleNewsTool, DatabaseTool]
 
 @pytest.fixture
-def mock_run_context():
-    context = Mock(spec=RunContext)
+def mock_thread_context():
+    context = Mock(spec=ThreadContext)
     context.agent = Mock(spec=Agent)
     context.agent.add_tool = Mock()
     return context
@@ -83,31 +83,31 @@ async def test_search_for_tool(toolset):
 
 @pytest.mark.asyncio
 @pytest.mark.requires_llm
-async def test_enable_agent_tool(toolset, mock_run_context):
+async def test_enable_agent_tool(toolset, mock_thread_context):
     autos = AutomaticTools(tool_classes=toolset, tool_functions=[a_dummy_tool_function])
 
     # Test enabling a class-based tool
-    result = await autos.enable_agent_tool("WeatherTool", mock_run_context)
+    result = await autos.enable_agent_tool("WeatherTool", mock_thread_context)
     assert "The tool WeatherTool has been enabled" in result
-    mock_run_context.agent.add_tool.assert_called_once()
-    mock_run_context.agent.add_tool.reset_mock()
+    mock_thread_context.agent.add_tool.assert_called_once()
+    mock_thread_context.agent.add_tool.reset_mock()
 
     # Test enabling a function-based tool
-    result = await autos.enable_agent_tool("a_dummy_tool_function", mock_run_context)
+    result = await autos.enable_agent_tool("a_dummy_tool_function", mock_thread_context)
     assert "The tool a_dummy_tool_function has been enabled" in result
-    mock_run_context.agent.add_tool.assert_called_once()
-    mock_run_context.agent.add_tool.reset_mock()
+    mock_thread_context.agent.add_tool.assert_called_once()
+    mock_thread_context.agent.add_tool.reset_mock()
 
     # Test enabling with different case
-    result = await autos.enable_agent_tool("weathertool", mock_run_context)
+    result = await autos.enable_agent_tool("weathertool", mock_thread_context)
     assert "The tool WeatherTool has been enabled" in result
-    mock_run_context.agent.add_tool.assert_called_once()
-    mock_run_context.agent.add_tool.reset_mock()
+    mock_thread_context.agent.add_tool.assert_called_once()
+    mock_thread_context.agent.add_tool.reset_mock()
 
     # Test enabling non-existent tool
-    result = await autos.enable_agent_tool("NonExistentTool", mock_run_context)
+    result = await autos.enable_agent_tool("NonExistentTool", mock_thread_context)
     assert "Error: Tool not found" in result
-    mock_run_context.agent.add_tool.assert_not_called()
+    mock_thread_context.agent.add_tool.assert_not_called()
 
 @pytest.mark.asyncio
 async def test_get_tool_listing(toolset):

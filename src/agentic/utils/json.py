@@ -1,6 +1,6 @@
 from litellm.types.utils import Message
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, date
 import traceback
 
 def get_tc_args(tc):
@@ -51,6 +51,9 @@ def make_json_serializable(obj):
             return obj.model_dump()
         elif isinstance(obj, datetime):
             return obj.isoformat()
+        elif isinstance(obj, date):
+            # Format date
+            return obj.strftime('%Y-%m-%d')        
         elif hasattr(obj, '__dict__'):  # For objects like ThreadContext
             return str(obj)
         return obj

@@ -72,6 +72,7 @@ from agentic.models import get_special_model_params, mock_provider
 
 
 __CTX_VARS_NAME__ = "thread_context"
+__LEGACY_CTX_VARS_NAME__ = "run_context"
 
 # define a CallbackType Enum with values: "handle_turn_start", "handle_event", "handle_turn_end"
 CallbackType = Literal["handle_turn_start", "handle_event", "handle_turn_end"]
@@ -160,6 +161,9 @@ class ActorBaseAgent:
             params["properties"].pop(__CTX_VARS_NAME__, None)
             if __CTX_VARS_NAME__ in params["required"]:
                 params["required"].remove(__CTX_VARS_NAME__)
+            params["properties"].pop(__LEGACY_CTX_VARS_NAME__, None)
+            if __LEGACY_CTX_VARS_NAME__ in params["required"]:
+                params["required"].remove(__LEGACY_CTX_VARS_NAME__)
 
         # Create parameters for litellm call
         completion_params = {
@@ -290,6 +294,8 @@ class ActorBaseAgent:
             func = function_map[name]
             if __CTX_VARS_NAME__ in func.__code__.co_varnames:
                 args[__CTX_VARS_NAME__] = thread_context
+            if __LEGACY_CTX_VARS_NAME__ in func.__code__.co_varnames:
+                args[__LEGACY_CTX_VARS_NAME__] = thread_context
 
             events.append(ToolCall(self.name, name, args))
 

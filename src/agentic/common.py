@@ -4,7 +4,7 @@ from .actor_agents import (
     AgentProxyClass,
     handoff,
 )
-from .swarm.types import ThreadContext
+from .swarm.types import ThreadContext, RunContext
 from .workflow import Pipeline
 from jinja2 import Template
 import os

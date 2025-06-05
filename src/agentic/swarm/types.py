@@ -210,6 +210,8 @@ class ThreadContext:
         token_key = f"{tool_name}_oauth_token"
         return self.get_secret(token_key)
 
+# For backwards compatibility for tool functions before the Thread renaming
+RunContext = ThreadContext
 
 class SwarmAgent(BaseModel):
     name: str = "Agent"

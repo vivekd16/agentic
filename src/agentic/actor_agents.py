@@ -726,6 +726,9 @@ class ActorBaseAgent:
             if key in state:
                 setattr(self, remap.get(key, key), state[key])
 
+        if 'history' in state and len(self.history) == 0:
+            self.history = state["history"]
+
         if "handle_turn_start" in state:
             self._callbacks["handle_turn_start"] = state["handle_turn_start"]
 
@@ -1148,6 +1151,13 @@ class BaseAgentProxy:
         # To be overridden by subclasses
         pass
 
+    def _reload_thread_history(self, thread_id: str):
+        # We load the thread history from the ThreadManager, and pass it to the agent.
+        # The agent has logic to only loads its history once, so this is safe to 
+        # call multiple times (like each start_request with the same thread_id).
+        from .thread_manager import load_thread_history
+        self._update_state({"history": load_thread_history(thread_id)})
+
     def _create_agent_instance(self, request_id: str):
         """Create a new agent instance for a request"""
         # This is implemented by the subclasses (e.g., RayAgentProxy, LocalAgentProxy)
@@ -1188,6 +1198,9 @@ class BaseAgentProxy:
                 
         if isinstance(request, str):
             request = self._check_for_prompt_match(request)
+
+        if thread_id is not None:
+            self._reload_thread_history(thread_id)
 
         if not thread_id and "thread_id" in request_context:
             thread_id = request_context["thread_id"]

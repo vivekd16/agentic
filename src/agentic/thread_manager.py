@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Callable
+from typing import Optional, Dict, Callable, Any
 from uuid import uuid4
 from litellm import Message
 from .events import (
@@ -119,6 +119,9 @@ def init_thread_tracking(
         db_path=db_path
     )
     return thread_id, thread_manager.handle_event
+
+def load_thread_history(thread_id: str) -> list[Any]:
+    return []
 
 def disable_thread_tracking(agent) -> None:
     """Helper function to disable thread tracking for an agent"""

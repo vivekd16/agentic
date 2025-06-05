@@ -4,7 +4,7 @@ import readline
 import traceback
 import signal
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Type, Optional, Callable
 import importlib.util
 import inspect
 import sys
@@ -89,6 +89,10 @@ class RayAgentRunner:
             return self.debug.debug_agents()
         elif isinstance(event, (StartCompletion, FinishCompletion)):
             return self.debug.debug_llm()
+        elif event.__module__ != "agentic.events":
+            # If the event is not from agentic.events, we assume it's a custom event
+            # and print it if debug is enabled.
+            return True
         else:
             return False
 
@@ -96,7 +100,7 @@ class RayAgentRunner:
         self.debug = DebugLevel(level)
         self.facade.set_debug_level(self.debug)
 
-    def repl_loop(self, default_context: dict = {}):
+    def repl_loop(self, default_context: dict = {}, event_handler: Optional[Callable] = None):
         hist = os.path.expanduser("~/.agentic_history")
         if os.path.exists(hist):
             readline.read_history_file(hist)
@@ -139,6 +143,8 @@ class RayAgentRunner:
                 ).request_id
 
                 for event in self.facade.get_events(request_id):
+                    if event_handler:
+                        event_handler(event, self.facade)
                     if self.facade.is_cancelled():
                         break
                     continue_result = {}

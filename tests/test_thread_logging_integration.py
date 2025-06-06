@@ -92,7 +92,7 @@ def test_thread_logging_enabled(test_agent, db_manager):
     threads = db_manager.get_threads_by_user("default")
     new_thread_logs_count = len(db_manager.get_thread_logs(thread.id))
     # Make sure the length of threads is one but that the number of thread logs increased
-    assert len(threads) == 2
+    assert len(threads) == 1
     assert new_thread_logs_count > initial_thread_logs_count
 
 @pytest.mark.requires_llm

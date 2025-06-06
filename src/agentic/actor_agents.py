@@ -9,6 +9,7 @@ import time
 import traceback
 import uuid
 import yaml
+from pprint import pprint
 
 from copy import deepcopy
 from dataclasses import dataclass
@@ -920,6 +921,7 @@ class BaseAgentProxy:
         self.request_queues: dict[str,Queue] = {}
         self.result_model = result_model
         self.queue_done_sentinel = "QUEUE_DONE"
+        self.thread_log_loaded: bool = False
         
         # Track active agent instances by request ID
         self.agent_instances = {}
@@ -1153,10 +1155,17 @@ class BaseAgentProxy:
 
     def _reload_thread_history(self, thread_id: str):
         # We load the thread history from the ThreadManager, and pass it to the agent.
-        # The agent has logic to only loads its history once, so this is safe to 
-        # call multiple times (like each start_request with the same thread_id).
-        from .thread_manager import load_thread_history
-        self._update_state({"history": load_thread_history(thread_id)})
+        # We have to keep a flag to avoid loading all of history every time that 'start_request' is
+        # is called. But the agent also has logic to only load its history once.
+        from .thread_manager import reconstruct_chat_history_from_thread_logs
+
+        if not self.thread_log_loaded:
+            print("LOADING THREAD LOGS FOR ID: ", thread_id)
+            history = reconstruct_chat_history_from_thread_logs(self.get_thread_logs(thread_id))
+            update = {"history": history}
+            pprint(update)
+            self._update_state(update)
+            self.thread_log_loaded = True    
 
     def _create_agent_instance(self, request_id: str):
         """Create a new agent instance for a request"""
@@ -1209,7 +1218,7 @@ class BaseAgentProxy:
         request_id = continue_result.get("request_id") or str(uuid.uuid4())
 
         agent_instance = self._get_agent_for_request(request_id)
-        if (self.thread_id != thread_id or not self.thread_id) and self.db_path:
+        if thread_id is not None and (self.thread_id != thread_id or not self.thread_id) and self.db_path:
             self.init_thread_tracking(agent_instance, thread_id)
 
         # Initialize new request
@@ -1578,6 +1587,7 @@ class LocalAgentProxy(BaseAgentProxy):
             "handle_turn_start": self._handle_turn_start,
             "result_model": self.result_model,
             "prompts": self.prompts,
+            "db_path": self.db_path,
             # Functions will be added when creating instances
         }
         _AGENT_REGISTRY.append(self)

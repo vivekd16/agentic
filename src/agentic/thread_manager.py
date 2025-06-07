@@ -355,7 +355,7 @@ def get_last_n_turns(thread_logs: List[ThreadLog], n_turns: int = 5) -> List[Dic
 
 
 # Use this for testing
-def validate_chat_history(history: List[Dict[str, Any]]) -> tuple[bool, List[str]]:
+def validate_chat_history(history: List[Dict[str, Any]]) -> List[Dict]:
     """
     Validate reconstructed chat history and return validation errors.
     
@@ -367,6 +367,8 @@ def validate_chat_history(history: List[Dict[str, Any]]) -> tuple[bool, List[str
     """
     errors = []
     
+    seen_tool_id_results = set()
+
     for i, msg in enumerate(history):
         if not isinstance(msg, dict):
             errors.append(f"Message {i} is not a dictionary: {type(msg)}")
@@ -387,12 +389,25 @@ def validate_chat_history(history: List[Dict[str, Any]]) -> tuple[bool, List[str
             if not (has_content or has_tool_calls):
                 errors.append(f"Assistant message {i} missing both 'content' and 'tool_calls'")
         elif role == "tool":
-            required = ["tool_call_id", "name", "content"]
+            required = ["tool_call_id", "content"]
             for field in required:
                 if field not in msg:
                     errors.append(f"Tool message {i} missing '{field}' field")
+            seen_tool_id_results.add(msg["tool_call_id"])
         else:
             errors.append(f"Message {i} has invalid role: {role}")
     
-    return len(errors) == 0, errors
+    # Strip any tool_calls that don't have a response since the AI will complain
+    for i, msg in enumerate(history):
+        if msg.get("role") == "assistant" and "tool_calls" in msg:
+            tool_calls = [call for call in msg["tool_calls"] if call.get("id") in seen_tool_id_results]
+            if len(tool_calls) > 0:
+                msg["tool_calls"] = tool_calls
+            else:
+                del msg["tool_calls"]
+
+    if len(errors) > 0:
+        raise RuntimeError("Validation errors found in chat history: " + ", ".join(errors))
+
+    return history
 

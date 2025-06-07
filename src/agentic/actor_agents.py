@@ -1157,11 +1157,13 @@ class BaseAgentProxy:
         # We load the thread history from the ThreadManager, and pass it to the agent.
         # We have to keep a flag to avoid loading all of history every time that 'start_request' is
         # is called. But the agent also has logic to only load its history once.
-        from .thread_manager import reconstruct_chat_history_from_thread_logs
+        from .thread_manager import reconstruct_chat_history_from_thread_logs, validate_chat_history
 
         if not self.thread_log_loaded:
             print("LOADING THREAD LOGS FOR ID: ", thread_id)
-            history = reconstruct_chat_history_from_thread_logs(self.get_thread_logs(thread_id))
+            history = validate_chat_history(
+                reconstruct_chat_history_from_thread_logs(self.get_thread_logs(thread_id))
+            )
             update = {"history": history}
             pprint(update)
             self._update_state(update)
@@ -1218,8 +1220,8 @@ class BaseAgentProxy:
         request_id = continue_result.get("request_id") or str(uuid.uuid4())
 
         agent_instance = self._get_agent_for_request(request_id)
-        if thread_id is not None and (self.thread_id != thread_id or not self.thread_id) and self.db_path:
-            self.init_thread_tracking(agent_instance, thread_id)
+        if (self.thread_id != thread_id or not self.thread_id) and self.db_path:
+            self.init_thread_tracking(agent_instance, thread_id or self.thread_id)
 
         # Initialize new request
         request_obj = Prompt(
@@ -1366,6 +1368,7 @@ class BaseAgentProxy:
             yield event
 
             if hasattr(event, "agent") and event.agent != self.name:
+                # skipping event with wrong agent name
                 continue    
 
             # Only now: do logging after yielding

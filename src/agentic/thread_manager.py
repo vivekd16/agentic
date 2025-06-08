@@ -29,10 +29,10 @@ class ThreadManager:
         # Should this not be propagated from the next_turn?
         self.usage_data: Dict = {}
         self.db_path = get_runtime_filepath(db_path)
+        self.db_manager = DatabaseManager(db_path=self.db_path)
     
     def handle_event(self, event: Event, thread_context: ThreadContext) -> None:
         """Generic event handler that processes all events and logs them appropriately"""
-        db_manager = DatabaseManager(db_path=self.db_path)
         # Initialize a new thread when we see a Prompt event
 
         if isinstance(event, PromptStarted):
@@ -42,9 +42,9 @@ class ThreadManager:
                 prompt = str(event.payload)
 
             # Check if the thread is in the database
-            thread = db_manager.get_thread(thread_id=self.initial_thread_id)
+            thread = self.db_manager.get_thread(thread_id=self.initial_thread_id)
             if not thread:
-                thread = db_manager.create_thread(
+                thread = self.db_manager.create_thread(
                     thread_id=self.initial_thread_id,
                     agent_id=thread_context.agent_name,
                     user_id=str(thread_context.get("user") or "default"),
@@ -96,7 +96,7 @@ class ThreadManager:
             event_data = {}
             
         # Log the event
-        db_manager.log_event(
+        self.db_manager.log_event(
             thread_id=thread_context.thread_id,
             agent_id=thread_context.agent_name,
             user_id=str(thread_context.get("user") or "default"),

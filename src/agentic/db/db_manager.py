@@ -1,4 +1,5 @@
 from datetime import datetime, UTC
+import os
 from typing import Dict, Optional
 from sqlmodel import Session, SQLModel, create_engine, select, asc, desc
 from pathlib import Path
@@ -67,12 +68,18 @@ def _check_and_migrate_database(db_path: str):
 # Database setup and management
 class DatabaseManager:
     def __init__(self, db_path: str = "agent_threads.db"):
-        self.db_path = get_runtime_filepath(db_path)
-        
-        # Check and perform migration if needed
-        _check_and_migrate_database(self.db_path)
-        
-        self.engine = create_engine(f"sqlite:///{self.db_path}", echo=False)
+        if 'AGENTIC_DATABASE_URL' in os.environ:
+            # Use the database URL from environment variable if set
+            dburl = os.environ['AGENTIC_DATABASE_URL']
+            print(f"Connecting to database {dburl}")
+            self.engine = create_engine(dburl, echo=False)
+            self.db_path = None
+        else:
+            self.db_path = get_runtime_filepath(db_path)
+            # Check and perform migration if needed
+            _check_and_migrate_database(self.db_path)
+            self.engine = create_engine(f"sqlite:///{self.db_path}", echo=False)
+
         self.create_db_and_tables()
 
     def create_db_and_tables(self):
